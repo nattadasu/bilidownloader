@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 
 import survey
 import typer
-from rich import box
+from rich import box, print
 from rich.console import Console
 from rich.table import Column, Table
 from typing_extensions import Annotated
@@ -326,7 +326,7 @@ def download_all_releases(
         ),
     ] = False,
 ):
-    api = BiliApi().get_all_shows()
+    api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
     released = sorted(released, key=lambda k: k.title)
     try:
@@ -621,6 +621,32 @@ def history_clear(
     if yes or not prompt:
         hi._write([])
         survey.printers.info("History successfully cleared!")
+
+
+@app.command("schedule", help="Get release schedule")
+def schedule():
+    api = BiliApi()
+    tpat = re.compile(r"(\d{2}:\d{2})")
+    epat = re.compile(r"E(\d+(-\d+)?)")
+    for day in api.data.data.items:
+        is_today = "[blue] >> TODAY << [/]" if day.is_today else ""
+        print(f"[reverse blue bold] {day.full_day_of_week} [/][reverse white] {day.full_date_text} [/] {is_today}")
+        tab = Table(Column("Time", justify='center'), "Series ID", "Title", "Ep.", box=box.ROUNDED)
+        released = []
+        upcoming = []
+        for item in day.cards:
+            tmat = tpat.search(item.index_show)
+            time = tmat.group(0) if tmat else ""
+            emat = epat.search(item.index_show)
+            eps = emat.group(0) if emat else ""
+            ent = (time, f"[url=https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}]{item.season_id}[/url]", item.title, eps)
+            released.append(ent) if time == "" else upcoming.append(ent)
+        released = sorted(released, key=lambda e: e[2])
+        upcoming = sorted(upcoming, key=lambda e: e[0])
+        released.extend(upcoming)
+        for anime in released:
+            tab.add_row(*anime)
+        console.print(tab)
 
 
 if __name__ == "__main__":

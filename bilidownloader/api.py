@@ -28,7 +28,7 @@ class BiliApi:
             card for day in self.data.data.items if day.is_today for card in day.cards
         ]
 
-    def get_all_shows(self) -> List[CardItem]:
+    def get_all_available_shows(self) -> List[CardItem]:
         return [
             card
             for day in self.data.data.items

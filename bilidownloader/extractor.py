@@ -354,7 +354,7 @@ class BiliProcess:
         api = BiliApi()
 
         for sid, title in wl.list:
-            for card in api.get_all_shows():
+            for card in api.get_all_available_shows():
                 if sid == card.season_id:
                     if "-" in card.index_show:
                         printers.info(f"Downloading {title} as a playlist")
