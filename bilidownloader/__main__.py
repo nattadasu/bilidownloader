@@ -57,24 +57,39 @@ def download_url(
     url: Annotated[
         str,
         typer.Option(
-            help="Video or Playlist URL on Bilibili", prompt=True, show_default=False
+            "--url",
+            "-u",
+            help="Video or Playlist URL on Bilibili",
+            prompt=True,
+            show_default=False,
         ),
     ],
     cookie: Annotated[
         Path,
         typer.Option(
-            help="Path to your cookie.txt file", prompt=True, show_default=False
+            "--cookie",
+            "--cookie-file",
+            "-c",
+            help="Path to your cookie.txt file",
+            prompt=True,
+            show_default=False,
         ),
     ],
     history_file: Annotated[
         Path,
         typer.Option(
+            "--history",
+            "--history-file",
+            "-h",
             help="Path to your history.txt file",
         ),
     ] = DEFAULT_HISTORY,
     resolution: Annotated[
         int,
         typer.Option(
+            "--resolution",
+            "--reso",
+            "-r",
             help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
             min=144,
             max=1080,
@@ -86,6 +101,7 @@ def download_url(
         bool,
         typer.Option(
             "--is-avc",
+            "--avc",
             help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
         ),
     ] = False,
@@ -93,6 +109,7 @@ def download_url(
         bool,
         typer.Option(
             "--download-pv",
+            "--pv",
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
@@ -172,24 +189,38 @@ def download_today_releases(
     cookie: Annotated[
         Path,
         typer.Option(
-            help="Path to your cookie.txt file", prompt=True, show_default=False
+            "--cookie",
+            "--cookie-file",
+            "-c",
+            help="Path to your cookie.txt file",
+            prompt=True,
+            show_default=False,
         ),
     ],
     watchlist_file: Annotated[
         Path,
         typer.Option(
+            "--watchlist",
+            "--watchlist-file",
+            "-w",
             help="Path to your watchlist.txt file",
         ),
     ] = DEFAULT_WATCHLIST,
     history_file: Annotated[
         Path,
         typer.Option(
+            "--history",
+            "--history-file",
+            "-h",
             help="Path to your history.txt file",
         ),
     ] = DEFAULT_HISTORY,
     resolution: Annotated[
         int,
         typer.Option(
+            "--resolution",
+            "--reso",
+            "-r",
             help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
             min=144,
             max=1080,
@@ -201,6 +232,7 @@ def download_today_releases(
         bool,
         typer.Option(
             "--is-avc",
+            "--avc",
             help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
         ),
     ] = False,
@@ -208,6 +240,7 @@ def download_today_releases(
         bool,
         typer.Option(
             "--download-pv",
+            "--pv",
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
@@ -237,24 +270,38 @@ def download_all_releases(
     cookie: Annotated[
         Path,
         typer.Option(
-            help="Path to your cookie.txt file", prompt=True, show_default=False
+            "--cookie",
+            "--cookie-file",
+            "-c",
+            help="Path to your cookie.txt file",
+            prompt=True,
+            show_default=False,
         ),
     ],
     watchlist_file: Annotated[
         Path,
         typer.Option(
+            "--watchlist",
+            "--watchlist-file",
+            "-w",
             help="Path to your watchlist.txt file",
         ),
     ] = DEFAULT_WATCHLIST,
     history_file: Annotated[
         Path,
         typer.Option(
+            "--history",
+            "--history-file",
+            "-h",
             help="Path to your history.txt file",
         ),
     ] = DEFAULT_HISTORY,
     resolution: Annotated[
         int,
         typer.Option(
+            "--resolution",
+            "--reso",
+            "-r",
             help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
             min=144,
             max=1080,
@@ -266,6 +313,7 @@ def download_all_releases(
         bool,
         typer.Option(
             "--is-avc",
+            "--avc",
             help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
         ),
     ] = False,
@@ -273,6 +321,7 @@ def download_all_releases(
         bool,
         typer.Option(
             "--download-pv",
+            "--pv",
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
@@ -298,7 +347,15 @@ def download_all_releases(
 def watchlist_list(
     file_path: Annotated[
         Path,
-        typer.Option("--path", "--file-path", "-p", help="Path to your watchlist file"),
+        typer.Option(
+            "--path",
+            "--file-path",
+            "-p",
+            "--watchlist",
+            "--watchlist-file",
+            "-w",
+            help="Path to your watchlist file",
+        ),
     ] = DEFAULT_WATCHLIST,
     show_url: Annotated[
         bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
@@ -329,7 +386,15 @@ def watchlist_list(
 def watchlist_add(
     file_path: Annotated[
         Path,
-        typer.Option("--path", "--file-path", "-p", help="Path to your watchlist file"),
+        typer.Option(
+            "--path",
+            "--file-path",
+            "-p",
+            "--watchlist",
+            "--watchlist-file",
+            "-w",
+            help="Path to your watchlist file",
+        ),
     ] = DEFAULT_WATCHLIST,
     series_url: Annotated[
         Optional[str],
@@ -387,7 +452,15 @@ def watchlist_add(
 def watchlist_delete(
     file_path: Annotated[
         Path,
-        typer.Option("--path", "--file-path", "-p", help="Path to your watchlist file"),
+        typer.Option(
+            "--path",
+            "--file-path",
+            "-p",
+            "--watchlist",
+            "--watchlist-file",
+            "-w",
+            help="Path to your watchlist file",
+        ),
     ] = DEFAULT_WATCHLIST,
 ):
     wl = Watchlist(file_path)
@@ -428,7 +501,12 @@ def watchlist_download(
     cookie: Annotated[
         Path,
         typer.Option(
-            help="Path to your cookie.txt file", prompt=True, show_default=False
+            "--cookie",
+            "--cookie-file",
+            "-c",
+            help="Path to your cookie.txt file",
+            prompt=True,
+            show_default=False,
         ),
     ],
     watchlist_file: Annotated[
@@ -437,19 +515,27 @@ def watchlist_download(
             "--path",
             "--file-path",
             "-p",
+            "--watchlist",
             "--watchlist-file",
+            "-w",
             help="Path to your watchlist.txt file",
         ),
     ] = DEFAULT_WATCHLIST,
     history_file: Annotated[
         Path,
         typer.Option(
+            "--history",
+            "--history-file",
+            "-h",
             help="Path to your history.txt file",
         ),
     ] = DEFAULT_HISTORY,
     resolution: Annotated[
         int,
         typer.Option(
+            "--resolution",
+            "--reso",
+            "-r",
             help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
             min=144,
             max=1080,
@@ -461,6 +547,7 @@ def watchlist_download(
         bool,
         typer.Option(
             "--is-avc",
+            "--avc",
             help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
         ),
     ] = False,
@@ -474,7 +561,15 @@ def watchlist_download(
 def history_list(
     file_path: Annotated[
         Path,
-        typer.Option("--path", "--file-path", "-p", help="Path to your history file"),
+        typer.Option(
+            "--path",
+            "--file-path",
+            "-p",
+            "--history",
+            "--history-file",
+            "-h",
+            help="Path to your history file",
+        ),
     ] = DEFAULT_HISTORY,
 ):
     hi = History(file_path)
@@ -496,7 +591,15 @@ def history_list(
 def history_clear(
     file_path: Annotated[
         Path,
-        typer.Option("--path", "--file-path", "-p", help="Path to your history file"),
+        typer.Option(
+            "--path",
+            "--file-path",
+            "-p",
+            "--history",
+            "--history-file",
+            "-h",
+            help="Path to your history file",
+        ),
     ] = DEFAULT_HISTORY,
     yes: Annotated[
         bool,
