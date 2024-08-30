@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from survey import printers
 
-from common import DEFAULT_HISTORY, DataExistError
+from bilidownloader.common import DEFAULT_HISTORY, DataExistError
 
 
 class History:

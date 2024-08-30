@@ -3,8 +3,9 @@ from os import path as opath
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-from common import DEFAULT_WATCHLIST, DataExistError
 from survey import printers
+
+from bilidownloader.common import DEFAULT_WATCHLIST, DataExistError
 
 
 class Watchlist:

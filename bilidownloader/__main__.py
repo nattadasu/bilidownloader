@@ -1,21 +1,22 @@
 import re
+from html import unescape
 from pathlib import Path
 from sys import exit
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 import survey
 import typer
-from api import BiliApi, BiliHtml
-from api_model import CardItem
-from common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
-from extractor import BiliProcess
-from history import History
 from rich import box
 from rich.console import Console
 from rich.table import Column, Table
 from typing_extensions import Annotated
-from watchlist import Watchlist
-from html import unescape
+
+from bilidownloader.api import BiliApi, BiliHtml
+from bilidownloader.api_model import CardItem
+from bilidownloader.common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
+from bilidownloader.extractor import BiliProcess
+from bilidownloader.history import History
+from bilidownloader.watchlist import Watchlist
 
 console = Console()
 
@@ -381,6 +382,7 @@ def watchlist_add(
         wl.add_watchlist(filt[i][0], filt[i][1])
     exit(0)
 
+
 @wl_app.command("delete", help="Delete series from watchlist")
 def watchlist_delete(
     file_path: Annotated[
@@ -410,8 +412,18 @@ def watchlist_delete(
         wl.delete_from_watchlist(sid)
     exit(0)
 
-@wl_app.command("download", help="Download all released episodes on watchlist, max 3 days old", short_help="Download all episodes from watchlist")
-@wl_app.command("down", help="Download all released episodes on watchlist, max 3 days old", short_help="Download all episodes from watchlist", hidden=True)
+
+@wl_app.command(
+    "download",
+    help="Download all released episodes on watchlist, max 3 days old",
+    short_help="Download all episodes from watchlist",
+)
+@wl_app.command(
+    "down",
+    help="Download all released episodes on watchlist, max 3 days old",
+    short_help="Download all episodes from watchlist",
+    hidden=True,
+)
 def watchlist_download(
     cookie: Annotated[
         Path,
@@ -422,7 +434,10 @@ def watchlist_download(
     watchlist_file: Annotated[
         Path,
         typer.Option(
-            "--path", "--file-path", "-p", "--watchlist-file",
+            "--path",
+            "--file-path",
+            "-p",
+            "--watchlist-file",
             help="Path to your watchlist.txt file",
         ),
     ] = DEFAULT_WATCHLIST,
@@ -451,15 +466,9 @@ def watchlist_download(
     ] = False,
 ):
     fix_reso: available_res = resolution  # type: ignore
-    bili = BiliProcess(
-        cookie,
-        history_file,
-        watchlist_file,
-        fix_reso,
-        is_avc,
-        False
-    )
+    bili = BiliProcess(cookie, history_file, watchlist_file, fix_reso, is_avc, False)
     bili.process_watchlist()
+
 
 @hi_app.command("list", help="Show history")
 def history_list(

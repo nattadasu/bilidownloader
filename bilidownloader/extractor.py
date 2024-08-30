@@ -7,21 +7,21 @@ from re import search as rsearch
 from re import sub as rsub
 from time import sleep
 from typing import Any, Dict, List, Tuple, Union
-from traceback import format_exception
 
-from api import BiliApi, BiliHtml
-from common import (
+from survey import printers
+from yt_dlp import YoutubeDL as YDL
+
+from bilidownloader.api import BiliApi, BiliHtml
+from bilidownloader.common import (
     DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
     Chapter,
     DataExistError,
     available_res,
-    sanitize_filename
+    sanitize_filename,
 )
-from history import History
-from watchlist import Watchlist
-from yt_dlp import YoutubeDL as YDL
-from survey import printers
+from bilidownloader.history import History
+from bilidownloader.watchlist import Watchlist
 
 
 class BiliProcess:
@@ -239,7 +239,9 @@ class BiliProcess:
         sleep(1)  # To avoid DDoS
 
         printers.info("Fetching metadata from episode's page")
-        html = BiliHtml(self.cookie, metadata["requested_formats"][0]["http_headers"]["User-Agent"])
+        html = BiliHtml(
+            self.cookie, metadata["requested_formats"][0]["http_headers"]["User-Agent"]
+        )
         resp = html.get(episode_url)
 
         ftitle = rsearch(
@@ -312,7 +314,7 @@ class BiliProcess:
                 history.check_history(episode_url)
                 loc, data = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
-                final =  self._create_ffmpeg_chapters(chapters, loc)
+                final = self._create_ffmpeg_chapters(chapters, loc)
                 history.write_history(episode_url)
                 return final
             except (ReferenceError, NameError) as err:
@@ -356,9 +358,17 @@ class BiliProcess:
                 if sid == card.season_id:
                     if "-" in card.index_show:
                         printers.info(f"Downloading {title} as a playlist")
-                        final.extend(self.process_playlist(f"https://www.bilibili.tv/en/play/{card.season_id}"))
+                        final.extend(
+                            self.process_playlist(
+                                f"https://www.bilibili.tv/en/play/{card.season_id}"
+                            )
+                        )
                     else:
                         printers.info(f"Downloading {title}, {card.index_show}")
-                        final.append(self.process_episode(self.ep_url(card.season_id, card.episode_id)))
+                        final.append(
+                            self.process_episode(
+                                self.ep_url(card.season_id, card.episode_id)
+                            )
+                        )
 
         return final
