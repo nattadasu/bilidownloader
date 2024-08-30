@@ -309,6 +309,7 @@ class BiliProcess:
         history = History(self.history)
         while True:
             if tries > 3:
+                printers.fail("Application have tried to retry for 3 times already, terminating")
                 break
             try:
                 history.check_history(episode_url)
@@ -318,7 +319,7 @@ class BiliProcess:
                 history.write_history(episode_url)
                 return final
             except (ReferenceError, NameError) as err:
-                print(err)
+                printers.fail(err)
                 break
             except DataExistError as err:
                 printers.fail(
@@ -328,12 +329,12 @@ class BiliProcess:
                 printers.fail(f"Err: {err}")
                 break
             except KeyboardInterrupt:
-                print("Interrupt signal received, stopping process")
+                printers.fail("Interrupt signal received, stopping process")
                 exit(1)
             except Exception as err:
-                print("An exception has been thrown:")
-                print(err)
-                print("Retrying...")
+                printers.fail("An exception has been thrown:")
+                printers.fail(err)
+                printers.info("Retrying...")
                 tries += 1
 
     def process_playlist(self, playlist_url: str) -> List[Path]:
@@ -350,7 +351,6 @@ class BiliProcess:
     def process_watchlist(self) -> List[Path]:
         final: List[Path] = []
         wl = Watchlist(self.watchlist)
-        print(wl.list)
         api = BiliApi()
 
         for sid, title in wl.list:
