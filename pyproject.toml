@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bilidownloader"
+authors = [
+	{name = "nattadasu", email = "hello@nattadasu.my.id"}
+]
+version = "0.0.1"
+description = "Assist you in ripping episode from BiliIntl"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+classifiers = [
+	"Topic :: Multipedia :: Video"
+]
+keywords = ["anime"]
+dependencies = [
+	"requests",
+	"yt-dlp",
+	"typer",
+	"pydantic",
+	"survey"
+]
+
+[project.scripts]
+bilidownloader = "bilidownloader.__main__:app"
+
+[tool.setuptools]
+packages = ["bilidownloader"]
