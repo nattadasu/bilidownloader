@@ -624,14 +624,28 @@ def history_clear(
 
 
 @app.command("schedule", help="Get release schedule")
-def schedule():
+def schedule(
+    show_url: Annotated[
+        bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
+    ] = False,
+):
     api = BiliApi()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
     for day in api.data.data.items:
-        is_today = "[blue] >> TODAY << [/]" if day.is_today else ""
-        print(f"[reverse blue bold] {day.full_day_of_week} [/][reverse white] {day.full_date_text} [/] {is_today}")
-        tab = Table(Column("Time", justify='center'), "Series ID", "Title", "Ep.", box=box.ROUNDED)
+        is_today = " [blue] >> TODAY << [/]" if day.is_today else ""
+        print(
+            f"[reverse blue bold] {day.full_day_of_week} [/][reverse white] {day.full_date_text} [/]{is_today}"
+        )
+        tab = Table(
+            Column("Time", justify="center"),
+            "Series ID",
+            "Title",
+            "Ep.",
+            box=box.ROUNDED,
+        )
+        if show_url:
+            tab.add_column("URL")
         released = []
         upcoming = []
         for item in day.cards:
@@ -639,7 +653,9 @@ def schedule():
             time = tmat.group(0) if tmat else ""
             emat = epat.search(item.index_show)
             eps = emat.group(0) if emat else ""
-            ent = (time, f"[url=https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}]{item.season_id}[/url]", item.title, eps)
+            ent = [time, item.season_id, item.title, eps]
+            if show_url:
+                ent.append(f"https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}")
             released.append(ent) if time == "" else upcoming.append(ent)
         released = sorted(released, key=lambda e: e[2])
         upcoming = sorted(upcoming, key=lambda e: e[0])
