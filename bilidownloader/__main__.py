@@ -625,6 +625,7 @@ def history_clear(
 
 
 class DayOfWeek(str, Enum):
+    TODAY = "today"
     MONDAY = "monday"
     TUESDAY = "tuesday"
     WEDNESDAY = "wednesday"
@@ -632,7 +633,6 @@ class DayOfWeek(str, Enum):
     FRIDAY = "friday"
     SATURDAY = "saturday"
     SUNDAY = "sunday"
-    TODAY = "today"
 
 
 @app.command("schedule", help="Get release schedule")
@@ -647,14 +647,11 @@ def schedule(
     api = BiliApi()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
+    print("[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table")
     for dow in api.data.data.items:
-        if dow.is_today:
-            day = DayOfWeek(dow.full_day_of_week.lower)
+        if dow.is_today and day == DayOfWeek.TODAY:
+            day = DayOfWeek(dow.full_day_of_week.lower())
         if day is not None and str(day.name.lower()) != dow.full_day_of_week.lower():
-            print(dow.full_day_of_week.lower())
-            print(str(day))
-            print(f"str(day) != dow.full_day_of_week.lower(): {str(day.name.lower()) != dow.full_day_of_week.lower()}")
-            print(f"day == DayOfWeek.TODAY and not dow.is_today: {day == DayOfWeek.TODAY and dow.is_today}")
             continue
         is_today = " [blue] >> TODAY << [/]" if dow.is_today else ""
         print(
