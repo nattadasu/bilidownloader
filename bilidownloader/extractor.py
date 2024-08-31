@@ -6,7 +6,7 @@ from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
 from time import sleep
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from survey import printers
 from yt_dlp import YoutubeDL as YDL
@@ -230,7 +230,7 @@ class BiliProcess:
         """
 
         metadata = self._get_video_info(episode_url)
-        if not metadata:
+        if not metadata or metadata is None:
             raise ValueError("Failed to get metadata!")
         if "entries" in metadata:
             raise ReferenceError(
@@ -298,6 +298,8 @@ class BiliProcess:
             ydl.params["verbose"] = False
             try:
                 metadata = ydl.extract_info(episode_url, download=False)
+                if metadata is None:
+                    raise Exception()
             except Exception:
                 metadata = metadata
 
@@ -308,12 +310,14 @@ class BiliProcess:
             metadata,
         )
 
-    def process_episode(self, episode_url: str) -> Path:
+    def process_episode(self, episode_url: str) -> Optional[Path]:
         tries = 0
         history = History(self.history)
         while True:
             if tries > 3:
-                printers.fail("Application have tried to retry for 3 times already, terminating")
+                printers.fail(
+                    "Application have tried to retry for 3 times already, terminating"
+                )
                 break
             try:
                 history.check_history(episode_url)
@@ -343,6 +347,8 @@ class BiliProcess:
 
     def process_playlist(self, playlist_url: str) -> List[Path]:
         data = self._get_video_info(playlist_url)
+        if data is None:
+            raise ValueError(f"We cannot process {playlist_url} at the moment!")
         final = []
         for entry in data["entries"]:
             final.append(
@@ -369,10 +375,10 @@ class BiliProcess:
                         )
                     else:
                         printers.info(f"Downloading {title}, {card.index_show}")
-                        final.append(
-                            self.process_episode(
-                                self.ep_url(card.season_id, card.episode_id)
-                            )
+                        ep = self.process_episode(
+                            self.ep_url(card.season_id, card.episode_id)
                         )
+                        if ep is not None:
+                            final.append(ep)
 
         return final
