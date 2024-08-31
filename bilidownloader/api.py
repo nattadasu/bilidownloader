@@ -4,8 +4,12 @@ from typing import List, Optional, Tuple, Union
 
 import requests as req
 
-from bilidownloader.api_model import BiliTvResponse, CardItem
-from bilidownloader.common import API_URL
+try:
+    from api_model import BiliTvResponse, CardItem
+    from common import API_URL
+except ImportError:
+    from bilidownloader.api_model import BiliTvResponse, CardItem
+    from bilidownloader.common import API_URL
 
 
 class BiliApi:

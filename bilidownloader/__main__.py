@@ -12,12 +12,20 @@ from rich.console import Console
 from rich.table import Column, Table
 from typing_extensions import Annotated
 
-from bilidownloader.api import BiliApi, BiliHtml
-from bilidownloader.api_model import CardItem
-from bilidownloader.common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
-from bilidownloader.extractor import BiliProcess
-from bilidownloader.history import History
-from bilidownloader.watchlist import Watchlist
+try:
+    from api import BiliApi, BiliHtml
+    from api_model import CardItem
+    from common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
+    from extractor import BiliProcess
+    from history import History
+    from watchlist import Watchlist
+except ImportError:
+    from bilidownloader.api import BiliApi, BiliHtml
+    from bilidownloader.api_model import CardItem
+    from bilidownloader.common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
+    from bilidownloader.extractor import BiliProcess
+    from bilidownloader.history import History
+    from bilidownloader.watchlist import Watchlist
 
 console = Console()
 

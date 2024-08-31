@@ -11,17 +11,30 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from survey import printers
 from yt_dlp import YoutubeDL as YDL
 
-from bilidownloader.api import BiliApi, BiliHtml
-from bilidownloader.common import (
-    DEFAULT_HISTORY,
-    DEFAULT_WATCHLIST,
-    Chapter,
-    DataExistError,
-    available_res,
-    sanitize_filename,
-)
-from bilidownloader.history import History
-from bilidownloader.watchlist import Watchlist
+try:
+    from api import BiliApi, BiliHtml
+    from common import (
+        DEFAULT_HISTORY,
+        DEFAULT_WATCHLIST,
+        Chapter,
+        DataExistError,
+        available_res,
+        sanitize_filename,
+    )
+    from history import History
+    from watchlist import Watchlist
+except ImportError:
+    from bilidownloader.api import BiliApi, BiliHtml
+    from bilidownloader.common import (
+        DEFAULT_HISTORY,
+        DEFAULT_WATCHLIST,
+        Chapter,
+        DataExistError,
+        available_res,
+        sanitize_filename,
+    )
+    from bilidownloader.history import History
+    from bilidownloader.watchlist import Watchlist
 
 
 class BiliProcess:

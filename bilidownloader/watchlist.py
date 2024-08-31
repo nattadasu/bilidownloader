@@ -5,7 +5,10 @@ from typing import List, Optional, Tuple, Union
 
 from survey import printers
 
-from bilidownloader.common import DEFAULT_WATCHLIST, DataExistError
+try:
+    from common import DEFAULT_WATCHLIST, DataExistError
+except ImportError:
+    from common import DEFAULT_WATCHLIST, DataExistError
 
 
 class Watchlist:

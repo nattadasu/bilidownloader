@@ -1,9 +1,13 @@
 from os import path as opath
 from pathlib import Path
 from typing import List
+
 from survey import printers
 
-from bilidownloader.common import DEFAULT_HISTORY, DataExistError
+try:
+    from common import DEFAULT_HISTORY, DataExistError
+except ImportError:
+    from bilidownloader.common import DEFAULT_HISTORY, DataExistError
 
 
 class History:
