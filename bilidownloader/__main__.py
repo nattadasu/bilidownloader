@@ -1,4 +1,5 @@
 import re
+from enum import Enum
 from html import unescape
 from pathlib import Path
 from sys import exit
@@ -623,19 +624,41 @@ def history_clear(
         survey.printers.info("History successfully cleared!")
 
 
+class DayOfWeek(str, Enum):
+    MONDAY = "monday"
+    TUESDAY = "tuesday"
+    WEDNESDAY = "wednesday"
+    THURSDAY = "thursday"
+    FRIDAY = "friday"
+    SATURDAY = "saturday"
+    SUNDAY = "sunday"
+    TODAY = "today"
+
+
 @app.command("schedule", help="Get release schedule")
 def schedule(
     show_url: Annotated[
         bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
     ] = False,
+    day: Annotated[
+        Optional[DayOfWeek], typer.Option("--day", "-d", help="Only show selected day")
+    ] = None,
 ):
     api = BiliApi()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
-    for day in api.data.data.items:
-        is_today = " [blue] >> TODAY << [/]" if day.is_today else ""
+    for dow in api.data.data.items:
+        if dow.is_today:
+            day = DayOfWeek(dow.full_day_of_week.lower)
+        if day is not None and str(day.name.lower()) != dow.full_day_of_week.lower():
+            print(dow.full_day_of_week.lower())
+            print(str(day))
+            print(f"str(day) != dow.full_day_of_week.lower(): {str(day.name.lower()) != dow.full_day_of_week.lower()}")
+            print(f"day == DayOfWeek.TODAY and not dow.is_today: {day == DayOfWeek.TODAY and dow.is_today}")
+            continue
+        is_today = " [blue] >> TODAY << [/]" if dow.is_today else ""
         print(
-            f"[reverse blue bold] {day.full_day_of_week} [/][reverse white] {day.full_date_text} [/]{is_today}"
+            f"[reverse blue bold] {dow.full_day_of_week} [/][reverse white] {dow.full_date_text} [/]{is_today}"
         )
         tab = Table(
             Column("Time", justify="center"),
@@ -648,14 +671,16 @@ def schedule(
             tab.add_column("URL")
         released = []
         upcoming = []
-        for item in day.cards:
+        for item in dow.cards:
             tmat = tpat.search(item.index_show)
             time = tmat.group(0) if tmat else ""
             emat = epat.search(item.index_show)
             eps = emat.group(0) if emat else ""
             ent = [time, item.season_id, item.title, eps]
             if show_url:
-                ent.append(f"https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}")
+                ent.append(
+                    f"https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}"
+                )
             released.append(ent) if time == "" else upcoming.append(ent)
         released = sorted(released, key=lambda e: e[2])
         upcoming = sorted(upcoming, key=lambda e: e[0])
