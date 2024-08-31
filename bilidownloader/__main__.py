@@ -647,7 +647,9 @@ def schedule(
     api = BiliApi()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
-    print("[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table")
+    print(
+        "[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table"
+    )
     for dow in api.data.data.items:
         if dow.is_today and day == DayOfWeek.TODAY:
             day = DayOfWeek(dow.full_day_of_week.lower())
