@@ -117,6 +117,10 @@ class BiliProcess:
             ],
             check=True,
         )
+        with open(metadata_path, "r", encoding="utf-8") as file:
+            content = file.read().replace("Packed by Bilibili XCoder v2.0.2", "")
+        with open(metadata_path, "w", encoding="utf-8") as file:
+            file.write(content)
 
         # Get video duration using ffprobe
         result = sp.run(
