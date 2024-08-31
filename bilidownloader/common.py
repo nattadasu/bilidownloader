@@ -1,6 +1,9 @@
+import os
 import re
 from pathlib import Path
-from typing import Literal, Union
+from platform import system as psys
+from subprocess import PIPE, CalledProcessError, run
+from typing import Literal, Union, Optional
 
 from pydantic import BaseModel
 
@@ -40,3 +43,23 @@ available_res = Union[
     Literal[144], Literal[240], Literal[360], Literal[480], Literal[720], Literal[1080]
 ]
 """Available resolutions on Bstation, 4K was skipped"""
+
+
+def find_ffmpeg() -> Optional[Path]:
+    system = psys()
+    command = "where" if system == "Windows" else "which"
+
+    try:
+        # Run the command and capture the output
+        result = run(
+            [command, "ffmpeg"], check=True, stdout=PIPE, stderr=PIPE
+        )
+        # Decode the output to get the path
+        ffmpeg_path = result.stdout.decode().strip()
+
+        if os.path.isfile(ffmpeg_path):
+            return Path(ffmpeg_path)
+        else:
+            return None
+    except CalledProcessError:
+        return None

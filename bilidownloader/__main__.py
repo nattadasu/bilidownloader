@@ -15,14 +15,19 @@ from typing_extensions import Annotated
 try:
     from api import BiliApi, BiliHtml
     from api_model import CardItem
-    from common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
+    from common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res, find_ffmpeg
     from extractor import BiliProcess
     from history import History
     from watchlist import Watchlist
 except ImportError:
     from bilidownloader.api import BiliApi, BiliHtml
     from bilidownloader.api_model import CardItem
-    from bilidownloader.common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res
+    from bilidownloader.common import (
+        DEFAULT_HISTORY,
+        DEFAULT_WATCHLIST,
+        available_res,
+        find_ffmpeg,
+    )
     from bilidownloader.extractor import BiliProcess
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
@@ -52,6 +57,14 @@ def resolution_callback(user_input: int) -> int:
 
 def resolution_autocomplete():
     return resos
+
+
+FFMPEG_PATH = find_ffmpeg()
+
+
+def raise_ffmpeg(path: Optional[Path]):
+    if path is None:
+        raise FileNotFoundError("ffmpeg binary couldn't be found!")
 
 
 @app.command(
@@ -122,8 +135,16 @@ def download_url(
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
+    ffmpeg_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+        ),
+    ] = FFMPEG_PATH,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
+
+    raise_ffmpeg(ffmpeg_path)
 
     matches = re.search(bili_format, url)
     fix_reso: available_res = resolution  # type: ignore
@@ -133,6 +154,7 @@ def download_url(
         resolution=fix_reso,
         is_avc=is_avc,
         download_pv=download_pv,
+        ffmpeg_path=ffmpeg_path,
     )
     if matches:
         History(history_file).check_history(url)
@@ -161,7 +183,10 @@ def cards_selector(
     resolution: int = 1080,
     is_avc: bool = False,
     download_pv: bool = False,
+    ffmpeg_path: Optional[Path] = FFMPEG_PATH,
 ):
+    raise_ffmpeg(ffmpeg_path)
+
     choices = [
         f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
         for anime in cards
@@ -253,7 +278,15 @@ def download_today_releases(
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
+    ffmpeg_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+        ),
+    ] = FFMPEG_PATH,
 ):
+    raise_ffmpeg(ffmpeg_path)
+
     api = BiliApi().get_today_schedule()
     released = [anime for anime in api if anime.is_available]
     try:
@@ -334,7 +367,15 @@ def download_all_releases(
             help="Also download PV, only affects if the url is a Playlist",
         ),
     ] = False,
+    ffmpeg_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+        ),
+    ] = FFMPEG_PATH,
 ):
+    raise_ffmpeg(ffmpeg_path)
+
     api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
     released = sorted(released, key=lambda k: k.title)
@@ -560,9 +601,19 @@ def watchlist_download(
             help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
         ),
     ] = False,
+    ffmpeg_path: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+        ),
+    ] = FFMPEG_PATH,
 ):
+    raise_ffmpeg(ffmpeg_path)
+
     fix_reso: available_res = resolution  # type: ignore
-    bili = BiliProcess(cookie, history_file, watchlist_file, fix_reso, is_avc, False)
+    bili = BiliProcess(
+        cookie, history_file, watchlist_file, fix_reso, is_avc, False, ffmpeg_path
+    )
     bili.process_watchlist()
 
 

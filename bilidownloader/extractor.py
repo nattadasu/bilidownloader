@@ -46,6 +46,7 @@ class BiliProcess:
         resolution: available_res = 1080,
         is_avc: bool = False,
         download_pv: bool = False,
+        ffmpeg_path: Optional[Path] = None,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -53,6 +54,7 @@ class BiliProcess:
         self.resolution = resolution
         self.is_avc = is_avc
         self.download_pv = download_pv
+        self.ffmpeg_path = ffmpeg_path
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -73,6 +75,8 @@ class BiliProcess:
             "retries": 10,
             "simulate": True,
         }
+        if self.ffmpeg_path:
+            ydl_opts['ffmpeg_location'] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
             return ydl.extract_info(episode_url, download=False)
 
@@ -117,9 +121,10 @@ class BiliProcess:
         printers.info(f"Creating chapters for {str(video_path.absolute())}")
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
+        ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
         sp.run(
             [
-                "ffmpeg",
+                ffmpeg,
                 "-v",
                 "error",
                 "-i",
@@ -202,7 +207,7 @@ class BiliProcess:
         output_path = video_path.with_stem(video_path.stem + "_temp")
         sp.run(
             [
-                "ffmpeg",
+                ffmpeg,
                 "-v",
                 "error",
                 "-i",
@@ -289,7 +294,6 @@ class BiliProcess:
                 )
             },
             "postprocessors": [
-                {"key": "FFmpegVideoRemuxer", "preferedformat": "mkv"},
                 {"already_have_subtitle": False, "key": "FFmpegEmbedSubtitle"},
                 {
                     "add_chapters": False,
@@ -303,9 +307,11 @@ class BiliProcess:
             "subtitlesformat": "ass/srt",
             "subtitleslangs": ["all"],
             "updatetime": False,
-            "verbose": True,
+            # "verbose": True,
             "writesubtitles": True,
         }
+        if self.ffmpeg_path:
+            ydl_opts['ffmpeg_location'] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
             ydl.download([episode_url])
             ydl.params["verbose"] = False
