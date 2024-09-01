@@ -8,7 +8,7 @@ from survey import printers
 try:
     from common import DEFAULT_WATCHLIST, DataExistError
 except ImportError:
-    from common import DEFAULT_WATCHLIST, DataExistError
+    from bilidownloader.common import DEFAULT_WATCHLIST, DataExistError
 
 
 class Watchlist:
