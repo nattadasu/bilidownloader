@@ -166,3 +166,5 @@ cython_debug/
 *.mp4
 *.txt
 *.log
+
+ffmpeg*

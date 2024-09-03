@@ -7,7 +7,7 @@ name = "bilidownloader"
 authors = [
 	{name = "nattadasu", email = "hello@nattadasu.my.id"}
 ]
-version = "0.1.1"
+version = "0.1.2"
 description = "Assist you in ripping episode from BiliIntl"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
