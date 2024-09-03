@@ -289,7 +289,7 @@ class BiliProcess:
             "merge_output_format": "mkv",
             "final_ext": "mkv",
             "outtmpl": {
-                "default": "[%(extractor)s] {inp} - %(title)s [%(resolution)s, %(vcodec)s].%(ext)s".format(
+                "default": "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, %(vcodec)s].%(ext)s".format(
                     inp=title
                 )
             },
@@ -324,7 +324,7 @@ class BiliProcess:
 
         return (
             Path(
-                f"./[{metadata['extractor']}] {title} - {metadata['title']} [{metadata['resolution']}, {metadata['vcodec']}].mkv"
+                f"./[{metadata['extractor']}] {title} - E{metadata['episode_number']} [{metadata['resolution']}, {metadata['vcodec']}].mkv"
             ),
             metadata,
         )
@@ -348,12 +348,11 @@ class BiliProcess:
             except (ReferenceError, NameError) as err:
                 printers.fail(err)
                 break
-            except DataExistError as err:
+            except DataExistError:
                 printers.fail(
                     f"Episode ({episode_url}) was ripped previously. "
                     f'Modify "{str(self.history)}" to proceed.'
                 )
-                printers.fail(f"Err: {err}")
                 break
             except KeyboardInterrupt:
                 printers.fail("Interrupt signal received, stopping process")
@@ -385,6 +384,7 @@ class BiliProcess:
         for sid, title in wl.list:
             for card in api.get_all_available_shows():
                 if sid == card.season_id:
+                    print()
                     if "-" in card.index_show:
                         printers.info(f"Downloading {title} as a playlist")
                         final.extend(
@@ -398,6 +398,7 @@ class BiliProcess:
                             self.ep_url(card.season_id, card.episode_id)
                         )
                         if ep is not None:
+                            printers.done(f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})")
                             final.append(ep)
 
         return final
