@@ -43,7 +43,7 @@ class BiliProcess:
         cookie: Path,
         history: Path = DEFAULT_HISTORY,
         watchlist: Path = DEFAULT_WATCHLIST,
-        resolution: available_res = 1080,
+        resolution: available_res = 1080,  # type: ignore
         is_avc: bool = False,
         download_pv: bool = False,
         ffmpeg_path: Optional[Path] = None,
@@ -73,12 +73,14 @@ class BiliProcess:
             "postprocessors": [
                 {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
             ],
-            "quiet": True,
             "retries": 10,
             "simulate": True,
+            # Do not show details
+            "verbose": False,
+            "quiet": True,
         }
         if self.ffmpeg_path:
-            ydl_opts['ffmpeg_location'] = str(self.ffmpeg_path)
+            ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
             return ydl.extract_info(episode_url, download=False)
 
@@ -370,14 +372,14 @@ class BiliProcess:
             "subtitlesformat": "ass/srt",
             "subtitleslangs": ["all"],
             "updatetime": False,
-            # "verbose": True,
             "writesubtitles": True,
         }
         if self.ffmpeg_path:
-            ydl_opts['ffmpeg_location'] = str(self.ffmpeg_path)
+            ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
             ydl.download([episode_url])
             ydl.params["verbose"] = False
+            ydl.params["quiet"] = True
             try:
                 metadata = ydl.extract_info(episode_url, download=False)
                 if metadata is None:
