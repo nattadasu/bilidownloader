@@ -15,7 +15,13 @@ from typing_extensions import Annotated
 try:
     from api import BiliApi, BiliHtml
     from api_model import CardItem
-    from common import DEFAULT_HISTORY, DEFAULT_WATCHLIST, available_res, find_ffmpeg
+    from common import (
+        DEFAULT_HISTORY,
+        DEFAULT_WATCHLIST,
+        available_res,
+        find_ffmpeg,
+        find_mkvpropedit,
+    )
     from extractor import BiliProcess
     from history import History
     from watchlist import Watchlist
@@ -27,6 +33,7 @@ except ImportError:
         DEFAULT_WATCHLIST,
         available_res,
         find_ffmpeg,
+        find_mkvpropedit,
     )
     from bilidownloader.extractor import BiliProcess
     from bilidownloader.history import History
@@ -60,11 +67,125 @@ def resolution_autocomplete():
 
 
 FFMPEG_PATH = find_ffmpeg()
+MKVPROPEX_PATH = find_mkvpropedit()
 
 
 def raise_ffmpeg(path: Optional[Path]):
     if path is None:
         raise FileNotFoundError("ffmpeg binary couldn't be found!")
+
+
+def raise_mkvpropedit(path: Optional[Path]):
+    if path is None:
+        raise FileNotFoundError("mkvpropedit binary couldn't be found!")
+
+
+##############################
+# ARGS AND FLAGS DEFINITIONS #
+##############################
+
+URL_ARG = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        help="Video or Playlist URL on Bilibili",
+        show_default=False,
+    ),
+]
+"""URL Argument for the command to download"""
+COOKIE_OPT = Annotated[
+    Path,
+    typer.Option(
+        "--cookie",
+        "--cookie-file",
+        "-c",
+        help="Path to your cookie.txt file",
+        prompt=True,
+        show_default=False,
+    ),
+]
+WATCHLIST_OPT = Annotated[
+    Path,
+    typer.Option(
+        "--watchlist",
+        "--watchlist-file",
+        "-w",
+        help="Path to your watchlist.txt file",
+    ),
+]
+"""Path to Cookie File for the command to download"""
+HISTORY_OPT = Annotated[
+    Path,
+    typer.Option(
+        "--history",
+        "--history-file",
+        "-h",
+        help="Path to your history.txt file",
+    ),
+]
+"""History option for the command to manage history"""
+FORCED_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--force",
+        "-f",
+        help="Force download the video even if it was downloaded previously",
+    ),
+]
+"""Forced flag for the command to download"""
+RESO_OPT = Annotated[
+    int,
+    typer.Option(
+        "--resolution",
+        "--reso",
+        "-r",
+        help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
+        min=144,
+        max=1080,
+        callback=resolution_callback,
+        autocompletion=resolution_autocomplete,
+    ),
+]
+"""Resolution option for the command to download"""
+AVC_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--is-avc",
+        "--avc",
+        help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
+    ),
+]
+"""Flag to change the codec to AVC"""
+PV_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--download-pv",
+        "--pv",
+        help="Also download PV, only affects if the url is a Playlist",
+    ),
+]
+"""Flag to download PV"""
+FFMPEG_OPT = Annotated[
+    Optional[Path],
+    typer.Option(
+        help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+    ),
+]
+"""Path to ffmpeg binary"""
+MKVPROPEX_OPT = Annotated[
+    Optional[Path],
+    typer.Option(
+        help="Location of the mkvpropedit binary; either the path to the binary or its containing directory",
+    ),
+]
+"""Path to mkvpropedit binary"""
+SHOWURL_OPT = Annotated[
+    bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
+]
+"""Flag to show URL"""
+#####################################
+# END OF ARGS AND FLAGS DEFINITIONS #
+#####################################
 
 
 @app.command(
@@ -76,75 +197,20 @@ def raise_ffmpeg(path: Optional[Path]):
     name="down", short_help="Download via direct URL", hidden=True, no_args_is_help=True
 )
 def download_url(
-    url: Annotated[
-        str,
-        typer.Option(
-            "--url",
-            "-u",
-            help="Video or Playlist URL on Bilibili",
-            prompt=True,
-            show_default=False,
-        ),
-    ],
-    cookie: Annotated[
-        Path,
-        typer.Option(
-            "--cookie",
-            "--cookie-file",
-            "-c",
-            help="Path to your cookie.txt file",
-            prompt=True,
-            show_default=False,
-        ),
-    ],
-    history_file: Annotated[
-        Path,
-        typer.Option(
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history.txt file",
-        ),
-    ] = DEFAULT_HISTORY,
-    resolution: Annotated[
-        int,
-        typer.Option(
-            "--resolution",
-            "--reso",
-            "-r",
-            help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
-            min=144,
-            max=1080,
-            callback=resolution_callback,
-            autocompletion=resolution_autocomplete,
-        ),
-    ] = 1080,
-    is_avc: Annotated[
-        bool,
-        typer.Option(
-            "--is-avc",
-            "--avc",
-            help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
-        ),
-    ] = False,
-    download_pv: Annotated[
-        bool,
-        typer.Option(
-            "--download-pv",
-            "--pv",
-            help="Also download PV, only affects if the url is a Playlist",
-        ),
-    ] = False,
-    ffmpeg_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
-        ),
-    ] = FFMPEG_PATH,
+    url: URL_ARG,
+    cookie: COOKIE_OPT,
+    history_file: HISTORY_OPT = DEFAULT_HISTORY,
+    forced: FORCED_OPT = False,
+    resolution: RESO_OPT = 1080,
+    is_avc: AVC_OPT = False,
+    download_pv: PV_OPT = False,
+    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
+    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
     raise_ffmpeg(ffmpeg_path)
+    raise_mkvpropedit(mkvpropedit_path)
 
     matches = re.search(bili_format, url)
     fix_reso: available_res = resolution  # type: ignore
@@ -155,15 +221,17 @@ def download_url(
         is_avc=is_avc,
         download_pv=download_pv,
         ffmpeg_path=ffmpeg_path,
+        mkvpropedit_path=mkvpropedit_path,
     )
     if matches:
-        History(history_file).check_history(url)
+        if not forced:
+            History(history_file).check_history(url)
         if matches.group("episode_id"):
             survey.printers.info("URL is an episode")
-            bili.process_episode(url)
+            bili.process_episode(url, forced)
         else:
             survey.printers.info("URL is a playlist")
-            bili.process_playlist(url)
+            bili.process_playlist(url, forced)
     else:
         raise ValueError("Link is not a valid Bilibili.tv URL")
 
@@ -180,12 +248,15 @@ def cards_selector(
     cookie: Path,
     watchlist_file: Path = DEFAULT_WATCHLIST,
     history_file: Path = DEFAULT_HISTORY,
+    forced: bool = False,
     resolution: int = 1080,
     is_avc: bool = False,
     download_pv: bool = False,
     ffmpeg_path: Optional[Path] = FFMPEG_PATH,
+    mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
 ):
     raise_ffmpeg(ffmpeg_path)
+    raise_mkvpropedit(mkvpropedit_path)
 
     choices = [
         f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
@@ -203,7 +274,17 @@ def cards_selector(
     survey.printers.info(
         f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})"
     )
-    download_url(url, cookie, history_file, resolution, is_avc, download_pv)
+    download_url(
+        url,
+        cookie,
+        history_file,
+        forced,
+        resolution,
+        is_avc,
+        download_pv,
+        ffmpeg_path,
+        mkvpropedit_path,
+    )
 
     wl = Watchlist(watchlist_file)
     if not wl.search_watchlist(season_id=anime.season_id):
@@ -220,70 +301,15 @@ def cards_selector(
     "today", help="Get and download anime released today", no_args_is_help=True
 )
 def download_today_releases(
-    cookie: Annotated[
-        Path,
-        typer.Option(
-            "--cookie",
-            "--cookie-file",
-            "-c",
-            help="Path to your cookie.txt file",
-            prompt=True,
-            show_default=False,
-        ),
-    ],
-    watchlist_file: Annotated[
-        Path,
-        typer.Option(
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist.txt file",
-        ),
-    ] = DEFAULT_WATCHLIST,
-    history_file: Annotated[
-        Path,
-        typer.Option(
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history.txt file",
-        ),
-    ] = DEFAULT_HISTORY,
-    resolution: Annotated[
-        int,
-        typer.Option(
-            "--resolution",
-            "--reso",
-            "-r",
-            help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
-            min=144,
-            max=1080,
-            callback=resolution_callback,
-            autocompletion=resolution_autocomplete,
-        ),
-    ] = 1080,
-    is_avc: Annotated[
-        bool,
-        typer.Option(
-            "--is-avc",
-            "--avc",
-            help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
-        ),
-    ] = False,
-    download_pv: Annotated[
-        bool,
-        typer.Option(
-            "--download-pv",
-            "--pv",
-            help="Also download PV, only affects if the url is a Playlist",
-        ),
-    ] = False,
-    ffmpeg_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
-        ),
-    ] = FFMPEG_PATH,
+    cookie: COOKIE_OPT,
+    watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    history_file: HISTORY_OPT = DEFAULT_HISTORY,
+    forced: FORCED_OPT = False,
+    resolution: RESO_OPT = 1080,
+    is_avc: AVC_OPT = False,
+    download_pv: PV_OPT = False,
+    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
+    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -295,9 +321,12 @@ def download_today_releases(
             cookie,
             watchlist_file,
             history_file,
+            forced,
             resolution,
             is_avc,
             download_pv,
+            ffmpeg_path,
+            mkvpropedit_path,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -309,72 +338,18 @@ def download_today_releases(
     no_args_is_help=True,
 )
 def download_all_releases(
-    cookie: Annotated[
-        Path,
-        typer.Option(
-            "--cookie",
-            "--cookie-file",
-            "-c",
-            help="Path to your cookie.txt file",
-            prompt=True,
-            show_default=False,
-        ),
-    ],
-    watchlist_file: Annotated[
-        Path,
-        typer.Option(
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist.txt file",
-        ),
-    ] = DEFAULT_WATCHLIST,
-    history_file: Annotated[
-        Path,
-        typer.Option(
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history.txt file",
-        ),
-    ] = DEFAULT_HISTORY,
-    resolution: Annotated[
-        int,
-        typer.Option(
-            "--resolution",
-            "--reso",
-            "-r",
-            help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
-            min=144,
-            max=1080,
-            callback=resolution_callback,
-            autocompletion=resolution_autocomplete,
-        ),
-    ] = 1080,
-    is_avc: Annotated[
-        bool,
-        typer.Option(
-            "--is-avc",
-            "--avc",
-            help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
-        ),
-    ] = False,
-    download_pv: Annotated[
-        bool,
-        typer.Option(
-            "--download-pv",
-            "--pv",
-            help="Also download PV, only affects if the url is a Playlist",
-        ),
-    ] = False,
-    ffmpeg_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
-        ),
-    ] = FFMPEG_PATH,
+    cookie: COOKIE_OPT,
+    watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    history_file: HISTORY_OPT = DEFAULT_HISTORY,
+    forced: FORCED_OPT = False,
+    resolution: RESO_OPT = 1080,
+    is_avc: AVC_OPT = False,
+    download_pv: PV_OPT = False,
+    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
+    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
 ):
     raise_ffmpeg(ffmpeg_path)
+    raise_mkvpropedit(mkvpropedit_path)
 
     api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
@@ -385,9 +360,12 @@ def download_all_releases(
             cookie,
             watchlist_file,
             history_file,
+            forced,
             resolution,
             is_avc,
             download_pv,
+            ffmpeg_path,
+            mkvpropedit_path,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -395,21 +373,8 @@ def download_all_releases(
 
 @wl_app.command("list", help="Read list of monitored series on Bilibili")
 def watchlist_list(
-    file_path: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist file",
-        ),
-    ] = DEFAULT_WATCHLIST,
-    show_url: Annotated[
-        bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
-    ] = False,
+    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    show_url: SHOWURL_OPT = False,
 ):
     wl = Watchlist(file_path)
 
@@ -434,27 +399,15 @@ def watchlist_list(
 
 @wl_app.command("add", help="Add a series to watchlist")
 def watchlist_add(
-    file_path: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist file",
-        ),
-    ] = DEFAULT_WATCHLIST,
     series_url: Annotated[
         Optional[str],
-        typer.Option(
-            "--url",
-            "--series_url",
-            "-u",
+        typer.Argument(
+            ...,
             help="If you obtained media/play URL of the show, and skip interactive mode",
+            show_default=False,
         ),
     ] = None,
+    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
 ):
     wl = Watchlist(file_path)
     wids = {item[0] for item in wl.list}
@@ -499,21 +452,9 @@ def watchlist_add(
 
 
 @wl_app.command("delete", help="Delete series from watchlist")
-def watchlist_delete(
-    file_path: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist file",
-        ),
-    ] = DEFAULT_WATCHLIST,
-):
+def watchlist_delete(file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST):
     wl = Watchlist(file_path)
+    index: Optional[List[int]] = None
 
     while True:
         try:
@@ -548,89 +489,35 @@ def watchlist_delete(
     hidden=True,
 )
 def watchlist_download(
-    cookie: Annotated[
-        Path,
-        typer.Option(
-            "--cookie",
-            "--cookie-file",
-            "-c",
-            help="Path to your cookie.txt file",
-            prompt=True,
-            show_default=False,
-        ),
-    ],
-    watchlist_file: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--watchlist",
-            "--watchlist-file",
-            "-w",
-            help="Path to your watchlist.txt file",
-        ),
-    ] = DEFAULT_WATCHLIST,
-    history_file: Annotated[
-        Path,
-        typer.Option(
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history.txt file",
-        ),
-    ] = DEFAULT_HISTORY,
-    resolution: Annotated[
-        int,
-        typer.Option(
-            "--resolution",
-            "--reso",
-            "-r",
-            help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
-            min=144,
-            max=1080,
-            callback=resolution_callback,
-            autocompletion=resolution_autocomplete,
-        ),
-    ] = 1080,
-    is_avc: Annotated[
-        bool,
-        typer.Option(
-            "--is-avc",
-            "--avc",
-            help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
-        ),
-    ] = False,
-    ffmpeg_path: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
-        ),
-    ] = FFMPEG_PATH,
+    cookie: COOKIE_OPT,
+    watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    history_file: HISTORY_OPT = DEFAULT_HISTORY,
+    forced: FORCED_OPT = False,
+    resolution: RESO_OPT = 1080,
+    is_avc: AVC_OPT = False,
+    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
+    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
 ):
     raise_ffmpeg(ffmpeg_path)
+    raise_mkvpropedit(mkvpropedit_path)
 
     fix_reso: available_res = resolution  # type: ignore
     bili = BiliProcess(
-        cookie, history_file, watchlist_file, fix_reso, is_avc, False, ffmpeg_path
+        cookie,
+        history_file,
+        watchlist_file,
+        fix_reso,
+        is_avc,
+        False,
+        ffmpeg_path,
+        mkvpropedit_path,
     )
-    bili.process_watchlist()
+    bili.process_watchlist(forced=forced)
 
 
 @hi_app.command("list", help="Show history")
 def history_list(
-    file_path: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history file",
-        ),
-    ] = DEFAULT_HISTORY,
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
     hi = History(file_path)
 
@@ -649,22 +536,13 @@ def history_list(
 
 @hi_app.command("clear", help="Clear history")
 def history_clear(
-    file_path: Annotated[
-        Path,
-        typer.Option(
-            "--path",
-            "--file-path",
-            "-p",
-            "--history",
-            "--history-file",
-            "-h",
-            help="Path to your history file",
-        ),
-    ] = DEFAULT_HISTORY,
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
     yes: Annotated[
         bool,
         typer.Option(
-            "--assumeyes", "-y", help="Automatically answer yes for all questions"
+            "--assumeyes",
+            "-y",
+            help="Automatically answer yes for all questions"
         ),
     ] = False,
 ):
@@ -696,9 +574,7 @@ class DayOfWeek(str, Enum):
 
 @app.command("schedule", help="Get release schedule")
 def schedule(
-    show_url: Annotated[
-        bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
-    ] = False,
+    show_url: SHOWURL_OPT = False,
     day: Annotated[
         Optional[DayOfWeek], typer.Option("--day", "-d", help="Only show selected day")
     ] = None,
