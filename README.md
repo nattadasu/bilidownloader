@@ -17,6 +17,7 @@ This tool requires following libraries/programs to be installed first:
 
 * Python => 3.11
 * Latest FFmpeg, and available on PATH
+* MKVToolNix, not containerized (Flatpak, Snap, etc) and available on PATH
 * `pipx` (install with `pip install pipx`)
 
 Additionally, you also required to obtain your own cookie.txt from BiliIntl and

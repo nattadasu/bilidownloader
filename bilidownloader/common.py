@@ -44,22 +44,27 @@ available_res = Union[
 ]
 """Available resolutions on Bstation, 4K was skipped"""
 
-
-def find_ffmpeg() -> Optional[Path]:
+def _find_command(executable: str) -> Optional[Path]:
     system = psys()
     command = "where" if system == "Windows" else "which"
 
     try:
         # Run the command and capture the output
         result = run(
-            [command, "ffmpeg"], check=True, stdout=PIPE, stderr=PIPE
+            [command, executable], check=True, stdout=PIPE, stderr=PIPE
         )
         # Decode the output to get the path
-        ffmpeg_path = result.stdout.decode().strip()
+        exe_path = result.stdout.decode().strip()
 
-        if os.path.isfile(ffmpeg_path):
-            return Path(ffmpeg_path)
+        if os.path.isfile(exe_path):
+            return Path(exe_path)
         else:
             return None
     except CalledProcessError:
         return None
+
+def find_ffmpeg() -> Optional[Path]:
+    return _find_command("ffmpeg")
+
+def find_mkvpropedit() -> Optional[Path]:
+    return _find_command("mkvpropedit")

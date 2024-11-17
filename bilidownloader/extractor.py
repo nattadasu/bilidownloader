@@ -6,7 +6,7 @@ from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
 from survey import printers
 from yt_dlp import YoutubeDL as YDL
@@ -47,6 +47,7 @@ class BiliProcess:
         is_avc: bool = False,
         download_pv: bool = False,
         ffmpeg_path: Optional[Path] = None,
+        mkvpropedit_path: Optional[Path] = None,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -55,6 +56,7 @@ class BiliProcess:
         self.is_avc = is_avc
         self.download_pv = download_pv
         self.ffmpeg_path = ffmpeg_path
+        self.mkvpropedit_path = mkvpropedit_path
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -233,10 +235,52 @@ class BiliProcess:
 
         return Path(video_path)
 
+    def _add_audio_language(
+        self, video_path: Path, language: Literal["ind", "jpn", "chi"]
+    ) -> Path:
+        """
+        Adds an audio language to the video file.
+
+        Args:
+            video_path (Path): The path to the video file.
+            language (str): The language to add to the video file.
+
+        Returns:
+            Path: The path to the video file with the added audio language.
+        """
+        printers.info(
+            f"Adding audio language '{language}' to {str(video_path.absolute())} using mkvpropedit"
+        )
+        mkvpropedit = (
+            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
+        )
+        code = {
+            "chi": "Chinese",
+            "jpn": "Japanese",
+            "ind": "Indonesian",
+        }
+        lang_title = code[language]
+        sp.run(
+            [
+                mkvpropedit,
+                str(video_path),
+                "--edit",
+                "track:a1",
+                "--set",
+                f"language={language}",
+                "--set",
+                f"name={lang_title}",
+                "--quiet",
+            ],
+            check=True,
+        )
+
+        return video_path
+
     def download_episode(
         self,
         episode_url: str,
-    ) -> Tuple[Path, Any]:
+    ) -> Tuple[Path, Any, Literal["ind", "jpn", "chi"]]:
         """Download episode from Bilibili with yt-dlp
 
         Args:
@@ -276,6 +320,25 @@ class BiliProcess:
             title = sanitize_filename(unescape(title))
         else:
             title = ftitle
+
+        # look for .bstar-meta__area class to get country of origin
+        country = rsearch(
+            r'class="bstar-meta__area">(.*)</div>', resp.content.decode("utf-8")
+        )
+        # language = "jpn"
+        # if country:
+        #     language = "chi" if "China" in country.group(1) else "jpn"
+        #     # If the title got JP Ver.
+        language: Literal["ind", "jpn", "chi"] = "jpn"
+        if country:
+            language = "chi" if "Chinese" in country.group(1) else "jpn"
+        jp_dub = ["JP Ver", "JPN Dub"]
+        id_dub = ["Dub Indo", "ID dub"]
+        if any(x.lower() in str(title).lower() for x in jp_dub):
+            language = "jpn"
+        elif any(x.lower() in str(title).lower() for x in id_dub):
+            language = "ind"
+
         codec = "avc1" if self.is_avc else "hev1"
 
         printers.info(f"Start downloading {title}")
@@ -327,11 +390,20 @@ class BiliProcess:
                 f"./[{metadata['extractor']}] {title} - E{metadata['episode_number']} [{metadata['resolution']}, {metadata['vcodec']}].mkv"
             ),
             metadata,
+            language,
         )
 
     def process_episode(self, episode_url: str) -> Optional[Path]:
         tries = 0
         history = History(self.history)
+        # use English episode url from other kind of URL using regex from play/{season_id}/{episode_id}
+        # example: https://www.bilibili.tv/play/2114220/1337943578 -> https://www.bilibili.tv/en/play/2114220/13379435
+        # convert using self.ep_url(season_id, episode_id)
+        ep_url = rsearch(r"play/(\d+)/(\d+)", episode_url)
+        if ep_url:
+            episode_url = self.ep_url(ep_url.group(1), ep_url.group(2))
+        else:
+            raise ValueError("Invalid episode URL")
         while True:
             if tries > 3:
                 printers.fail(
@@ -339,11 +411,10 @@ class BiliProcess:
                 )
                 break
             try:
-                history.check_history(episode_url)
-                loc, data = self.download_episode(episode_url)
+                loc, data, language = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
                 final = self._create_ffmpeg_chapters(chapters, loc)
-                history.write_history(episode_url)
+                final = self._add_audio_language(final, language)
                 return final
             except (ReferenceError, NameError) as err:
                 printers.fail(err)
