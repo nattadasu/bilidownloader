@@ -395,7 +395,7 @@ class BiliProcess:
             language,
         )
 
-    def process_episode(self, episode_url: str) -> Optional[Path]:
+    def process_episode(self, episode_url: str, forced: bool = False) -> Optional[Path]:
         tries = 0
         history = History(self.history)
         # use English episode url from other kind of URL using regex from play/{season_id}/{episode_id}
@@ -413,10 +413,16 @@ class BiliProcess:
                 )
                 break
             try:
+                if not forced:
+                    history.check_history(episode_url)
                 loc, data, language = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
                 final = self._create_ffmpeg_chapters(chapters, loc)
                 final = self._add_audio_language(final, language)
+                if not forced:
+                    history.write_history(episode_url)
+                else:
+                    printers.info("Forced download, skipping adding to history")
                 return final
             except (ReferenceError, NameError) as err:
                 printers.fail(err)
@@ -436,7 +442,7 @@ class BiliProcess:
                 printers.info("Retrying...")
                 tries += 1
 
-    def process_playlist(self, playlist_url: str) -> List[Path]:
+    def process_playlist(self, playlist_url: str, forced: bool = False) -> List[Path]:
         data = self._get_video_info(playlist_url)
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
@@ -445,11 +451,12 @@ class BiliProcess:
             final.append(
                 self.process_episode(
                     self.ep_url(data["id"], entry["id"]),
+                    forced=forced,
                 )
             )
         return final
 
-    def process_watchlist(self) -> List[Path]:
+    def process_watchlist(self, forced: bool = False) -> List[Path]:
         final: List[Path] = []
         wl = Watchlist(self.watchlist)
         api = BiliApi()
@@ -462,16 +469,20 @@ class BiliProcess:
                         printers.info(f"Downloading {title} as a playlist")
                         final.extend(
                             self.process_playlist(
-                                f"https://www.bilibili.tv/en/play/{card.season_id}"
+                                f"https://www.bilibili.tv/en/play/{card.season_id}",
+                                forced=forced,
                             )
                         )
                     else:
                         printers.info(f"Downloading {title}, {card.index_show}")
                         ep = self.process_episode(
-                            self.ep_url(card.season_id, card.episode_id)
+                            self.ep_url(card.season_id, card.episode_id),
+                            forced=forced,
                         )
                         if ep is not None:
-                            printers.done(f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})")
+                            printers.done(
+                                f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})"
+                            )
                             final.append(ep)
 
         return final
