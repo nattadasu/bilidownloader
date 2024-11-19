@@ -6,9 +6,8 @@ from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
 from time import sleep
-from typing import Any, Dict, List, Optional, Tuple, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-from survey import printers
 from yt_dlp import YoutubeDL as YDL
 
 try:
@@ -19,6 +18,9 @@ try:
         Chapter,
         DataExistError,
         available_res,
+        prn_done,
+        prn_error,
+        prn_info,
         sanitize_filename,
     )
     from history import History
@@ -31,6 +33,9 @@ except ImportError:
         Chapter,
         DataExistError,
         available_res,
+        prn_done,
+        prn_error,
+        prn_info,
         sanitize_filename,
     )
     from bilidownloader.history import History
@@ -122,7 +127,7 @@ class BiliProcess:
         Returns:
             Path: The path to the video file with added chapters.
         """
-        printers.info(f"Creating chapters for {str(video_path.absolute())}")
+        prn_info(f"Creating chapters for {str(video_path.absolute())}")
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
         ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
@@ -201,7 +206,7 @@ class BiliProcess:
                     self._format_chapter(final_chapter, final_chapter.title)
                 )
         except IndexError as _:
-            printers.fail("This video does not have any chapters")
+            prn_error("This video does not have any chapters")
 
         # 3. Write the modified metadata file
         with open(metadata_path, "a") as meta_file:
@@ -229,10 +234,10 @@ class BiliProcess:
             check=True,
         )
 
-        printers.info(f"Removing {str(metadata_path.absolute())}")
+        prn_info(f"Removing {str(metadata_path.absolute())}")
         remove(metadata_path)
         remove(video_path)
-        printers.info(f"Renaming {output_path} to {video_path}")
+        prn_info(f"Renaming {output_path} to {video_path}")
         rename(output_path, video_path)
 
         return Path(video_path)
@@ -250,7 +255,7 @@ class BiliProcess:
         Returns:
             Path: The path to the video file with the added audio language.
         """
-        printers.info(
+        prn_info(
             f"Adding audio language '{language}' to {str(video_path.absolute())} using mkvpropedit"
         )
         mkvpropedit = (
@@ -306,7 +311,7 @@ class BiliProcess:
             )
         sleep(1)  # To avoid DDoS
 
-        printers.info("Fetching metadata from episode's page")
+        prn_info("Fetching metadata from episode's page")
         html = BiliHtml(
             self.cookie, metadata["requested_formats"][0]["http_headers"]["User-Agent"]
         )
@@ -343,7 +348,7 @@ class BiliProcess:
 
         codec = "avc1" if self.is_avc else "hev1"
 
-        printers.info(f"Start downloading {title}")
+        prn_info(f"Start downloading {title}")
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -408,7 +413,7 @@ class BiliProcess:
             raise ValueError("Invalid episode URL")
         while True:
             if tries > 3:
-                printers.fail(
+                prn_error(
                     "Application have tried to retry for 3 times already, terminating"
                 )
                 break
@@ -422,24 +427,25 @@ class BiliProcess:
                 if not forced:
                     history.write_history(episode_url)
                 else:
-                    printers.info("Forced download, skipping adding to history")
+                    prn_info("Forced download, skipping adding to history")
+                prn_info(f"Downloaded {str(final.absolute())}")
                 return final
             except (ReferenceError, NameError) as err:
-                printers.fail(err)
+                prn_error(str(err))
                 break
             except DataExistError:
-                printers.fail(
+                prn_error(
                     f"Episode ({episode_url}) was ripped previously. "
                     f'Modify "{str(self.history)}" to proceed.'
                 )
                 break
             except KeyboardInterrupt:
-                printers.fail("Interrupt signal received, stopping process")
+                prn_error("Interrupt signal received, stopping process")
                 exit(1)
             except Exception as err:
-                printers.fail("An exception has been thrown:")
-                printers.fail(err)
-                printers.info("Retrying...")
+                prn_error("An exception has been thrown:")
+                prn_error(str(err))
+                prn_info("Retrying...")
                 tries += 1
 
     def process_playlist(self, playlist_url: str, forced: bool = False) -> List[Path]:
@@ -466,7 +472,7 @@ class BiliProcess:
                 if sid == card.season_id:
                     print()
                     if "-" in card.index_show:
-                        printers.info(f"Downloading {title} as a playlist")
+                        prn_info(f"Downloading {title} as a playlist")
                         final.extend(
                             self.process_playlist(
                                 f"https://www.bilibili.tv/en/play/{card.season_id}",
@@ -474,13 +480,13 @@ class BiliProcess:
                             )
                         )
                     else:
-                        printers.info(f"Downloading {title}, {card.index_show}")
+                        prn_info(f"Downloading {title}, {card.index_show}")
                         ep = self.process_episode(
                             self.ep_url(card.season_id, card.episode_id),
                             forced=forced,
                         )
                         if ep is not None:
-                            printers.done(
+                            prn_done(
                                 f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})"
                             )
                             final.append(ep)

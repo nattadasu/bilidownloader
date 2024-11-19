@@ -2,12 +2,20 @@ from os import path as opath
 from pathlib import Path
 from typing import List
 
-from survey import printers
-
 try:
-    from common import DEFAULT_HISTORY, DataExistError
+    from common import (
+        DEFAULT_HISTORY,
+        DataExistError,
+        prn_done,
+        prn_info,
+    )
 except ImportError:
-    from bilidownloader.common import DEFAULT_HISTORY, DataExistError
+    from bilidownloader.common import (
+        DEFAULT_HISTORY,
+        DataExistError,
+        prn_done,
+        prn_info,
+    )
 
 
 class History:
@@ -17,7 +25,7 @@ class History:
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
-            printers.info(f"History file can't be found on {str(path)}, creating...")
+            prn_info(f"History file can't be found on {str(path)}, creating...")
             with open(self.path, "w+", encoding="utf8") as file:
                 file.write("")
         self.read_history()
@@ -45,6 +53,6 @@ class History:
 
         self._write(self.list)
 
-        printers.done(f"{episode_url} has beed added to history")
+        prn_done(f"{episode_url} has beed added to history")
 
         return self.list

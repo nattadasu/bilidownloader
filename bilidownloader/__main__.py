@@ -21,6 +21,8 @@ try:
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
+        prn_error,
+        prn_info,
     )
     from extractor import BiliProcess
     from history import History
@@ -34,6 +36,8 @@ except ImportError:
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
+        prn_error,
+        prn_info,
     )
     from bilidownloader.extractor import BiliProcess
     from bilidownloader.history import History
@@ -227,10 +231,10 @@ def download_url(
         if not forced:
             History(history_file).check_history(url)
         if matches.group("episode_id"):
-            survey.printers.info("URL is an episode")
+            prn_info("URL is an episode")
             bili.process_episode(url, forced)
         else:
-            survey.printers.info("URL is a playlist")
+            prn_info("URL is a playlist")
             bili.process_playlist(url, forced)
     else:
         raise ValueError("Link is not a valid Bilibili.tv URL")
@@ -271,7 +275,7 @@ def cards_selector(
     as_playlist = survey.routines.inquire("Download as playlist? ", default=False)
     url = f"https://www.bilibili.tv/en/play/{anime.season_id}"
     url = url + f"/{anime.episode_id}" if not as_playlist else url
-    survey.printers.info(
+    prn_info(
         f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})"
     )
     download_url(
@@ -294,7 +298,7 @@ def cards_selector(
         ):
             wl.add_watchlist(anime.season_id, anime.title)
     else:
-        survey.printers.info(f"{anime.title} is exist on watchlist, skipping prompt")
+        prn_info(f"{anime.title} is exist on watchlist, skipping prompt")
 
 
 @app.command(
@@ -379,10 +383,10 @@ def watchlist_list(
     wl = Watchlist(file_path)
 
     if len(wl.list) == 0:
-        survey.printers.fail("There are no series currently monitored")
+        prn_error("There are no series currently monitored")
         exit(2)
 
-    survey.printers.info("Below are currently monitored series:")
+    prn_info("Below are currently monitored series:")
 
     items = sorted(wl.list, key=lambda k: k[1])
     head = [Column("No.", justify="right"), Column("ID", justify="center"), "Title"]
@@ -443,7 +447,7 @@ def watchlist_add(
                 )
                 if index is not None:
                     break
-                survey.printers.fail("Selection is empty. Press Esc or Ctrl+C to exit")
+                prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
             except (survey.widgets.Escape, KeyboardInterrupt):
                 exit(1)
     for i in index:
@@ -464,7 +468,7 @@ def watchlist_delete(file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST):
             )
             if index is not None:
                 break
-            survey.printers.fail("Selection is empty. Press Esc or Ctrl+C to exit")
+            prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
         except (survey.widgets.Escape, KeyboardInterrupt):
             exit(1)
 
@@ -522,10 +526,10 @@ def history_list(
     hi = History(file_path)
 
     if len(hi.list) == 0 or hi.list[0] == "":
-        survey.printers.fail("Your history is clean!")
+        prn_error("Your history is clean!")
         exit(2)
 
-    survey.printers.info("Below is list of downloaded URLs:\n")
+    prn_info("Below is list of downloaded URLs:\n")
 
     items = sorted(hi.list)
     table = Table(Column("No.", justify="right"), "URL", box=box.ROUNDED)
@@ -558,7 +562,7 @@ def history_clear(
 
     if yes or not prompt:
         hi._write([])
-        survey.printers.info("History successfully cleared!")
+        prn_info("History successfully cleared!")
 
 
 class DayOfWeek(str, Enum):

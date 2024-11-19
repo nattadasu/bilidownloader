@@ -3,12 +3,20 @@ from os import path as opath
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-from survey import printers
-
 try:
-    from common import DEFAULT_WATCHLIST, DataExistError
+    from common import (
+        DEFAULT_WATCHLIST,
+        DataExistError,
+        prn_done,
+        prn_info,
+    )
 except ImportError:
-    from bilidownloader.common import DEFAULT_WATCHLIST, DataExistError
+    from bilidownloader.common import (
+        DEFAULT_WATCHLIST,
+        DataExistError,
+        prn_done,
+        prn_info,
+    )
 
 
 class Watchlist:
@@ -18,7 +26,7 @@ class Watchlist:
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
-            printers.info(f"Watchlist file can't be found on {str(path)}, creating...")
+            prn_info(f"Watchlist file can't be found on {str(path)}, creating...")
             with open(self.path, "w+", encoding="utf8") as file:
                 file.write("")
         self.read_watchlist()
@@ -74,7 +82,7 @@ class Watchlist:
 
         self.list.append((str(season_id), title))
         self._write_watchlist()
-        printers.done(f"{title} has been added to {str(self.path)}")
+        prn_done(f"{title} has been added to {str(self.path)}")
         return self.list
 
     def delete_from_watchlist(
@@ -89,5 +97,5 @@ class Watchlist:
 
         self.list = deepcopy(updated_data)
         self._write_watchlist()
-        printers.done(f"{season_id} is removed from watchlist")
+        prn_done(f"{season_id} is removed from watchlist")
         return updated_data

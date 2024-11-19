@@ -3,9 +3,10 @@ import re
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
-from typing import Literal, Union, Optional
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel
+from survey import printers
 
 API_URL = "https://api.bilibili.tv/intl/gateway/web/v2/anime/timeline?s_locale=en_US&platform=web"
 DEFAULT_HISTORY = Path("~/Bilibili/history.txt").expanduser()
@@ -44,15 +45,14 @@ available_res = Union[
 ]
 """Available resolutions on Bstation, 4K was skipped"""
 
+
 def _find_command(executable: str) -> Optional[Path]:
     system = psys()
     command = "where" if system == "Windows" else "which"
 
     try:
         # Run the command and capture the output
-        result = run(
-            [command, executable], check=True, stdout=PIPE, stderr=PIPE
-        )
+        result = run([command, executable], check=True, stdout=PIPE, stderr=PIPE)
         # Decode the output to get the path
         exe_path = result.stdout.decode().strip()
 
@@ -63,8 +63,34 @@ def _find_command(executable: str) -> Optional[Path]:
     except CalledProcessError:
         return None
 
+
 def find_ffmpeg() -> Optional[Path]:
     return _find_command("ffmpeg")
 
+
 def find_mkvpropedit() -> Optional[Path]:
     return _find_command("mkvpropedit")
+
+
+def prn_info(message: str) -> None:
+    """Prints an informational message to the console."""
+    try:
+        printers.info(message)
+    except Exception as _:
+        print(f"!> {message}")
+
+
+def prn_done(message: str) -> None:
+    """Prints a success message to the console."""
+    try:
+        printers.done(message)
+    except Exception as _:
+        print(f"O> {message}")
+
+
+def prn_error(message: str) -> None:
+    """Prints an error message to the console."""
+    try:
+        printers.fail(message)
+    except Exception as _:
+        print(f"X> {message}")
