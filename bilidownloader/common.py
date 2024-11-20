@@ -5,6 +5,7 @@ from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
 from typing import Literal, Optional, Union
 
+from notifypy import Notify
 from pydantic import BaseModel
 from survey import printers
 
@@ -12,6 +13,8 @@ API_URL = "https://api.bilibili.tv/intl/gateway/web/v2/anime/timeline?s_locale=e
 DEFAULT_HISTORY = Path("~/Bilibili/history.txt").expanduser()
 DEFAULT_WATCHLIST = Path("~/Bilibili/watchlist.txt").expanduser()
 
+
+ins_notify = Notify()
 
 class DataExistError(Exception):
     """Exception raised when data already exists in the file."""
@@ -94,3 +97,10 @@ def prn_error(message: str) -> None:
         printers.fail(message)
     except Exception as _:
         print(f"X> {message}")
+
+def push_notification(title: str, index: str, path: Path) -> None:
+    """Send native notification for Windows, Linux, and macOS"""
+    ins_notify.application_name = "BiliDownloader"
+    ins_notify.title = f"{title}, E{index} downloaded"
+    ins_notify.message = f"File is saved on {path.resolve()}"
+    ins_notify.send(block=False)

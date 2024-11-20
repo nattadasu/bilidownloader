@@ -21,6 +21,7 @@ try:
         prn_done,
         prn_error,
         prn_info,
+        push_notification,
         sanitize_filename,
     )
     from history import History
@@ -36,6 +37,7 @@ except ImportError:
         prn_done,
         prn_error,
         prn_info,
+        push_notification,
         sanitize_filename,
     )
     from bilidownloader.history import History
@@ -53,6 +55,7 @@ class BiliProcess:
         download_pv: bool = False,
         ffmpeg_path: Optional[Path] = None,
         mkvpropedit_path: Optional[Path] = None,
+        notification: bool = False,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -62,6 +65,7 @@ class BiliProcess:
         self.download_pv = download_pv
         self.ffmpeg_path = ffmpeg_path
         self.mkvpropedit_path = mkvpropedit_path
+        self.notification = notification
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -392,6 +396,8 @@ class BiliProcess:
             except Exception:
                 metadata = metadata
 
+        metadata["btitle"] = title
+
         return (
             Path(
                 f"./[{metadata['extractor']}] {title} - E{metadata['episode_number']} [{metadata['resolution']}, {metadata['vcodec']}].mkv"
@@ -429,6 +435,12 @@ class BiliProcess:
                 else:
                     prn_info("Forced download, skipping adding to history")
                 prn_info(f"Downloaded {str(final.absolute())}")
+                if self.notification:
+                    push_notification(
+                        data["btitle"],
+                        data.get("episode_number", ""),
+                        final
+                    )
                 return final
             except (ReferenceError, NameError) as err:
                 prn_error(str(err))

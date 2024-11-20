@@ -187,6 +187,13 @@ SHOWURL_OPT = Annotated[
     bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
 ]
 """Flag to show URL"""
+NOTIFY_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--notify", "--notification",
+        help="Send a notification when an episode has been downloaded",
+    )
+]
 #####################################
 # END OF ARGS AND FLAGS DEFINITIONS #
 #####################################
@@ -210,6 +217,7 @@ def download_url(
     download_pv: PV_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    notification: NOTIFY_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -226,6 +234,7 @@ def download_url(
         download_pv=download_pv,
         ffmpeg_path=ffmpeg_path,
         mkvpropedit_path=mkvpropedit_path,
+        notification=notification,
     )
     if matches:
         if not forced:
@@ -258,6 +267,7 @@ def cards_selector(
     download_pv: bool = False,
     ffmpeg_path: Optional[Path] = FFMPEG_PATH,
     mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
+    notification: bool = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -288,6 +298,7 @@ def cards_selector(
         download_pv,
         ffmpeg_path,
         mkvpropedit_path,
+        notification,
     )
 
     wl = Watchlist(watchlist_file)
@@ -314,6 +325,7 @@ def download_today_releases(
     download_pv: PV_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    notification: NOTIFY_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -331,6 +343,7 @@ def download_today_releases(
             download_pv,
             ffmpeg_path,
             mkvpropedit_path,
+            notification,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -351,6 +364,7 @@ def download_all_releases(
     download_pv: PV_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    notification: NOTIFY_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -370,6 +384,7 @@ def download_all_releases(
             download_pv,
             ffmpeg_path,
             mkvpropedit_path,
+            notification,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -501,6 +516,7 @@ def watchlist_download(
     is_avc: AVC_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    notification: NOTIFY_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -515,6 +531,7 @@ def watchlist_download(
         False,
         ffmpeg_path,
         mkvpropedit_path,
+        notification,
     )
     bili.process_watchlist(forced=forced)
 
