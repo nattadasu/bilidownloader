@@ -56,6 +56,7 @@ class BiliProcess:
         ffmpeg_path: Optional[Path] = None,
         mkvpropedit_path: Optional[Path] = None,
         notification: bool = False,
+        srt: bool = False,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -66,6 +67,7 @@ class BiliProcess:
         self.ffmpeg_path = ffmpeg_path
         self.mkvpropedit_path = mkvpropedit_path
         self.notification = notification
+        self.srt = srt
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -208,25 +210,17 @@ class BiliProcess:
 
         # 4. Merge changes to the video
         output_path = video_path.with_stem(video_path.stem + "_temp")
-        sp.run(
-            [
-                ffmpeg,
-                "-v",
-                "error",
-                "-i",
-                str(video_path),
-                "-i",
-                str(metadata_path),
-                "-map",
-                "0",
-                "-map_metadata",
-                "1",
-                "-codec",
-                "copy",
-                str(output_path),
-            ],
-            check=True,
-        )
+        # fmt: off
+        sp.run([
+            ffmpeg, "-v", "error",
+            "-i", str(video_path),
+            "-i", str(metadata_path),
+            "-map", "0",
+            "-map_metadata", "1",
+            "-codec", "copy",
+            str(output_path),
+        ], check=True)
+        # fmt: on
 
         prn_info(f"Removing {str(metadata_path.absolute())}")
         remove(metadata_path)
@@ -261,20 +255,14 @@ class BiliProcess:
             "ind": "Indonesian",
         }
         lang_title = code[language]
-        sp.run(
-            [
-                mkvpropedit,
-                str(video_path),
-                "--edit",
-                "track:a1",
-                "--set",
-                f"language={language}",
-                "--set",
-                f"name={lang_title}",
-                "--quiet",
-            ],
-            check=True,
-        )
+        # fmt: off
+        sp.run([
+            mkvpropedit, str(video_path),
+            "--edit", "track:a1",
+            "--set", f"language={language}",
+            "--set", f"name={lang_title}",
+            "--quiet",
+        ], check=True)
 
         return video_path
 
@@ -371,7 +359,7 @@ class BiliProcess:
                 {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"},
             ],
             "retries": 10,
-            "subtitlesformat": "ass/srt",
+            "subtitlesformat": "srt" if self.srt else "ass/srt",
             "subtitleslangs": ["all"],
             "updatetime": False,
             "writesubtitles": True,

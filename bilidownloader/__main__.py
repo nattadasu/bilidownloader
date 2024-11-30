@@ -160,6 +160,16 @@ AVC_OPT = Annotated[
     ),
 ]
 """Flag to change the codec to AVC"""
+SRT_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--srt-only",
+        "--plain",
+        "-S",
+        help="Download the embedded subtitle as SRT only rather to prioritize SSA/SRT. Best for compatibility and readability",
+    ),
+]
+"""Flag to download SRT only"""
 PV_OPT = Annotated[
     bool,
     typer.Option(
@@ -218,6 +228,7 @@ def download_url(
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
+    srtonly: SRT_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -235,6 +246,7 @@ def download_url(
         ffmpeg_path=ffmpeg_path,
         mkvpropedit_path=mkvpropedit_path,
         notification=notification,
+        srt=srtonly,
     )
     if matches:
         if not forced:
@@ -268,6 +280,7 @@ def cards_selector(
     ffmpeg_path: Optional[Path] = FFMPEG_PATH,
     mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
     notification: bool = False,
+    srtonly: bool = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -289,16 +302,17 @@ def cards_selector(
         f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})"
     )
     download_url(
-        url,
-        cookie,
-        history_file,
-        forced,
-        resolution,
-        is_avc,
-        download_pv,
-        ffmpeg_path,
-        mkvpropedit_path,
-        notification,
+        url=url,
+        cookie=cookie,
+        history_file=history_file,
+        forced=forced,
+        resolution=resolution,
+        is_avc=is_avc,
+        download_pv=download_pv,
+        ffmpeg_path=ffmpeg_path,
+        mkvpropedit_path=mkvpropedit_path,
+        notification=notification,
+        srtonly=srtonly,
     )
 
     wl = Watchlist(watchlist_file)
@@ -326,6 +340,7 @@ def download_today_releases(
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
+    srtonly: SRT_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -334,16 +349,17 @@ def download_today_releases(
     try:
         cards_selector(
             released,
-            cookie,
-            watchlist_file,
-            history_file,
-            forced,
-            resolution,
-            is_avc,
-            download_pv,
-            ffmpeg_path,
-            mkvpropedit_path,
-            notification,
+            cookie=cookie,
+            watchlist_file=watchlist_file,
+            history_file=history_file,
+            forced=forced,
+            resolution=resolution,
+            is_avc=is_avc,
+            download_pv=download_pv,
+            ffmpeg_path=ffmpeg_path,
+            mkvpropedit_path=mkvpropedit_path,
+            notification=notification,
+            srtonly=srtonly,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -365,6 +381,7 @@ def download_all_releases(
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
+    srtonly: SRT_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -375,16 +392,17 @@ def download_all_releases(
     try:
         cards_selector(
             released,
-            cookie,
-            watchlist_file,
-            history_file,
-            forced,
-            resolution,
-            is_avc,
-            download_pv,
-            ffmpeg_path,
-            mkvpropedit_path,
-            notification,
+            cookie=cookie,
+            watchlist_file=watchlist_file,
+            history_file=history_file,
+            forced=forced,
+            resolution=resolution,
+            is_avc=is_avc,
+            download_pv=download_pv,
+            ffmpeg_path=ffmpeg_path,
+            mkvpropedit_path=mkvpropedit_path,
+            notification=notification,
+            srtonly=srtonly,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -517,21 +535,23 @@ def watchlist_download(
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
+    srtonly: SRT_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
 
     fix_reso: available_res = resolution  # type: ignore
     bili = BiliProcess(
-        cookie,
-        history_file,
-        watchlist_file,
-        fix_reso,
-        is_avc,
-        False,
-        ffmpeg_path,
-        mkvpropedit_path,
-        notification,
+        cookie=cookie,
+        history=history_file,
+        watchlist=watchlist_file,
+        resolution=fix_reso,
+        is_avc=is_avc,
+        download_pv=False,
+        ffmpeg_path=ffmpeg_path,
+        mkvpropedit_path=mkvpropedit_path,
+        notification=notification,
+        srt=srtonly,
     )
     bili.process_watchlist(forced=forced)
 
