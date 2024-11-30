@@ -157,6 +157,7 @@ AVC_OPT = Annotated[
     typer.Option(
         "--is-avc",
         "--avc",
+        "-A",
         help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
     ),
 ]
@@ -183,6 +184,9 @@ PV_OPT = Annotated[
 FFMPEG_OPT = Annotated[
     Optional[Path],
     typer.Option(
+        "--ffmpeg-path",
+        "--ffmpeg",
+        "-F",
         help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
     ),
 ]
@@ -190,6 +194,9 @@ FFMPEG_OPT = Annotated[
 MKVPROPEX_OPT = Annotated[
     Optional[Path],
     typer.Option(
+        "--mkvpropedit-path",
+        "--mkvpropedit",
+        "-M",
         help="Location of the mkvpropedit binary; either the path to the binary or its containing directory",
     ),
 ]
@@ -201,7 +208,7 @@ SHOWURL_OPT = Annotated[
 NOTIFY_OPT = Annotated[
     bool,
     typer.Option(
-        "--notify", "--notification",
+        "--notify", "--notification", "-n",
         help="Send a notification when an episode has been downloaded",
     )
 ]
