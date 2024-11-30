@@ -7,7 +7,7 @@ name = "bilidownloader"
 authors = [
 	{name = "nattadasu", email = "hello@nattadasu.my.id"}
 ]
-version = "0.2.3"
+version = "0.2.4"
 description = "Assist you in ripping episode from BiliIntl"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
@@ -16,12 +16,12 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
-	"notify-py",
-	"pydantic",
-	"requests",
-	"survey",
-	"typer",
-	"yt-dlp"
+	"notify-py", # for notification
+	"pydantic", # for data schema and dataclass
+	"requests", # for http request, required to access Bilibili API and HTML
+	"survey", # for interactive prompt in CLI
+	"typer", # backend for CLI
+	"yt-dlp" # the most important dependency, downloader
 ]
 
 [project.scripts]
