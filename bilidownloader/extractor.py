@@ -135,39 +135,28 @@ class BiliProcess:
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
         ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
-        sp.run(
-            [
-                ffmpeg,
-                "-v",
-                "error",
-                "-i",
-                str(video_path),
-                "-f",
-                "ffmetadata",
-                str(metadata_path),
-            ],
-            check=True,
-        )
+        # fmt: off
+        sp.run([
+            ffmpeg, "-v", "error",
+            "-i", str(video_path),
+            "-f", "ffmetadata",
+            str(metadata_path),
+        ], check=True)
+        # fmt: on
         with open(metadata_path, "r", encoding="utf-8") as file:
             content = file.read().replace("Packed by Bilibili XCoder v2.0.2", "")
         with open(metadata_path, "w", encoding="utf-8") as file:
             file.write(content)
 
         # Get video duration using ffprobe
-        result = sp.run(
-            [
-                "ffprobe",
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                str(video_path),
-            ],
-            capture_output=True,
-            text=True,
-        )
+        # fmt: off
+        result = sp.run([
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(video_path),
+        ], capture_output=True, text=True)
+        # fmt: on
         total_duration = float(result.stdout.strip())
 
         # 2. Format and modify chapter information
@@ -201,10 +190,11 @@ class BiliProcess:
         # Append final chapter that runs to the end of the video
         try:
             if chapters[-1].end_time < total_duration:
+                is_under_minute = total_duration - chapters[-1].end_time <= 60
                 final_chapter = Chapter(
                     start_time=chapters[-1].end_time,
                     end_time=total_duration,
-                    title=f"Part {part_index}",
+                    title="Preview" if is_under_minute else f"Part {part_index}",
                 )
                 formatted_chapters.append(
                     self._format_chapter(final_chapter, final_chapter.title)
@@ -340,15 +330,18 @@ class BiliProcess:
         # if country:
         #     language = "chi" if "China" in country.group(1) else "jpn"
         #     # If the title got JP Ver.
-        language: Literal["ind", "jpn", "chi"] = "jpn"
+        language: Literal["ind", "jpn", "chi", "tha"] = "jpn"
         if country:
             language = "chi" if "Chinese" in country.group(1) else "jpn"
         jp_dub = ["JP Ver", "JPN Dub"]
         id_dub = ["Dub Indo", "ID dub"]
+        th_dub = ["Thai Dub", "TH dub"]
         if any(x.lower() in str(title).lower() for x in jp_dub):
             language = "jpn"
         elif any(x.lower() in str(title).lower() for x in id_dub):
             language = "ind"
+        elif any(x.lower() in str(title).lower() for x in th_dub):
+            language = "tha"
 
         codec = "avc1" if self.is_avc else "hev1"
 
