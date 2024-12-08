@@ -99,9 +99,13 @@ def prn_error(message: str) -> None:
     except Exception as _:
         print(f"X> {message}")
 
-def push_notification(title: str, index: str, path: Path) -> None:
+def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
     """Send native notification for Windows, Linux, and macOS"""
     ins_notify.application_name = "BiliDownloader"
-    ins_notify.title = f"{title}, E{index} downloaded"
-    ins_notify.message = f"File is saved on {path.resolve()}"
+    if path:
+        ins_notify.title = f"{title}, E{index} downloaded"
+        ins_notify.message = f"File is saved on {path.resolve()}"
+    else:
+        ins_notify.title = f"Downloading {title}, E{index}"
+        ins_notify.message = "We will notify you when it's done"
     ins_notify.send(block=False)

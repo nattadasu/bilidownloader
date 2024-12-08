@@ -5,9 +5,9 @@ from pathlib import Path
 from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
-from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+from fake_useragent import UserAgent
 from yt_dlp import YoutubeDL as YDL
 
 try:
@@ -42,6 +42,9 @@ except ImportError:
     )
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
+
+
+uagent = UserAgent(browsers=["chrome"], platforms=["desktop"]).random
 
 
 class BiliProcess:
@@ -280,23 +283,8 @@ class BiliProcess:
             Any: Data output from yt-dlp
         """
 
-        metadata = self._get_video_info(episode_url)
-        if not metadata or metadata is None:
-            raise ValueError("Failed to get metadata!")
-        if "entries" in metadata:
-            raise ReferenceError(
-                f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
-            )
-        if metadata["title"].startswith("PV") and not self.download_pv:
-            raise NameError(
-                f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
-            )
-        sleep(1)  # To avoid DDoS
-
         prn_info("Fetching metadata from episode's page")
-        html = BiliHtml(
-            self.cookie, metadata["requested_formats"][0]["http_headers"]["User-Agent"]
-        )
+        html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
         ftitle = rsearch(
@@ -367,8 +355,20 @@ class BiliProcess:
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
-            ydl.download([episode_url])
+            ydl.params["quiet"] = True
             ydl.params["verbose"] = False
+            prn_info("Fetching required metadata")
+            metadata = ydl.extract_info(episode_url, download=False)
+            if metadata is None:
+                raise Exception()
+            if "entries" in metadata:
+                raise ReferenceError(
+                    f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
+                )
+            if metadata["title"].startswith("PV") and not self.download_pv:
+                raise NameError(
+                    f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
+                )
             ydl.params["quiet"] = True
             try:
                 metadata = ydl.extract_info(episode_url, download=False)
@@ -376,6 +376,10 @@ class BiliProcess:
                     raise Exception()
             except Exception:
                 metadata = metadata
+            prn_info("Downloading episode now")
+            ydl.params["quiet"] = False
+            ydl.params["verbose"] = True
+            ydl.download([episode_url])
 
         metadata["btitle"] = title
 
@@ -418,9 +422,7 @@ class BiliProcess:
                 prn_info(f"Downloaded {str(final.absolute())}")
                 if self.notification:
                     push_notification(
-                        data["btitle"],
-                        data.get("episode_number", ""),
-                        final
+                        data["btitle"], data.get("episode_number", ""), final
                     )
                 return final
             except (ReferenceError, NameError) as err:

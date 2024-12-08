@@ -16,6 +16,7 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
+	"fake-useragent", # for random user agent
 	"notify-py", # for notification
 	"pydantic", # for data schema and dataclass
 	"requests", # for http request, required to access Bilibili API and HTML
