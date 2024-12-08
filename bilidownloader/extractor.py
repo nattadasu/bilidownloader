@@ -234,7 +234,7 @@ class BiliProcess:
         return Path(video_path)
 
     def _add_audio_language(
-        self, video_path: Path, language: Literal["ind", "jpn", "chi"]
+        self, video_path: Path, language: Literal["ind", "jpn", "chi", "tha"]
     ) -> Path:
         """
         Adds an audio language to the video file.
@@ -256,6 +256,7 @@ class BiliProcess:
             "chi": "Chinese",
             "jpn": "Japanese",
             "ind": "Indonesian",
+            "tha": "Thai",
         }
         lang_title = code[language]
         # fmt: off
@@ -272,7 +273,7 @@ class BiliProcess:
     def download_episode(
         self,
         episode_url: str,
-    ) -> Tuple[Path, Any, Literal["ind", "jpn", "chi"]]:
+    ) -> Tuple[Path, Any, Literal["ind", "jpn", "chi", "tha"]]:
         """Download episode from Bilibili with yt-dlp
 
         Args:
