@@ -369,13 +369,11 @@ class BiliProcess:
                 raise NameError(
                     f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
                 )
-            ydl.params["quiet"] = True
-            try:
-                metadata = ydl.extract_info(episode_url, download=False)
-                if metadata is None:
-                    raise Exception()
-            except Exception:
-                metadata = metadata
+            if self.notification:
+                push_notification(
+                    title=str(title),
+                    index=metadata.get("episode_number", "") if metadata else "",
+                )
             prn_info("Downloading episode now")
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
