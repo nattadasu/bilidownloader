@@ -44,7 +44,7 @@ except ImportError:
     from bilidownloader.watchlist import Watchlist
 
 
-uagent = UserAgent(browsers=["chrome"], platforms=["desktop"]).random
+uagent = UserAgent(browsers=["chrome"], platforms=["desktop"]).chrome
 
 
 class BiliProcess:
