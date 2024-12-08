@@ -44,7 +44,8 @@ def sanitize_filename(filename: str, replacement: str = "_") -> str:
 
 
 available_res = Union[
-    Literal[144], Literal[240], Literal[360], Literal[480], Literal[720], Literal[1080]
+    Literal[144], Literal[240], Literal[360], Literal[480], Literal[720],
+    Literal[1080], Literal[2160]
 ]
 """Available resolutions on Bstation, 4K was skipped"""
 

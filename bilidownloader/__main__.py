@@ -58,7 +58,7 @@ app.add_typer(
 
 
 bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
-resos = [144, 240, 360, 480, 720, 1080]
+resos = [144, 240, 360, 480, 720, 1080, 2160]
 
 
 def resolution_callback(user_input: int) -> int:
@@ -144,9 +144,9 @@ RESO_OPT = Annotated[
         "--resolution",
         "--reso",
         "-r",
-        help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080",
+        help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080 | 2160",
         min=144,
-        max=1080,
+        max=2160,
         callback=resolution_callback,
         autocompletion=resolution_autocomplete,
     ),
