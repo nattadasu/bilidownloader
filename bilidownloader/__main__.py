@@ -43,7 +43,7 @@ except ImportError:
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
 
-prn_info("BiliDownloader v0.2.4")
+prn_info("BiliDownloader v0.3.0")
 console = Console()
 
 app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
