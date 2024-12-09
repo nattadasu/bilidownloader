@@ -44,7 +44,8 @@ except ImportError:
     from bilidownloader.watchlist import Watchlist
 
 
-uagent = UserAgent(browsers=["chrome"], platforms=["desktop"]).chrome
+ua = UserAgent()
+uagent = ua.chrome
 
 
 class BiliProcess:
