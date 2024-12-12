@@ -16,6 +16,7 @@ DEFAULT_WATCHLIST = Path("~/Bilibili/watchlist.txt").expanduser()
 
 ins_notify = Notify()
 
+
 class DataExistError(Exception):
     """Exception raised when data already exists in the file."""
 
@@ -44,8 +45,13 @@ def sanitize_filename(filename: str, replacement: str = "_") -> str:
 
 
 available_res = Union[
-    Literal[144], Literal[240], Literal[360], Literal[480], Literal[720],
-    Literal[1080], Literal[2160]
+    Literal[144],
+    Literal[240],
+    Literal[360],
+    Literal[480],
+    Literal[720],
+    Literal[1080],
+    Literal[2160],
 ]
 """Available resolutions on Bstation, 4K was skipped"""
 
@@ -98,6 +104,7 @@ def prn_error(message: str) -> None:
         printers.fail(message)
     except Exception as _:
         print(f"X> {message}")
+
 
 def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
     """Send native notification for Windows, Linux, and macOS"""

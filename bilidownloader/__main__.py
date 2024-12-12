@@ -208,9 +208,11 @@ SHOWURL_OPT = Annotated[
 NOTIFY_OPT = Annotated[
     bool,
     typer.Option(
-        "--notify", "--notification", "-n",
+        "--notify",
+        "--notification",
+        "-n",
         help="Send a notification when an episode has been downloaded",
-    )
+    ),
 ]
 #####################################
 # END OF ARGS AND FLAGS DEFINITIONS #
@@ -589,9 +591,7 @@ def history_clear(
     yes: Annotated[
         bool,
         typer.Option(
-            "--assumeyes",
-            "-y",
-            help="Automatically answer yes for all questions"
+            "--assumeyes", "-y", help="Automatically answer yes for all questions"
         ),
     ] = False,
 ):
