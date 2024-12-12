@@ -67,3 +67,9 @@ class BiliTvResponse(BaseModel):
     message: str
     ttl: int
     data: ReturnData
+
+
+class BiliFavoriteResponse(BaseModel):
+    code: int
+    message: str
+    ttl: int

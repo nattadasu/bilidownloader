@@ -1,26 +1,27 @@
 from http.cookiejar import MozillaCookieJar as MozCookie
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 
 import requests as req
 
 try:
-    from api_model import BiliTvResponse, CardItem
+    from api_model import BiliFavoriteResponse, BiliTvResponse, CardItem
     from common import WEB_API_URL
 except ImportError:
-    from bilidownloader.api_model import BiliTvResponse, CardItem
+    from bilidownloader.api_model import BiliFavoriteResponse, BiliTvResponse, CardItem
     from bilidownloader.common import WEB_API_URL
 
 
 class BiliApi:
     def __init__(
-        self, api_url: str = WEB_API_URL
+        self, api_url: str = WEB_API_URL, cookie_path: Union[str, Path, None] = None
     ):
         self.api_url = api_url
         self.unified_params = {
             "s_locale": "en_US",
             "platform": "web",
         }
+        self.cookie = cookie_path
 
     def get_anime_timeline(self) -> BiliTvResponse:
         """Get API response from Bilibili and convert to Data Object
@@ -32,6 +33,31 @@ class BiliApi:
         resp = req.get(uri, params=self.unified_params)
         resp.raise_for_status()
         return BiliTvResponse(**resp.json())
+
+    def post_favorite(
+        self, action: Literal["add", "del"], show_id: Union[int, str]
+    ) -> BiliFavoriteResponse:
+        """Add or remove a show from favorites
+
+        Args:
+            action (Literal["add", "del"]): Action to perform
+            show_id (Union[int, str]): Show ID
+        """
+        if not self.cookie:
+            raise ValueError("Cookie path must be set to perform this action")
+        post_body = {
+            "from_spm_id": "bstar-web.timeline-detail.0.0",
+            "rid": f"{show_id}",
+            "type": 2,
+        }
+        uri = f"{self.api_url}/fav/{action}"
+        sess = req.Session()
+        jar = MozCookie(self.cookie)
+        jar.load()
+        sess.cookies.update(jar)
+        resp = sess.post(uri, json=post_body, params=self.unified_params)
+        resp.raise_for_status()
+        return BiliFavoriteResponse(**resp.json())
 
     def get_today_schedule(self) -> List[CardItem]:
         data = self.get_anime_timeline()
