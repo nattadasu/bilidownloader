@@ -448,13 +448,16 @@ class BiliProcess:
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
         final = []
+        total = len(data["entries"])
         for entry in data["entries"]:
+            prn_info(f"Processing {len(final) + 1}/{total}")
             final.append(
                 self.process_episode(
                     self.ep_url(data["id"], entry["id"]),
                     forced=forced,
                 )
             )
+            print()
         return final
 
     def process_watchlist(self, forced: bool = False) -> List[Path]:
