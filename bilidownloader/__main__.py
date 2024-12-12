@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 
 import survey
 import typer
-from rich import box, print
+from rich import box, print as rprint
 from rich.console import Console
 from rich.table import Column, Table
 from typing_extensions import Annotated
@@ -43,7 +43,7 @@ except ImportError:
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
 
-print("BiliDownloader v0.4.0")
+print("BiliDownloader v0.4.1")
 console = Console()
 
 app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
@@ -663,7 +663,7 @@ def schedule(
     data = api.get_anime_timeline()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
-    print(
+    rprint(
         "[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table"
     )
     for dow in data.data.items:
@@ -672,7 +672,7 @@ def schedule(
         if day is not None and str(day.name.lower()) != dow.full_day_of_week.lower():
             continue
         is_today = " [blue] >> TODAY << [/]" if dow.is_today else ""
-        print(
+        rprint(
             f"[reverse blue bold] {dow.full_day_of_week} [/][reverse white] {dow.full_date_text} [/]{is_today}"
         )
         tab = Table(
