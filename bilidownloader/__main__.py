@@ -98,17 +98,26 @@ URL_ARG = Annotated[
     ),
 ]
 """URL Argument for the command to download"""
+cookies_syns = ["--cookie", "--cookie-file", "-c"]
+cookies_help = "Path to your cookie.txt file"
 COOKIE_OPT = Annotated[
     Path,
     typer.Option(
-        "--cookie",
-        "--cookie-file",
-        "-c",
+        *cookies_syns,
         help="Path to your cookie.txt file",
         prompt=True,
         show_default=False,
     ),
 ]
+"""Path to Cookie File for the command to download"""
+OPTCOOKIE_OPT = Annotated[
+    Optional[Path],
+    typer.Option(
+        *cookies_syns,
+        help="Path to your cookie.txt file. Use this argument option if you also want to update your Bilibili information",
+    ),
+]
+"""Path to Cookie File for the command to download, optional"""
 WATCHLIST_OPT = Annotated[
     Path,
     typer.Option(
@@ -118,7 +127,7 @@ WATCHLIST_OPT = Annotated[
         help="Path to your watchlist.txt file",
     ),
 ]
-"""Path to Cookie File for the command to download"""
+"""Watchlist option for the command to manage watchlist"""
 HISTORY_OPT = Annotated[
     Path,
     typer.Option(
@@ -214,6 +223,14 @@ NOTIFY_OPT = Annotated[
         help="Send a notification when an episode has been downloaded",
     ),
 ]
+"""Flag to send notification"""
+ASSUMEYES_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--assumeyes", "-y", help="Automatically answer yes for all questions"
+    ),
+]
+"""Flag to force accept all prompts to True"""
 #####################################
 # END OF ARGS AND FLAGS DEFINITIONS #
 #####################################
@@ -455,8 +472,10 @@ def watchlist_add(
         ),
     ] = None,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    cookies: OPTCOOKIE_OPT = None,
+    assume_yes: ASSUMEYES_OPT = False,
 ):
-    wl = Watchlist(file_path)
+    wl = Watchlist(file_path, cookies)
     wids = {item[0] for item in wl.list}
 
     if series_url:
@@ -494,13 +513,25 @@ def watchlist_add(
             except (survey.widgets.Escape, KeyboardInterrupt):
                 exit(1)
     for i in index:
-        wl.add_watchlist(filt[i][0], filt[i][1])
+        sid = filt[i][0]
+        title = filt[i][1]
+        confirm = assume_yes
+        if cookies is None and not assume_yes:
+            confirm = survey.routines.inquire(
+                f"Do you want to add {title} ({sid}) to watchlist? ", default=False
+            )
+        wl.add_watchlist(filt[i][0], filt[i][1], confirm) # type: ignore
     exit(0)
 
 
 @wl_app.command("delete", help="Delete series from watchlist")
-def watchlist_delete(file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST):
-    wl = Watchlist(file_path)
+@wl_app.command("del", help="Delete series from watchlist", hidden=True)
+def watchlist_delete(
+    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    cookies: OPTCOOKIE_OPT = None,
+    assume_yes: ASSUMEYES_OPT = False,
+):
+    wl = Watchlist(file_path, cookies)
     index: Optional[List[int]] = None
 
     while True:
@@ -520,7 +551,12 @@ def watchlist_delete(file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST):
         ids.append(wl.list[i][0])
 
     for sid in ids:
-        wl.delete_from_watchlist(sid)
+        confirm = assume_yes
+        if cookies is None and not assume_yes:
+            confirm = survey.routines.inquire(
+                f"Do you want to delete {sid} from watchlist? ", default=False
+            )
+        wl.delete_from_watchlist(sid, confirm)
     exit(0)
 
 
@@ -588,12 +624,7 @@ def history_list(
 @hi_app.command("clear", help="Clear history")
 def history_clear(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
-    yes: Annotated[
-        bool,
-        typer.Option(
-            "--assumeyes", "-y", help="Automatically answer yes for all questions"
-        ),
-    ] = False,
+    yes: ASSUMEYES_OPT = False,
 ):
     hi = History(file_path)
     prompt = False
@@ -629,12 +660,13 @@ def schedule(
     ] = None,
 ):
     api = BiliApi()
+    data = api.get_anime_timeline()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
     print(
         "[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table"
     )
-    for dow in api.data.data.items:
+    for dow in data.data.items:
         if dow.is_today and day == DayOfWeek.TODAY:
             day = DayOfWeek(dow.full_day_of_week.lower())
         if day is not None and str(day.name.lower()) != dow.full_day_of_week.lower():

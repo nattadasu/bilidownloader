@@ -1,34 +1,43 @@
 from copy import deepcopy
 from os import path as opath
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Literal, Optional, Tuple, Union
 
 try:
+    from api import BiliApi
     from common import (
         DEFAULT_WATCHLIST,
         DataExistError,
         prn_done,
+        prn_error,
         prn_info,
     )
 except ImportError:
+    from bilidownloader.api import BiliApi
     from bilidownloader.common import (
         DEFAULT_WATCHLIST,
         DataExistError,
         prn_done,
+        prn_error,
         prn_info,
     )
 
 
 class Watchlist:
-    def __init__(self, path: Path = DEFAULT_WATCHLIST):
+    def __init__(
+        self, path: Path = DEFAULT_WATCHLIST, cookie_path: Optional[Path] = None
+    ):
         self.path = path
         self.list: List[Tuple[str, str]] = []
+        self.cookie: Optional[Path] = None
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
             prn_info(f"Watchlist file can't be found on {str(path)}, creating...")
             with open(self.path, "w+", encoding="utf8") as file:
                 file.write("")
+        if cookie_path:
+            self.cookie = Path(cookie_path)
         self.read_watchlist()
 
     def read_watchlist(self) -> List[Tuple[str, str]]:
@@ -72,13 +81,32 @@ class Watchlist:
             for season, name in self.list:
                 file.write(f"{season}, {name}\n")
 
+    def _remote_update(
+        self, season_id: Union[str, int], action: Literal["add", "del"]
+    ) -> None:
+        """Update watchlist on Bilibili's server"""
+        if not self.cookie:
+            raise ValueError("Cookie path must be set to perform this action")
+        api = BiliApi(cookie_path=self.cookie)
+        long_action = "delete" if action == "del" else "add"
+        prn_info(f"Cookies found, updating watchlist on Bilibili's server: {long_action} {season_id}")
+        try:
+            resp = api.post_favorite(action, season_id)
+            if resp.code != 0:
+                raise ValueError(f"Failed to {long_action} {season_id}: {resp.message}")
+        except Exception as e:
+            prn_error(f"{e}")
+
     def add_watchlist(
-        self, season_id: Union[str, int], title: str
+        self, season_id: Union[str, int], title: str, remote_update: bool = False
     ) -> List[Tuple[str, str]]:
         """Writes a season ID to the watchlist, raises an error if it already exists."""
         for season, _ in self.list:
             if str(season_id) == season:
                 raise DataExistError("Show has been added previously to watchlist")
+
+        if remote_update:
+            self._remote_update(season_id, "add")
 
         self.list.append((str(season_id), title))
         self._write_watchlist()
@@ -86,7 +114,7 @@ class Watchlist:
         return self.list
 
     def delete_from_watchlist(
-        self, season_id: Union[str, int]
+        self, season_id: Union[str, int], remote_update: bool = False
     ) -> List[Tuple[str, str]]:
         """Deletes a season ID from the watchlist. Raises an error if the season ID is not found."""
         # Filter out the season ID to be deleted
@@ -94,6 +122,9 @@ class Watchlist:
 
         if len(updated_data) == len(self.list):
             raise ValueError("Season ID not found in watchlist")
+
+        if remote_update:
+            self._remote_update(season_id, "del")
 
         self.list = deepcopy(updated_data)
         self._write_watchlist()
