@@ -9,7 +9,7 @@ from notifypy import Notify
 from pydantic import BaseModel
 from survey import printers
 
-API_URL = "https://api.bilibili.tv/intl/gateway/web/v2/anime/timeline?s_locale=en_US&platform=web"
+WEB_API_URL = "https://api.bilibili.tv/intl/gateway/web/v2"
 DEFAULT_HISTORY = Path("~/Bilibili/history.txt").expanduser()
 DEFAULT_WATCHLIST = Path("~/Bilibili/watchlist.txt").expanduser()
 

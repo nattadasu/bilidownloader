@@ -6,44 +6,48 @@ import requests as req
 
 try:
     from api_model import BiliTvResponse, CardItem
-    from common import API_URL
+    from common import WEB_API_URL
 except ImportError:
     from bilidownloader.api_model import BiliTvResponse, CardItem
-    from bilidownloader.common import API_URL
+    from bilidownloader.common import WEB_API_URL
 
 
 class BiliApi:
-    def __init__(self, api_url: str = API_URL):
+    def __init__(
+        self, api_url: str = WEB_API_URL
+    ):
         self.api_url = api_url
-        self.data = self._get_api_resp()
+        self.unified_params = {
+            "s_locale": "en_US",
+            "platform": "web",
+        }
 
-    def _get_api_resp(self) -> BiliTvResponse:
+    def get_anime_timeline(self) -> BiliTvResponse:
         """Get API response from Bilibili and convert to Data Object
 
         Returns:
             BiliTvResponse: Response in Model Object
         """
-        resp = req.get(self.api_url)
+        uri = f"{self.api_url}/anime/timeline"
+        resp = req.get(uri, params=self.unified_params)
         resp.raise_for_status()
         return BiliTvResponse(**resp.json())
 
     def get_today_schedule(self) -> List[CardItem]:
-        return [
-            card for day in self.data.data.items if day.is_today for card in day.cards
-        ]
+        data = self.get_anime_timeline()
+        return [card for day in data.data.items if day.is_today for card in day.cards]
 
     def get_all_available_shows(self) -> List[CardItem]:
+        data = self.get_anime_timeline()
         return [
-            card
-            for day in self.data.data.items
-            for card in day.cards
-            if card.is_available
+            card for day in data.data.items for card in day.cards if card.is_available
         ]
 
     def get_all_shows_simple(self) -> List[Tuple[str, str]]:
         anime = {}
+        data = self.get_anime_timeline()
 
-        for day in self.data.data.items:
+        for day in data.data.items:
             for card in day.cards:
                 # Use a dictionary to remove duplicates by season_id
                 anime[str(card.season_id)] = card.title
