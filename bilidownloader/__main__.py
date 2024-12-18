@@ -7,7 +7,8 @@ from typing import List, Optional, Union
 
 import survey
 import typer
-from rich import box, print as rprint
+from rich import box
+from rich import print as rprint
 from rich.console import Console
 from rich.table import Column, Table
 from typing_extensions import Annotated
@@ -26,6 +27,7 @@ try:
     )
     from extractor import BiliProcess
     from history import History
+    from metadata import __VERSION__, __DESCRIPTION__
     from watchlist import Watchlist
 except ImportError:
     from bilidownloader.api import BiliApi, BiliHtml
@@ -41,12 +43,16 @@ except ImportError:
     )
     from bilidownloader.extractor import BiliProcess
     from bilidownloader.history import History
+    from bilidownloader.metadata import __VERSION__, __DESCRIPTION__
     from bilidownloader.watchlist import Watchlist
 
-print("BiliDownloader v0.4.1")
 console = Console()
 
-app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
+app = typer.Typer(
+    pretty_exceptions_show_locals=False,
+    no_args_is_help=True,
+    help=f"{__DESCRIPTION__} (Version: {__VERSION__})",
+)
 hi_app = typer.Typer(no_args_is_help=True)
 wl_app = typer.Typer(no_args_is_help=True)
 app.add_typer(hi_app, name="history", help="View and manage history")
@@ -703,6 +709,25 @@ def schedule(
         for anime in released:
             tab.add_row(*anime)
         console.print(tab)
+
+
+@app.command("version", help="Show version")
+@app.command("ver", help="Show version", hidden=True)
+def version(
+    plain: Annotated[
+        bool,
+        typer.Option(
+            "--plain",
+            "-p",
+            help="Show version number only",
+        ),
+    ] = False,
+):
+    if plain:
+        print(__VERSION__)
+    else:
+        rprint(f"[bold]BiliDownloader[/] version: [blue]{__VERSION__}[/]")
+    typer.Exit()
 
 
 if __name__ == "__main__":
