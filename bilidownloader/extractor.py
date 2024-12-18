@@ -407,7 +407,8 @@ class BiliProcess:
             prn_info("Downloading episode now")
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
-            ydl.add_post_processor(SSARescaler(), when="before_dl")
+            if not (self.dont_rescale or self.srt):
+                ydl.add_post_processor(SSARescaler(), when="before_dl")
             ydl.download([episode_url])
 
         metadata["btitle"] = title
