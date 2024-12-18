@@ -187,6 +187,15 @@ SRT_OPT = Annotated[
     ),
 ]
 """Flag to download SRT only"""
+DO_NOT_RESCALE_SSA_OPT = Annotated[
+    bool,
+    typer.Option(
+        "/--no-rescale",
+        "/-N",
+        help="Do not rescale SSA subtitle to fix subtitle size when by default it's too big",
+    ),
+]
+"""Flag to not rescale SSA subtitle"""
 PV_OPT = Annotated[
     bool,
     typer.Option(
@@ -240,14 +249,13 @@ ASSUMEYES_OPT = Annotated[
 
 down_shelp = "Download via direct URL"
 
+
 @app.command(
     name="download",
     short_help=f"{down_shelp}. Alias: down",
     no_args_is_help=True,
 )
-@app.command(
-    name="down", short_help=down_shelp, hidden=True, no_args_is_help=True
-)
+@app.command(name="down", short_help=down_shelp, hidden=True, no_args_is_help=True)
 def download_url(
     url: URL_ARG,
     cookie: COOKIE_OPT,
@@ -260,6 +268,7 @@ def download_url(
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -278,6 +287,7 @@ def download_url(
         mkvpropedit_path=mkvpropedit_path,
         notification=notification,
         srt=srtonly,
+        dont_rescale=no_rescale,
     )
     if matches:
         if not forced:
@@ -305,6 +315,7 @@ def _cards_selector(
     mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
     notification: bool = False,
     srtonly: bool = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -337,6 +348,7 @@ def _cards_selector(
         mkvpropedit_path=mkvpropedit_path,
         notification=notification,
         srtonly=srtonly,
+        no_rescale=no_rescale,
     )
 
     wl = Watchlist(watchlist_file)
@@ -365,6 +377,7 @@ def download_today_releases(
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -384,6 +397,7 @@ def download_today_releases(
             mkvpropedit_path=mkvpropedit_path,
             notification=notification,
             srtonly=srtonly,
+            no_rescale=no_rescale,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -406,6 +420,7 @@ def download_all_releases(
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -427,6 +442,7 @@ def download_all_releases(
             mkvpropedit_path=mkvpropedit_path,
             notification=notification,
             srtonly=srtonly,
+            no_rescale=no_rescale,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -568,7 +584,10 @@ wl_down_shelp = "Download all episodes from watchlist"
     "download", help=f"{wl_down_help}. Alias: down", short_help=wl_down_shelp
 )
 @wl_app.command(
-    "down", help=wl_down_help, short_help=wl_down_shelp, hidden=True,
+    "down",
+    help=wl_down_help,
+    short_help=wl_down_shelp,
+    hidden=True,
 )
 def watchlist_download(
     cookie: COOKIE_OPT,
@@ -581,6 +600,7 @@ def watchlist_download(
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -597,6 +617,7 @@ def watchlist_download(
         mkvpropedit_path=mkvpropedit_path,
         notification=notification,
         srt=srtonly,
+        dont_rescale=no_rescale,
     )
     bili.process_watchlist(forced=forced)
 

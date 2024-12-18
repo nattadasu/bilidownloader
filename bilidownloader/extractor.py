@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from fake_useragent import UserAgent
 from yt_dlp import YoutubeDL as YDL
+from yt_dlp import postprocessor as postproc
 
 try:
     from api import BiliApi, BiliHtml
@@ -48,6 +49,31 @@ ua = UserAgent()
 uagent = ua.chrome
 
 
+class SSARescaler(postproc.PostProcessor):
+    def run(self, info) -> tuple[list[Any], Any]:
+        # Replace string from "Noto Sans,100" to "Noto Sans,65" on all
+        # subtitle files
+        def return_dump() -> tuple[list[Any], Any]:
+            return [], info
+
+        self.to_screen("Changing subtitle font size")
+        fpath: dict[str, str] = info.get("__files_to_move", {})
+        if len(fpath) == 0:
+            self.report_error("No filepath found in the metadata")
+            return return_dump()
+        for _, sub_file in fpath.items():
+            if not sub_file.endswith("ass"):
+                self.report_warning(f"{sub_file} is skipped as it's not SSA file")
+                continue
+            with open(sub_file, "r", encoding="utf-8") as file:
+                content = file.read()
+            content = content.replace("Noto Sans,100", "Noto Sans,65")
+            with open(sub_file, "w", encoding="utf-8") as file:
+                file.write(content)
+            self.to_screen(f"{sub_file} has been properly formatted")
+        return return_dump()
+
+
 class BiliProcess:
     def __init__(
         self,
@@ -61,6 +87,7 @@ class BiliProcess:
         mkvpropedit_path: Optional[Path] = None,
         notification: bool = False,
         srt: bool = False,
+        dont_rescale: bool = False,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -72,6 +99,7 @@ class BiliProcess:
         self.mkvpropedit_path = mkvpropedit_path
         self.notification = notification
         self.srt = srt
+        self.dont_rescale = dont_rescale
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -379,6 +407,7 @@ class BiliProcess:
             prn_info("Downloading episode now")
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
+            ydl.add_post_processor(SSARescaler(), when="before_dl")
             ydl.download([episode_url])
 
         metadata["btitle"] = title
