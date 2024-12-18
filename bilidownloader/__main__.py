@@ -1,9 +1,10 @@
 import re
+from copy import deepcopy
 from enum import Enum
 from html import unescape
 from pathlib import Path
 from sys import exit
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import survey
 import typer
@@ -27,7 +28,7 @@ try:
     )
     from extractor import BiliProcess
     from history import History
-    from metadata import __VERSION__, __DESCRIPTION__
+    from metadata import __DESCRIPTION__, __VERSION__
     from watchlist import Watchlist
 except ImportError:
     from bilidownloader.api import BiliApi, BiliHtml
@@ -43,7 +44,7 @@ except ImportError:
     )
     from bilidownloader.extractor import BiliProcess
     from bilidownloader.history import History
-    from bilidownloader.metadata import __VERSION__, __DESCRIPTION__
+    from bilidownloader.metadata import __DESCRIPTION__, __VERSION__
     from bilidownloader.watchlist import Watchlist
 
 console = Console()
@@ -56,11 +57,13 @@ app = typer.Typer(
 hi_app = typer.Typer(no_args_is_help=True)
 wl_app = typer.Typer(no_args_is_help=True)
 app.add_typer(hi_app, name="history", help="View and manage history")
-app.add_typer(
-    wl_app,
-    name="watchlist",
-    help="View and manage watchlist, or download recently released episodes from watchlist",
+
+wl_help = (
+    "View and manage watchlist, or download recently released episodes from watchlist"
 )
+wl_shelp = "View and manage watchlist. Alias: wl"
+app.add_typer(wl_app, name="watchlist", help=f"{wl_help}", short_help=wl_shelp)
+app.add_typer(wl_app, name="wl", help=wl_help, hidden=True)
 
 
 bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
@@ -104,25 +107,22 @@ URL_ARG = Annotated[
     ),
 ]
 """URL Argument for the command to download"""
-cookies_syns = ["--cookie", "--cookie-file", "-c"]
 cookies_help = "Path to your cookie.txt file"
-COOKIE_OPT = Annotated[
-    Path,
-    typer.Option(
-        *cookies_syns,
-        help="Path to your cookie.txt file",
-        prompt=True,
-        show_default=False,
-    ),
-]
+cookie_option = typer.Option(
+    "--cookie",
+    "--cookie-file",
+    "-c",
+    help=cookies_help,
+    prompt=True,
+    show_default=False,
+)
+optcookie = deepcopy(cookie_option)
+optcookie.help = f"{cookies_help}. Use this argument option if you also want to update your Bilibili information"
+optcookie.show_default = True
+optcookie.prompt = False
+COOKIE_OPT = Annotated[Path, cookie_option]
 """Path to Cookie File for the command to download"""
-OPTCOOKIE_OPT = Annotated[
-    Optional[Path],
-    typer.Option(
-        *cookies_syns,
-        help="Path to your cookie.txt file. Use this argument option if you also want to update your Bilibili information",
-    ),
-]
+OPTCOOKIE_OPT = Annotated[Optional[Path], optcookie]
 """Path to Cookie File for the command to download, optional"""
 WATCHLIST_OPT = Annotated[
     Path,
@@ -148,7 +148,7 @@ FORCED_OPT = Annotated[
     bool,
     typer.Option(
         "--force",
-        "-f",
+        "-F",
         help="Force download the video even if it was downloaded previously",
     ),
 ]
@@ -172,7 +172,7 @@ AVC_OPT = Annotated[
     typer.Option(
         "--is-avc",
         "--avc",
-        "-A",
+        "-a",
         help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
     ),
 ]
@@ -190,7 +190,6 @@ SRT_OPT = Annotated[
 PV_OPT = Annotated[
     bool,
     typer.Option(
-        "--download-pv",
         "--pv",
         help="Also download PV, only affects if the url is a Playlist",
     ),
@@ -201,7 +200,6 @@ FFMPEG_OPT = Annotated[
     typer.Option(
         "--ffmpeg-path",
         "--ffmpeg",
-        "-F",
         help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
     ),
 ]
@@ -211,7 +209,6 @@ MKVPROPEX_OPT = Annotated[
     typer.Option(
         "--mkvpropedit-path",
         "--mkvpropedit",
-        "-M",
         help="Location of the mkvpropedit binary; either the path to the binary or its containing directory",
     ),
 ]
@@ -224,7 +221,6 @@ NOTIFY_OPT = Annotated[
     bool,
     typer.Option(
         "--notify",
-        "--notification",
         "-n",
         help="Send a notification when an episode has been downloaded",
     ),
@@ -237,18 +233,20 @@ ASSUMEYES_OPT = Annotated[
     ),
 ]
 """Flag to force accept all prompts to True"""
+
 #####################################
 # END OF ARGS AND FLAGS DEFINITIONS #
 #####################################
 
+down_shelp = "Download via direct URL"
 
 @app.command(
     name="download",
-    short_help="Download via direct URL",
+    short_help=f"{down_shelp}. Alias: down",
     no_args_is_help=True,
 )
 @app.command(
-    name="down", short_help="Download via direct URL", hidden=True, no_args_is_help=True
+    name="down", short_help=down_shelp, hidden=True, no_args_is_help=True
 )
 def download_url(
     url: URL_ARG,
@@ -294,14 +292,7 @@ def download_url(
         raise ValueError("Link is not a valid Bilibili.tv URL")
 
 
-def write_to_watchlist(
-    season_id: Union[str, int], title: str, watchlist: Path = DEFAULT_WATCHLIST
-):
-    wl = Watchlist(watchlist)
-    wl.add_watchlist(season_id, title)
-
-
-def cards_selector(
+def _cards_selector(
     cards: List[CardItem],
     cookie: Path,
     watchlist_file: Path = DEFAULT_WATCHLIST,
@@ -380,7 +371,7 @@ def download_today_releases(
     api = BiliApi().get_today_schedule()
     released = [anime for anime in api if anime.is_available]
     try:
-        cards_selector(
+        _cards_selector(
             released,
             cookie=cookie,
             watchlist_file=watchlist_file,
@@ -423,7 +414,7 @@ def download_all_releases(
     released = [anime for anime in api if anime.is_available]
     released = sorted(released, key=lambda k: k.title)
     try:
-        cards_selector(
+        _cards_selector(
             released,
             cookie=cookie,
             watchlist_file=watchlist_file,
@@ -530,8 +521,11 @@ def watchlist_add(
     exit(0)
 
 
-@wl_app.command("delete", help="Delete series from watchlist")
-@wl_app.command("del", help="Delete series from watchlist", hidden=True)
+wl_del_help = "Delete series from watchlist"
+
+
+@wl_app.command("delete", help=wl_del_help, short_help=f"{wl_del_help}. Alias: del")
+@wl_app.command("del", help=wl_del_help, hidden=True)
 def watchlist_delete(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
@@ -566,16 +560,15 @@ def watchlist_delete(
     exit(0)
 
 
+wl_down_help = "Download all released episodes on watchlist, max 3 days old"
+wl_down_shelp = "Download all episodes from watchlist"
+
+
 @wl_app.command(
-    "download",
-    help="Download all released episodes on watchlist, max 3 days old",
-    short_help="Download all episodes from watchlist",
+    "download", help=f"{wl_down_help}. Alias: down", short_help=wl_down_shelp
 )
 @wl_app.command(
-    "down",
-    help="Download all released episodes on watchlist, max 3 days old",
-    short_help="Download all episodes from watchlist",
-    hidden=True,
+    "down", help=wl_down_help, short_help=wl_down_shelp, hidden=True,
 )
 def watchlist_download(
     cookie: COOKIE_OPT,
@@ -608,7 +601,9 @@ def watchlist_download(
     bili.process_watchlist(forced=forced)
 
 
-@hi_app.command("list", help="Show history")
+@hi_app.command(
+    "list", help="Show history of downloaded URLs, might be unreadable by normal mean"
+)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
