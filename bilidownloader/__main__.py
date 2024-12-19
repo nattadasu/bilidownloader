@@ -190,8 +190,8 @@ SRT_OPT = Annotated[
 DO_NOT_RESCALE_SSA_OPT = Annotated[
     bool,
     typer.Option(
-        "/--no-rescale",
-        "/-N",
+        "--no-rescale",
+        "-N",
         help="Do not rescale SSA subtitle to fix subtitle size when by default it's too big",
     ),
 ]
