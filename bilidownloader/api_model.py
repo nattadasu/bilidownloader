@@ -2,7 +2,7 @@ from datetime import date, datetime
 from re import search as rsearch
 from typing import List, Optional
 
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 
 
 class CornerMark(BaseModel):
@@ -53,7 +53,7 @@ class DayItem(BaseModel):
     date_text: str
     full_date_text: date
     full_day_of_week: str
-    cards: List[CardItem]
+    cards: List[CardItem] = Field(default=[])
 
 
 class ReturnData(BaseModel):

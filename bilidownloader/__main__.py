@@ -708,6 +708,9 @@ def schedule(
             tab.add_column("URL")
         released = []
         upcoming = []
+        if not dow.cards:
+            console.print(tab)
+            continue
         for item in dow.cards:
             tmat = tpat.search(item.index_show)
             time = tmat.group(0) if tmat else ""
