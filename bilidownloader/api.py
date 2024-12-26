@@ -61,19 +61,31 @@ class BiliApi:
 
     def get_today_schedule(self) -> List[CardItem]:
         data = self.get_anime_timeline()
-        return [card for day in data.data.items if day.is_today for card in day.cards]
+        final: List[CardItem] = []
+        for day in data.data.items:
+            if day.is_today and day.cards:
+                final.extend(day.cards)
+        return final
 
     def get_all_available_shows(self) -> List[CardItem]:
         data = self.get_anime_timeline()
-        return [
-            card for day in data.data.items for card in day.cards if card.is_available
-        ]
+        final: List[CardItem] = []
+        for day in data.data.items:
+            if not day.cards:
+                continue
+            for card in day.cards:
+                if not card.is_available:
+                    continue
+                final.append(card)
+        return final
 
     def get_all_shows_simple(self) -> List[Tuple[str, str]]:
         anime = {}
         data = self.get_anime_timeline()
 
         for day in data.data.items:
+            if not day.cards:
+                continue
             for card in day.cards:
                 # Use a dictionary to remove duplicates by season_id
                 anime[str(card.season_id)] = card.title
