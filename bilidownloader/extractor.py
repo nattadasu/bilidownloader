@@ -495,6 +495,11 @@ class BiliProcess:
         wl = Watchlist(self.watchlist)
         api = BiliApi()
 
+        if forced:
+            prn_info("Forced switch is enabled, ignoring history")
+        else:
+            prn_info("Downloading watchlist")
+
         for sid, title in wl.list:
             for card in api.get_all_available_shows():
                 if sid == card.season_id:
