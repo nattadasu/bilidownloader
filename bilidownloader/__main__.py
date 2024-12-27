@@ -4,7 +4,7 @@ from enum import Enum
 from html import unescape
 from pathlib import Path
 from sys import exit
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import survey
 import typer
@@ -474,13 +474,40 @@ def watchlist_list(
     console.print(table)
 
 
+def _wl_do_proc(serial_url: str) -> Tuple[str, str]:
+    search = re.search(bili_format, serial_url)
+    if search:
+        media_id = search.group("media_id")
+    else:
+        media_id = serial_url
+    url = f"https://www.bilibili.tv/en/media/{media_id}"
+    try:
+        resp = BiliHtml().get(url)
+    except Exception as e:
+        raise ValueError(f"Failed to fetch {url}: {e}")
+    ftitle = re.search(
+        r'<h1.*class="detail-header__title".*>(.*)</h1>',
+        resp.content.decode("utf-8"),
+        re.IGNORECASE,
+    )
+    if ftitle:
+        title = unescape(ftitle.group(1))
+        return media_id, title
+    else:
+        raise NameError("Title of the show can't be located")
+
+
+def wl_action_msg(action: str) -> str:
+    return f"Series URL or ID to be {action} to watchlist. Use this if you obtained media/play URL of the show, and want to skip interactive mode"
+
+
 @wl_app.command("add", help="Add a series to watchlist")
 def watchlist_add(
-    series_url: Annotated[
-        Optional[str],
+    series: Annotated[
+        Optional[List[str]],
         typer.Argument(
             ...,
-            help="If you obtained media/play URL of the show, and skip interactive mode",
+            help=wl_action_msg("added"),
             show_default=False,
         ),
     ] = None,
@@ -491,25 +518,21 @@ def watchlist_add(
     wl = Watchlist(file_path, cookies)
     wids = {item[0] for item in wl.list}
 
-    if series_url:
-        search = re.search(bili_format, series_url)
-        if search:
-            media_id = search.group("media_id")
-            url = f"https://www.bilibili.tv/en/media/{media_id}"
-            resp = BiliHtml().get(url)
-            ftitle = re.search(
-                r'<h1.*class="detail-header__title".*>(.*)</h1>',
-                resp.content.decode("utf-8"),
-                re.IGNORECASE,
-            )
-            if ftitle:
-                title = unescape(ftitle.group(1))
-                index = {0}
-                filt = [(media_id, title)]
-            else:
-                raise NameError("Title of the show can't be located")
-        else:
-            raise ValueError(f"{series_url} is not valid Bilibili series URL")
+    if series:
+        filt: List[Tuple[str, str]] = []
+        for url in series:
+            try:
+                media_id, title = _wl_do_proc(url)
+                if media_id not in wids:
+                    filt.append((media_id, title))
+                else:
+                    prn_info(f"{title} is already exist on watchlist, skipping prompt")
+            except Exception as e:
+                prn_error(f"Error: {e}")
+        if len(filt) == 0:
+            prn_error("All series are already exist on watchlist")
+            exit(2)
+        index = [i for i in range(len(filt))]
     else:
         api = BiliApi().get_all_shows_simple()
 
@@ -528,12 +551,14 @@ def watchlist_add(
     for i in index:
         sid = filt[i][0]
         title = filt[i][1]
-        confirm = assume_yes
+        confirm: bool = False
         if cookies and not assume_yes:
-            confirm = survey.routines.inquire(
+            confirm = survey.routines.inquire(  # type: ignore
                 f"Do you want to add {title} ({sid}) to watchlist? ", default=False
             )
-        wl.add_watchlist(filt[i][0], filt[i][1], confirm or not cookies)
+        else:
+            confirm = assume_yes
+        wl.add_watchlist(filt[i][0], filt[i][1], confirm)
     exit(0)
 
 
@@ -543,36 +568,63 @@ wl_del_help = "Delete series from watchlist"
 @wl_app.command("delete", help=wl_del_help, short_help=f"{wl_del_help}. Alias: del")
 @wl_app.command("del", help=wl_del_help, hidden=True)
 def watchlist_delete(
+    series: Annotated[
+        Optional[List[str]],
+        typer.Argument(
+            ...,
+            help=wl_action_msg("deleted"),
+            show_default=False,
+        ),
+    ] = None,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
     assume_yes: ASSUMEYES_OPT = False,
 ):
-    wl = Watchlist(file_path, cookies)
+    wl = Watchlist(file_path, cookies, silent=True if cookies else False)
     index: Optional[List[int]] = None
 
-    while True:
-        try:
-            index = survey.routines.basket(
-                "Select any shows to be deleted: ",
-                options=[title for _, title in wl.list],
-            )
-            if index is not None:
-                break
-            prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
-        except (survey.widgets.Escape, KeyboardInterrupt):
-            exit(1)
-
+    if series:
+        filt: List[Tuple[str, str]] = []
+        for url in series:
+            try:
+                media_id, title = _wl_do_proc(url)
+                if wl.search_watchlist(season_id=media_id):
+                    filt.append((media_id, title))
+                else:
+                    prn_info(f"{title} is not exist on watchlist, skipping prompt")
+            except Exception as e:
+                prn_error(f"Error: {e}")
+        if len(filt) == 0:
+            prn_error("All series are not exist on watchlist")
+            exit(2)
+        # properly set index to avoid error by comparing from wl.list
+        find = [media_id for media_id, _ in filt]
+        index = [i for i, (sid, _) in enumerate(wl.list) if sid in find]
+    else:
+        while True:
+            try:
+                index = survey.routines.basket(
+                    "Select any shows to be deleted: ",
+                    options=[title for _, title in wl.list],
+                )
+                if index is not None:
+                    break
+                prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
+            except (survey.widgets.Escape, KeyboardInterrupt):
+                exit(1)
     ids = []
     for i in index:
         ids.append(wl.list[i][0])
 
     for sid in ids:
-        confirm = assume_yes
+        confirm: bool = False
         if cookies and not assume_yes:
-            confirm = survey.routines.inquire(
+            confirm = survey.routines.inquire(  # type: ignore
                 f"Do you want to delete {sid} from watchlist? ", default=False
             )
-        wl.delete_from_watchlist(sid, confirm or not cookies)
+        else:
+            confirm = assume_yes
+        wl.delete_from_watchlist(sid, confirm)
     exit(0)
 
 
