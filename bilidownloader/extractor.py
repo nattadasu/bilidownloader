@@ -263,7 +263,9 @@ class BiliProcess:
         return Path(video_path)
 
     def _add_audio_language(
-        self, video_path: Path, language: Optional[Literal["ind", "jpn", "chi", "tha"]]
+        self,
+        video_path: Path,
+        language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]]
     ) -> Path:
         """
         Adds an audio language to the video file.
@@ -286,8 +288,10 @@ class BiliProcess:
             "jpn": "Japanese",
             "ind": "Indonesian",
             "tha": "Thai",
+            None: "Undetermined",
         }
-        lang_title = code[language] if language else "und"
+        lang_title = code[language]
+        language = language or "und"
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
