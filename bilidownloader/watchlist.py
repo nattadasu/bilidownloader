@@ -25,11 +25,15 @@ except ImportError:
 
 class Watchlist:
     def __init__(
-        self, path: Path = DEFAULT_WATCHLIST, cookie_path: Optional[Path] = None
+        self,
+        path: Path = DEFAULT_WATCHLIST,
+        cookie_path: Optional[Path] = None,
+        silent: bool = False,
     ):
         self.path = path
         self.list: List[Tuple[str, str]] = []
         self.cookie: Optional[Path] = None
+        self.silent = silent
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
@@ -85,17 +89,29 @@ class Watchlist:
         self, season_id: Union[str, int], action: Literal["add", "del"]
     ) -> None:
         """Update watchlist on Bilibili's server"""
+        # Don't perform the action if silent mode is enabled
+        if self.silent:
+            return
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
         api = BiliApi(cookie_path=self.cookie)
         long_action = "delete" if action == "del" else "add"
-        prn_info(f"Cookies found, updating watchlist on Bilibili's server: {long_action} {season_id}")
+        prn_info(
+            f"Cookies found, updating watchlist on Bilibili's server: {long_action} {season_id}"
+        )
         try:
             resp = api.post_favorite(action, season_id)
             if resp.code != 0:
                 raise ValueError(f"Failed to {long_action} {season_id}: {resp.message}")
         except Exception as e:
             prn_error(f"{e}")
+
+    def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
+        """Prints the action to the console"""
+        ft = "to" if action == "add" else "from"
+        prn_done(
+            f"{title} ({season_id}) has been {action}ed {ft} watchlist on: {str(self.path)}"
+        )
 
     def add_watchlist(
         self, season_id: Union[str, int], title: str, remote_update: bool = False
@@ -110,7 +126,7 @@ class Watchlist:
 
         self.list.append((str(season_id), title))
         self._write_watchlist()
-        prn_done(f"{title} has been added to {str(self.path)}")
+        self._prn_rw("add", season_id, title)
         return self.list
 
     def delete_from_watchlist(
@@ -126,7 +142,10 @@ class Watchlist:
         if remote_update:
             self._remote_update(season_id, "del")
 
+        idx = self.search_watchlist(season_id=season_id)
+        if not idx:
+            raise ValueError("Season ID not found in watchlist")
         self.list = deepcopy(updated_data)
         self._write_watchlist()
-        prn_done(f"{season_id} is removed from watchlist")
+        self._prn_rw("delete", season_id, idx[1])
         return updated_data
