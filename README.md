@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD034 -->
+
 # BiliDownloader
 
 Assist you in ripping episode from BiliIntl.
@@ -39,16 +41,31 @@ CLI, so anything is properly documented by simply dding `--help` param.
 * Download episode
 * Get latest schedule
 * Monitor and *automatically* download episode for tracked series (watchlist)
+* Manage Favorite List directly from the terminal
 
 ### What it CAN'T do
 
-* Bypassing premium: you'd still requires one as cookie.txt
-* Background check: use `crontab` to manage the watchlist instead
+* Bypassing premium: you'd still requires one to download paywalled contents
+* Background check: use `crontab` or any task scheduler to run the program
+  periodically
 * Downloads user-uploaded content. The program was specifically tailored for
   episode URLs instead
 * Ripping Mainland version. This program only tested to be used for International
   version
-* Automatically manage the episode to dedicated folders: use FileBot instead.
+* Automatically manage the episode to dedicated folders: use FileBot or any
+  similar tools to do so.
+
+## Versioning
+
+BiliDownloader uses [Semantic Versioning](https://semver.org/).
+
+Each release is tagged with a version number in the format `vX.Y.Z`, where `X`
+is the major version with breaking changes, `Y` is the minor version with new
+features and backward-compatible changes, and `Z` is the patch version with bug
+fixes or general improvements.
+
+Note that we do not tag versions on the repository itself, so please refer to
+commit histories in the repository for more information about the changes.
 
 ## License
 
