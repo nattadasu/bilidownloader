@@ -263,7 +263,7 @@ class BiliProcess:
         return Path(video_path)
 
     def _add_audio_language(
-        self, video_path: Path, language: Literal["ind", "jpn", "chi", "tha"]
+        self, video_path: Path, language: Optional[Literal["ind", "jpn", "chi", "tha"]]
     ) -> Path:
         """
         Adds an audio language to the video file.
@@ -287,7 +287,7 @@ class BiliProcess:
             "ind": "Indonesian",
             "tha": "Thai",
         }
-        lang_title = code[language]
+        lang_title = code[language] if language else "und"
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
@@ -302,7 +302,7 @@ class BiliProcess:
     def download_episode(
         self,
         episode_url: str,
-    ) -> Tuple[Path, Any, Literal["ind", "jpn", "chi", "tha"]]:
+    ) -> Tuple[Path, Any, Optional[Literal["ind", "jpn", "chi", "tha"]]]:
         """Download episode from Bilibili with yt-dlp
 
         Args:
@@ -329,16 +329,10 @@ class BiliProcess:
             title = ftitle
 
         # look for .bstar-meta__area class to get country of origin
-        country = rsearch(
-            r'class="bstar-meta__area">(.*)</div>', resp.content.decode("utf-8")
-        )
-        # language = "jpn"
-        # if country:
-        #     language = "chi" if "China" in country.group(1) else "jpn"
-        #     # If the title got JP Ver.
-        language: Literal["ind", "jpn", "chi", "tha"] = "jpn"
-        if country:
-            language = "chi" if "Chinese" in country.group(1) else "jpn"
+        language: Optional[Literal["ind", "jpn", "chi", "tha"]] = None
+        language = "chi" if "Chinese Mainland" in resp.text else language
+        if language is None:
+            language = "jpn" if "Japan" in resp.text else language
         jp_dub = ["JP Ver", "JPN Dub"]
         id_dub = ["Dub Indo", "ID dub"]
         th_dub = ["Thai Dub", "TH dub"]
