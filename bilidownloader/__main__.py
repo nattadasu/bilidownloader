@@ -242,6 +242,19 @@ ASSUMEYES_OPT = Annotated[
     ),
 ]
 """Flag to force accept all prompts to True"""
+ASPLAYLIST_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--as-playlist",
+        help=(
+            "Download monitored series as a playlist (play/) instead of "
+            "default behaviour by relying on recently released episodes in "
+            "past 3 days. This option will download all episodes available "
+            "including the old ones, so use with caution."
+        ),
+    ),
+]
+"""Flag to override default behaviour of downloading watchlist"""
 
 #####################################
 # END OF ARGS AND FLAGS DEFINITIONS #
@@ -655,6 +668,7 @@ def watchlist_download(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    as_playlist: ASPLAYLIST_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -673,8 +687,14 @@ def watchlist_download(
         srt=srtonly,
         dont_rescale=no_rescale,
     )
-    bili.process_watchlist(forced=forced)
-
+    if not as_playlist:
+        bili.process_watchlist(forced=forced)
+    else:
+        wl = Watchlist(watchlist_file)
+        for sid, title in wl.list:
+            url = f"https://www.bilibili.tv/en/play/{sid}"
+            prn_info(f"Downloading {title} ({url})")
+            bili.process_playlist(url, forced)
 
 @hi_app.command(
     "list", help="Show history of downloaded URLs, might be unreadable by normal mean"
