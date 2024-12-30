@@ -108,13 +108,18 @@ class Watchlist:
 
     def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
         """Prints the action to the console"""
-        ft = "to" if action == "add" else "from"
+        act = {
+            "add": ["added", "to"],
+            "delete": ["deleted", "from"],
+        }
+        past_ = act[action][0]
+        ft = act[action][1]
         prn_done(
-            f"{title} ({season_id}) has been {action}ed {ft} watchlist on: {str(self.path)}"
+            f"{title} ({season_id}) has been {past_} {ft} watchlist on: {str(self.path)}"
         )
 
     def add_watchlist(
-        self, season_id: Union[str, int], title: str, remote_update: bool = False
+        self, season_id: Union[str, int], title: str, remote_update: Optional[bool] = False
     ) -> List[Tuple[str, str]]:
         """Writes a season ID to the watchlist, raises an error if it already exists."""
         for season, _ in self.list:
@@ -130,7 +135,7 @@ class Watchlist:
         return self.list
 
     def delete_from_watchlist(
-        self, season_id: Union[str, int], remote_update: bool = False
+        self, season_id: Union[str, int], remote_update: Optional[bool] = False
     ) -> List[Tuple[str, str]]:
         """Deletes a season ID from the watchlist. Raises an error if the season ID is not found."""
         # Filter out the season ID to be deleted

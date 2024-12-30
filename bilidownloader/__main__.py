@@ -551,13 +551,14 @@ def watchlist_add(
     for i in index:
         sid = filt[i][0]
         title = filt[i][1]
-        confirm: bool = False
         if cookies and not assume_yes:
             confirm = survey.routines.inquire(  # type: ignore
                 f"Do you want to add {title} ({sid}) to watchlist? ", default=False
             )
+        elif cookies and assume_yes:
+            confirm = True
         else:
-            confirm = assume_yes
+            confirm = False
         wl.add_watchlist(filt[i][0], filt[i][1], confirm)
     exit(0)
 
@@ -617,13 +618,14 @@ def watchlist_delete(
         ids.append(wl.list[i][0])
 
     for sid in ids:
-        confirm: bool = False
         if cookies and not assume_yes:
             confirm = survey.routines.inquire(  # type: ignore
                 f"Do you want to delete {sid} from watchlist? ", default=False
             )
+        elif cookies and assume_yes:
+            confirm = True
         else:
-            confirm = assume_yes
+            confirm = False
         wl.delete_from_watchlist(sid, confirm)
     exit(0)
 
