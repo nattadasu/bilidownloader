@@ -36,8 +36,7 @@ class Watchlist:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
             prn_info(f"Watchlist file can't be found on {str(path)}, creating...")
-            with open(self.path, "w+", encoding="utf8") as file:
-                file.write("")
+            self.path.touch()
         if cookie_path:
             self.cookie = Path(cookie_path)
         self.read_watchlist()
