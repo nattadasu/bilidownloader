@@ -28,12 +28,10 @@ class Watchlist:
         self,
         path: Path = DEFAULT_WATCHLIST,
         cookie_path: Optional[Path] = None,
-        silent: bool = False,
     ):
         self.path = path
         self.list: List[Tuple[str, str]] = []
         self.cookie: Optional[Path] = None
-        self.silent = silent
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
@@ -89,9 +87,6 @@ class Watchlist:
         self, season_id: Union[str, int], action: Literal["add", "del"]
     ) -> None:
         """Update watchlist on Bilibili's server"""
-        # Don't perform the action if silent mode is enabled
-        if self.silent:
-            return
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
         api = BiliApi(cookie_path=self.cookie)

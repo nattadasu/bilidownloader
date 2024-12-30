@@ -581,7 +581,7 @@ def watchlist_delete(
     cookies: OPTCOOKIE_OPT = None,
     assume_yes: ASSUMEYES_OPT = False,
 ):
-    wl = Watchlist(file_path, cookies, silent=True if cookies else False)
+    wl = Watchlist(file_path, cookies)
     index: Optional[List[int]] = None
 
     if series:
