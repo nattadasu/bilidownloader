@@ -23,6 +23,7 @@ try:
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
+        prn_done,
         prn_error,
         prn_info,
     )
@@ -39,6 +40,7 @@ except ImportError:
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
+        prn_done,
         prn_error,
         prn_info,
     )
@@ -372,7 +374,7 @@ def _cards_selector(
         ):
             wl.add_watchlist(anime.season_id, anime.title)
     else:
-        prn_info(f"{anime.title} is exist on watchlist, skipping prompt")
+        prn_done(f"{anime.title} is exist on watchlist, skipping prompt")
 
 
 @app.command(
@@ -695,6 +697,7 @@ def watchlist_download(
             url = f"https://www.bilibili.tv/en/play/{sid}"
             prn_info(f"Downloading {title} ({url})")
             bili.process_playlist(url, forced)
+
 
 @hi_app.command(
     "list", help="Show history of downloaded URLs, might be unreadable by normal mean"
