@@ -135,6 +135,29 @@ class BiliProcess:
             return []
 
     @staticmethod
+    def _sms(seconds: float) -> int:
+        """
+        Converts seconds to milliseconds.
+
+        Args:
+            seconds (float): The number of seconds to convert.
+
+        Returns:
+            int: The number of milliseconds."""
+        return int(seconds * 1000)
+
+    def _compare_time(self, chapter: Chapter) -> float:
+        """
+        Compares the start and end time of a chapter.
+
+        Args:
+            chapter (Chapter): The chapter to compare.
+
+        Returns:
+            float: The difference between the start and end time.
+        """
+        return self._sms(chapter.end_time) - self._sms(chapter.start_time)
+
     def _format_chapter(chapter: Chapter, title: str) -> str:
         """
         Formats a chapter into FFmpeg metadata format.
@@ -146,8 +169,8 @@ class BiliProcess:
         Returns:
             str: The formatted chapter block.
         """
-        start_ms = int(chapter.start_time * 1000)
-        end_ms = int(chapter.end_time * 1000) - 1  # Subtract 1 ms for precision
+        start_ms = self._sms(chapter.start_time)
+        end_ms = self._sms(chapter.end_time) - 1  # Subtract 1 ms for precision
 
         # Return the formatted chapter string
         return f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start_ms}\nEND={end_ms}\ntitle={title}\n"
@@ -200,9 +223,16 @@ class BiliProcess:
         for i, chapter in enumerate(chapters):
             if chapter.title not in ["Intro", "Outro"]:
                 title = f"Part {part_index}"
-                part_index += 1
+                if self._compare_time(chapter) >= 40:
+                    part_index += 1
+                else:
+                    title = "Recap"
             else:
                 title = chapter.title
+                # if intro is more than 2 minutes, change it to "Part 1"
+                if title == "Intro" and self._compare_time(chapter) > 120:
+                    title = "Part {part_index}"
+                    part_index += 1
 
             # Format the current chapter
             formatted_chapters.append(self._format_chapter(chapter, title))
@@ -238,6 +268,8 @@ class BiliProcess:
 
         # 3. Write the modified metadata file
         with open(metadata_path, "a") as meta_file:
+            prn_info(f"Chapters to write: {len(formatted_chapters)}")
+            prn_info(f"Chapters:\n" + "\n".join(formatted_chapters))
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
