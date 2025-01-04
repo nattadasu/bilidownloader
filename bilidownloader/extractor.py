@@ -8,6 +8,8 @@ from re import sub as rsub
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from fake_useragent import UserAgent
+from rich.console import Console
+from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
 from yt_dlp import postprocessor as postproc
 
@@ -290,14 +292,36 @@ class BiliProcess:
         except IndexError as _:
             prn_error("This video does not have any chapters")
 
+        def fmt_timing(
+            title: str, start: float, end: float
+        ) -> Tuple[str, str, str, float]:
+            return (
+                title,
+                format_human_time(start),
+                format_human_time(end),
+                round(end - start, 2),
+            )
+
         # 3. Write the modified metadata file
+        prn_info(f"Chapters to write: {len(formatted_chapters)}")
+        deform = self._deformat_chapter(formatted_chapters)
+        fdform = [fmt_timing(ch.title, ch.start_time, ch.end_time) for ch in deform]
+        try:
+            table = Table(
+                Column("Title", justify="right"),
+                Column("Starts", justify="right", style="magenta"),
+                Column("Ends", justify="right", style="green"),
+                Column("Dur.", justify="right"),
+                box=box.ROUNDED,
+            )
+            for title, start, end, dur in fdform:
+                table.add_row(title, start, end, str(int(dur)) + "s")
+
+            Console().print(table)
+        except Exception as _:
+            for title, start, end, dur in fdform:
+                prn_info(f"  - {title}: {start} -[{dur}s]-> {end}")
         with open(metadata_path, "a") as meta_file:
-            prn_info(f"Chapters to write: {len(formatted_chapters)}")
-            deform = self._deformat_chapter(formatted_chapters)
-            for ch in deform:
-                start = format_human_time(ch.start_time)
-                end = format_human_time(ch.end_time)
-                prn_info(f"  - {ch.title}: {start} -> {end}")
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
