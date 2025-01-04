@@ -156,9 +156,10 @@ class BiliProcess:
             chapter (Chapter): The chapter to compare.
 
         Returns:
-            float: The difference between the start and end time.
+            float: The difference between the start and end time in seconds.
         """
-        return self._sms(chapter.end_time) - self._sms(chapter.start_time)
+        seconds = self._sms(chapter.end_time) - self._sms(chapter.start_time)
+        return seconds / 1000
 
     def _format_chapter(self, chapter: Chapter, title: str) -> str:
         """
