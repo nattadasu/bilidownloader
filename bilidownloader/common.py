@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import timedelta
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
@@ -116,3 +117,24 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
         ins_notify.title = f"Downloading {title}, E{index}"
         ins_notify.message = "We will notify you when it's done"
     ins_notify.send(block=False)
+
+
+def format_human_time(seconds: float) -> str:
+    """Formats a duration in seconds to a human-readable format."""
+    if seconds < 0:
+        return "N/A"
+    elif seconds == 0:
+        return "00:00:00.000"
+    delta = timedelta(seconds=seconds)
+
+    # Extract years, months, days, hours, minutes, and seconds from the
+    # timedelta object
+    hours = delta.seconds // 3600
+    minutes = delta.seconds // 60 % 60
+    secs = delta.seconds % 60
+    micros = delta.microseconds
+    
+    tk = f"{hours:02}:{minutes:02}:{secs:02}.{micros:03}"
+    if delta.days:
+        return f"{delta.days:02}d {tk}"
+    return tk
