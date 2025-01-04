@@ -19,6 +19,7 @@ try:
         Chapter,
         DataExistError,
         available_res,
+        format_human_time,
         prn_done,
         prn_error,
         prn_info,
@@ -35,6 +36,7 @@ except ImportError:
         Chapter,
         DataExistError,
         available_res,
+        format_human_time,
         prn_done,
         prn_error,
         prn_info,
@@ -158,7 +160,7 @@ class BiliProcess:
         """
         return self._sms(chapter.end_time) - self._sms(chapter.start_time)
 
-    def _format_chapter(chapter: Chapter, title: str) -> str:
+    def _format_chapter(self, chapter: Chapter, title: str) -> str:
         """
         Formats a chapter into FFmpeg metadata format.
 
@@ -174,6 +176,27 @@ class BiliProcess:
 
         # Return the formatted chapter string
         return f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start_ms}\nEND={end_ms}\ntitle={title}\n"
+
+    @staticmethod
+    def _deformat_chapter(chapter: List[str]) -> List[Chapter]:
+        """
+        Deformats a chapter from FFmpeg metadata format.
+
+        Args:
+            chapter (List[str]): The chapter to deformat.
+
+        Returns:
+            List[Chapter]: The deformatted chapter block.
+        """
+        chapters = []
+        for ch in chapter:
+            start = int((rsearch(r"START=(\d+)", ch) or [0, 0])[1])
+            end = int((rsearch(r"END=(\d+)", ch) or [0, 0])[1])
+            title = (rsearch(r"title=(.*)", ch) or ["", ""])[1]
+            chapters.append(
+                Chapter(start_time=start / 1000, end_time=end / 1000, title=title)
+            )
+        return chapters
 
     def _create_ffmpeg_chapters(
         self, chapters: List[Chapter], video_path: Path
@@ -231,7 +254,7 @@ class BiliProcess:
                 title = chapter.title
                 # if intro is more than 2 minutes, change it to "Part 1"
                 if title == "Intro" and self._compare_time(chapter) > 120:
-                    title = "Part {part_index}"
+                    title = f"Part {part_index}"
                     part_index += 1
 
             # Format the current chapter
@@ -269,7 +292,11 @@ class BiliProcess:
         # 3. Write the modified metadata file
         with open(metadata_path, "a") as meta_file:
             prn_info(f"Chapters to write: {len(formatted_chapters)}")
-            prn_info(f"Chapters:\n" + "\n".join(formatted_chapters))
+            deform = self._deformat_chapter(formatted_chapters)
+            for ch in deform:
+                start = format_human_time(ch.start_time)
+                end = format_human_time(ch.end_time)
+                prn_info(f"  - {ch.title}: {start} -> {end}")
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
@@ -285,6 +312,7 @@ class BiliProcess:
             str(output_path),
         ], check=True)
         # fmt: on
+        prn_done("Chapters have been added to the video file")
 
         prn_info(f"Removing {str(metadata_path.absolute())}")
         remove(metadata_path)
@@ -297,7 +325,7 @@ class BiliProcess:
     def _add_audio_language(
         self,
         video_path: Path,
-        language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]]
+        language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]],
     ) -> Path:
         """
         Adds an audio language to the video file.
@@ -479,7 +507,7 @@ class BiliProcess:
                     history.write_history(episode_url)
                 else:
                     prn_info("Forced download, skipping adding to history")
-                prn_info(f"Downloaded {str(final.absolute())}")
+                prn_done(f"Downloaded {str(final.absolute())}")
                 if self.notification:
                     push_notification(
                         data["btitle"], data.get("episode_number", ""), final
