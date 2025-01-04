@@ -124,17 +124,12 @@ def format_human_time(seconds: float) -> str:
     if seconds < 0:
         return "N/A"
     elif seconds == 0:
-        return "00:00:00.000"
+        return "0:00"
     delta = timedelta(seconds=seconds)
-
-    # Extract years, months, days, hours, minutes, and seconds from the
-    # timedelta object
-    hours = delta.seconds // 3600
-    minutes = delta.seconds // 60 % 60
-    secs = delta.seconds % 60
-    micros = delta.microseconds
-    
-    tk = f"{hours:02}:{minutes:02}:{secs:02}.{micros:03}"
-    if delta.days:
-        return f"{delta.days:02}d {tk}"
-    return tk
+    days, hours, minutes, secs = (
+        delta.days,
+        delta.seconds // 3600,
+        delta.seconds // 60 % 60,
+        delta.seconds % 60,
+    )
+    return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
