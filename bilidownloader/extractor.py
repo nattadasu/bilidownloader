@@ -277,10 +277,13 @@ class BiliProcess:
         for i, chapter in enumerate(chapters):
             if chapter.title not in ["Intro", "Outro"]:
                 title = f"Part {part_index}"
-                if self._compare_time(chapter) >= 40:
-                    part_index += 1
-                else:
+                compr = self._compare_time(chapter)
+                if compr <= 40:
                     title = "Recap"
+                elif chapters[i + 1].title == "Intro":
+                    title = "Prologue"
+                else:
+                    part_index += 1
             else:
                 title = chapter.title
                 # if intro is more than 2 minutes, change it to "Part 1"
@@ -333,6 +336,16 @@ class BiliProcess:
         # 3. Write the modified metadata file
         prn_info(f"Chapters to write: {len(formatted_chapters)}")
         deform = self._deformat_chapter(formatted_chapters)
+        if len([ch for ch in deform if "Part" in ch.title]) == 1:
+            for i, ch in enumerate(deform):
+                if not ch.title.startswith("Part"):
+                    continue
+                deform[i] = Chapter(
+                    start_time=ch.start_time,
+                    end_time=ch.end_time,
+                    title="Episode",
+                )
+                break
         fdform = [fmt_timing(ch.title, ch.start_time, ch.end_time) for ch in deform]
         try:
             table = Table(
@@ -350,6 +363,10 @@ class BiliProcess:
             for title, start, end, dur in fdform:
                 prn_info(f"  - {title}: {start} -[{dur}s]-> {end}")
         with open(metadata_path, "a") as meta_file:
+            fmt_chapters = "\n".join(formatted_chapters)
+            # replace Part 1 to "Episode" if there's no another "Part x" chapter
+            if len([ch for ch in deform if "Part" in ch.title]) == 1:
+                fmt_chapters = fmt_chapters.replace("Part 1", "Episode")
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
