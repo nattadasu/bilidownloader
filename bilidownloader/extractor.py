@@ -333,7 +333,7 @@ class BiliProcess:
 
         def fmt_timing(
             title: str, start: float, end: float
-        ) -> Tuple[str, str, str, float]:
+        ) -> Tuple[str, str, str, float, str]:
             """
             Format timing for table
 
@@ -343,13 +343,15 @@ class BiliProcess:
                 end (float): Chapter end time
 
             Returns:
-                Tuple[str, str, str, float]: Formatted timing
+                Tuple[str, str, str, float, str]: Formatted timing
             """
+            dur = end - start
             return (
                 title,
                 format_human_time(start),
                 format_human_time(end),
-                round(end - start, 2),
+                round(dur, 2),
+                format_human_time(dur),
             )
 
         # 3. Write the modified metadata file
@@ -371,16 +373,16 @@ class BiliProcess:
                 Column("Title", justify="right"),
                 Column("Starts", justify="right", style="magenta"),
                 Column("Ends", justify="right", style="green"),
-                Column("Dur.", justify="right"),
+                Column("Duration", justify="right"),
                 box=box.ROUNDED,
             )
-            for title, start, end, dur in fdform:
-                table.add_row(title, start, end, str(int(dur)) + "s")
+            for title, start, end, dur, hdur in fdform:
+                table.add_row(title, start, end, str(int(dur)) + f"s ({hdur})")
 
             Console().print(table)
         except Exception as _:
-            for title, start, end, dur in fdform:
-                prn_info(f"  - {title}: {start} -[{dur}s]-> {end}")
+            for title, start, end, _, hdur in fdform:
+                prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")
         with open(metadata_path, "a") as meta_file:
             fmt_chapters = "\n".join(formatted_chapters)
             # replace Part 1 to "Episode" if there's no another "Part x" chapter
