@@ -255,23 +255,17 @@ class BiliProcess:
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
         ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
-        # fmt: off
-        sp.run([
-            ffmpeg, "-v", "error",
-            "-i", str(video_path),
-            "-f", "ffmetadata",
-            str(metadata_path),
-        ], check=True)
-        # fmt: on
-        with open(metadata_path, "r", encoding="utf-8") as file:
-            content = file.read().replace("Packed by Bilibili XCoder v2.0.2", "")
         with open(metadata_path, "w", encoding="utf-8") as file:
-            file.write(content)
+            file.write(";FFMETADATA1\n")
 
         # Get video duration using ffprobe
         # fmt: off
+        ffprobe = find_command("ffprobe")
+        if not ffprobe:
+            prn_error("ffprobe is not found in the system, try to install it first or check the path")
+            return video_path
         result = sp.run([
-            "ffprobe", "-v", "error",
+            str(ffprobe), "-v", "error",
             "-show_entries", "format=duration",
             "-of", "default=noprint_wrappers=1:nokey=1",
             str(video_path),
@@ -393,10 +387,10 @@ class BiliProcess:
             for title, start, end, _, hdur in fdform:
                 prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")
         with open(metadata_path, "a") as meta_file:
-            fmt_chapters = "\n".join(formatted_chapters)
-            # replace Part 1 to "Episode" if there's no another "Part x" chapter
-            if len([ch for ch in deform if "Part" in ch.title]) == 1:
-                fmt_chapters = fmt_chapters.replace("Part 1", "Episode")
+            # Reformatted chapters from deformatted chapters
+            formatted_chapters = [
+                self._format_chapter(ch, ch.title) for ch in deform
+            ]
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
