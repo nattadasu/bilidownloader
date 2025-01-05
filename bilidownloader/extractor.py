@@ -769,28 +769,29 @@ class BiliProcess:
         else:
             prn_info("Downloading watchlist")
 
-        for sid, title in wl.list:
-            for card in api.get_all_available_shows():
-                if sid == card.season_id:
-                    print()
-                    if "-" in card.index_show:
-                        prn_info(f"Downloading {title} as a playlist")
-                        final.extend(
-                            self.process_playlist(
-                                f"https://www.bilibili.tv/en/play/{card.season_id}",
-                                forced=forced,
-                            )
-                        )
-                    else:
-                        prn_info(f"Downloading {title}, {card.index_show}")
-                        ep = self.process_episode(
-                            self.ep_url(card.season_id, card.episode_id),
+        for card in api.get_all_available_shows():
+            for sid, title in wl.list:
+                if sid != card.season_id:
+                    continue
+                print()
+                if "-" in card.index_show:
+                    prn_info(f"Downloading {title} as a playlist")
+                    final.extend(
+                        self.process_playlist(
+                            f"https://www.bilibili.tv/en/play/{card.season_id}",
                             forced=forced,
                         )
-                        if ep is not None:
-                            prn_done(
-                                f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})"
-                            )
-                            final.append(ep)
+                    )
+                else:
+                    prn_info(f"Downloading {title}, {card.index_show}")
+                    ep = self.process_episode(
+                        self.ep_url(card.season_id, card.episode_id),
+                        forced=forced,
+                    )
+                    if ep is not None:
+                        prn_done(
+                            f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})"
+                        )
+                        final.append(ep)
 
         return final
