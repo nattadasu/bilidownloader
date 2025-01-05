@@ -225,4 +225,6 @@ def format_human_time(seconds: float) -> str:
         delta.seconds // 60 % 60,
         delta.seconds % 60,
     )
+    if minutes == 0:
+        return f"0:{secs:02}"
     return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
