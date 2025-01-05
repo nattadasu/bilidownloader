@@ -69,7 +69,7 @@ available_res = Union[
 """Available resolutions on Bstation, 4K was skipped"""
 
 
-def _find_command(executable: str) -> Optional[Path]:
+def find_command(executable: str) -> Optional[Path]:
     """
     Find the path to an executable in the system.
 
@@ -103,7 +103,7 @@ def find_ffmpeg() -> Optional[Path]:
     Returns:
         Optional[Path]: the path to the ffmpeg executable, or None if not found
     """
-    return _find_command("ffmpeg")
+    return find_command("ffmpeg")
 
 
 def find_mkvpropedit() -> Optional[Path]:
@@ -113,7 +113,7 @@ def find_mkvpropedit() -> Optional[Path]:
     Returns:
         Optional[Path]: the path to the mkvpropedit executable, or None if not found
     """
-    return _find_command("mkvpropedit")
+    return find_command("mkvpropedit")
 
 
 def prn_info(message: str) -> None:

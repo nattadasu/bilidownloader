@@ -198,6 +198,17 @@ DO_NOT_RESCALE_SSA_OPT = Annotated[
     ),
 ]
 """Flag to not rescale SSA subtitle"""
+SUBLANG_OPT = Annotated[
+    Optional[str],
+    typer.Option(
+        "--sub-lang",
+        "-l",
+        help="Set the selected subtitle language to be default",
+        case_sensitive=False,
+        show_choices=False,
+    ),
+]
+"""Set the selected subtitle language to be default"""
 PV_OPT = Annotated[
     bool,
     typer.Option(
@@ -284,6 +295,7 @@ def download_url(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    sub_lang: SUBLANG_OPT = None,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -303,6 +315,7 @@ def download_url(
         notification=notification,
         srt=srtonly,
         dont_rescale=no_rescale,
+        subtitle_lang=sub_lang,  # type: ignore
     )
     if matches:
         if not forced:
@@ -330,7 +343,8 @@ def _cards_selector(
     mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
     notification: bool = False,
     srtonly: bool = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    no_rescale: bool = False,
+    sub_lang: Optional[str] = None,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -364,6 +378,7 @@ def _cards_selector(
         notification=notification,
         srtonly=srtonly,
         no_rescale=no_rescale,
+        sub_lang=sub_lang,  # type: ignore
     )
 
     wl = Watchlist(watchlist_file)
@@ -393,6 +408,7 @@ def download_today_releases(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    sub_lang: SUBLANG_OPT = None,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -413,6 +429,7 @@ def download_today_releases(
             notification=notification,
             srtonly=srtonly,
             no_rescale=no_rescale,
+            sub_lang=sub_lang,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -436,6 +453,7 @@ def download_all_releases(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    sub_lang: SUBLANG_OPT = None,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -458,6 +476,7 @@ def download_all_releases(
             notification=notification,
             srtonly=srtonly,
             no_rescale=no_rescale,
+            sub_lang=sub_lang,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -670,6 +689,7 @@ def watchlist_download(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
+    sub_lang: SUBLANG_OPT = None,
     as_playlist: ASPLAYLIST_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -688,6 +708,7 @@ def watchlist_download(
         notification=notification,
         srt=srtonly,
         dont_rescale=no_rescale,
+        subtitle_lang=sub_lang,  # type: ignore
     )
     if not as_playlist:
         bili.process_watchlist(forced=forced)

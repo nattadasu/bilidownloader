@@ -1,5 +1,6 @@
 import subprocess as sp
 from html import unescape
+from json import loads as jloads
 from os import remove, rename
 from pathlib import Path
 from re import IGNORECASE
@@ -21,6 +22,7 @@ try:
         Chapter,
         DataExistError,
         available_res,
+        find_command,
         format_human_time,
         prn_done,
         prn_error,
@@ -38,6 +40,7 @@ except ImportError:
         Chapter,
         DataExistError,
         available_res,
+        find_command,
         format_human_time,
         prn_done,
         prn_error,
@@ -92,6 +95,9 @@ class BiliProcess:
         notification: bool = False,
         srt: bool = False,
         dont_rescale: bool = False,
+        subtitle_lang: Optional[
+            Literal["eng", "ind", "may", "tha", "vie", "zht", "zhs"]
+        ] = None,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -104,6 +110,7 @@ class BiliProcess:
         self.notification = notification
         self.srt = srt
         self.dont_rescale = dont_rescale
+        self.subtitle_lang = subtitle_lang
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -317,7 +324,9 @@ class BiliProcess:
                 if drn_ <= 10:
                     last_ch = self._deformat_chapter(formatted_chapters[-1])
                     last_ch[0].end_time = total_duration
-                    formatted_chapters[-1] = self._format_chapter(last_ch[0], last_ch[0].title)
+                    formatted_chapters[-1] = self._format_chapter(
+                        last_ch[0], last_ch[0].title
+                    )
                 else:
                     is_under_minute = drn_ < 60
                     final_chapter = Chapter(
@@ -451,6 +460,87 @@ class BiliProcess:
             "--set", f"name={lang_title}",
             "--quiet",
         ], check=True)
+
+        return video_path
+
+    def _set_default_subtitle(
+        self,
+        video_path: Path,
+        language: Optional[
+            Literal["eng", "ind", "may", "tha", "vie", "zht", "zhs"]
+        ] = None,
+    ) -> Path:
+        """
+        Sets the default subtitle for the video file.
+
+        Args:
+            video_path (Path): The path to the video file.
+            language (str): The language to set as the default subtitle.
+
+        Returns:
+            Path: The path to the video file with the default subtitle set.
+        """
+        if not language:
+            prn_info(
+                f"Skipping setting default subtitle for {str(video_path.absolute())}"
+            )
+            return video_path
+        prn_info(
+            f"Setting default subtitle to '{language}' for {str(video_path.absolute())}"
+        )
+        # get the subtitle track number from the video file using mkvmerge as json
+        mkvmerge = find_command("mkvmerge")
+        mkvpropedit = (
+            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
+        )
+        if not mkvmerge:
+            prn_error(
+                "mkvmerge is not found in the system, try to install it first or check the path"
+            )
+            return video_path
+
+        # fmt: off
+        result = sp.run([
+            mkvmerge, "-J", str(video_path)
+        ], capture_output=True, text=True)
+        # fmt: on
+
+        if result.returncode != 0:
+            prn_error("Failed to get subtitle track number")
+            return video_path
+
+        set_track: Optional[str] = None
+        unset_track: List[str] = []
+
+        try:
+            data = jloads(result.stdout)
+            for track in data["tracks"]:
+                if track["type"] == "subtitles":
+                    if track["properties"]["language"] == language:
+                        set_track = str(track["id"] + 1)
+                    else:
+                        unset_track.append(str(track["id"] + 1))
+        except Exception as _:
+            prn_error("Failed to get subtitle track number")
+            return video_path
+
+        # set the subtitle track as default
+        if set_track:
+            prn_info(f"Setting track {set_track} as default subtitle")
+            unset_: List[str] = []
+            for track in unset_track:
+                unset_ += ["--edit", f"track:{track}", "--set", "flag-default=0"]
+            # fmt: off
+            sp.run([
+                mkvpropedit, str(video_path),
+                "--edit", f"track:{set_track}",
+                "--set", "flag-default=1",
+                *unset_,
+                "--quiet",
+            ], check=True)
+            # fmt: on
+        else:
+            prn_error("Specified subtitle track is not found in the video file")
 
         return video_path
 
@@ -604,6 +694,7 @@ class BiliProcess:
                 chapters = self._get_episode_chapters(data)
                 final = self._create_ffmpeg_chapters(chapters, loc)
                 final = self._add_audio_language(final, language)
+                final = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
                 if not forced:
                     history.write_history(episode_url)
                 else:
