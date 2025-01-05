@@ -209,7 +209,7 @@ class BiliProcess:
         return f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start_ms}\nEND={end_ms}\ntitle={title}\n"
 
     @staticmethod
-    def _deformat_chapter(chapter: List[str]) -> List[Chapter]:
+    def _deformat_chapter(chapter: List[str] | str) -> List[Chapter]:
         """
         Deformats a chapter from FFmpeg metadata format.
 
@@ -219,7 +219,9 @@ class BiliProcess:
         Returns:
             List[Chapter]: The deformatted chapter block.
         """
-        chapters = []
+        chapters: List[Chapter] = []
+        if isinstance(chapter, str):
+            chapter = [chapter]
         for ch in chapter:
             start = int((rsearch(r"START=(\d+)", ch) or [0, 0])[1])
             end = int((rsearch(r"END=(\d+)", ch) or [0, 0])[1])
@@ -271,7 +273,7 @@ class BiliProcess:
         total_duration = float(result.stdout.strip())
 
         # 2. Format and modify chapter information
-        formatted_chapters = []
+        formatted_chapters: List[str] = []
         part_index = 1
 
         for i, chapter in enumerate(chapters):
@@ -311,15 +313,21 @@ class BiliProcess:
         # Append final chapter that runs to the end of the video
         try:
             if chapters[-1].end_time < total_duration:
-                is_under_minute = total_duration - chapters[-1].end_time <= 60
-                final_chapter = Chapter(
-                    start_time=chapters[-1].end_time,
-                    end_time=total_duration,
-                    title="Preview" if is_under_minute else f"Part {part_index}",
-                )
-                formatted_chapters.append(
-                    self._format_chapter(final_chapter, final_chapter.title)
-                )
+                drn_ = total_duration - chapters[-1].end_time
+                if drn_ <= 10:
+                    last_ch = self._deformat_chapter(formatted_chapters[-1])
+                    last_ch[0].end_time = total_duration
+                    formatted_chapters[-1] = self._format_chapter(last_ch[0], last_ch[0].title)
+                else:
+                    is_under_minute = drn_ < 60
+                    final_chapter = Chapter(
+                        start_time=chapters[-1].end_time,
+                        end_time=total_duration,
+                        title="Preview" if is_under_minute else f"Part {part_index}",
+                    )
+                    formatted_chapters.append(
+                        self._format_chapter(final_chapter, final_chapter.title)
+                    )
         except IndexError as _:
             prn_error("This video does not have any chapters")
 
