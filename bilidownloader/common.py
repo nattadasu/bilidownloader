@@ -23,15 +23,27 @@ class DataExistError(Exception):
 
 
 class Chapter(BaseModel):
+    """Chapter model for Bilibili videos."""
+
     start_time: float
+    """Start time of the chapter in seconds."""
     end_time: float
+    """End time of the chapter in seconds."""
     title: str
+    """Title of the chapter."""
 
 
 def sanitize_filename(filename: str, replacement: str = "_") -> str:
     """
     Sanitize a string to be used as a filename by removing or replacing characters
     that are considered invalid in both Windows and Linux.
+
+    Args:
+        filename (str): the filename to sanitize
+        replacement (str, optional): the replacement for invalid characters
+
+    Returns:
+        str: the sanitized filename
     """
     # Define a pattern for invalid characters on both Windows and Linux
     invalid_characters = r'[\/:*?"<>|]'
@@ -58,6 +70,15 @@ available_res = Union[
 
 
 def _find_command(executable: str) -> Optional[Path]:
+    """
+    Find the path to an executable in the system.
+
+    Args:
+        executable (str): the name of the executable to find
+
+    Returns:
+        Optional[Path]: the path to the executable, or None if not found
+    """
     system = psys()
     command = "where" if system == "Windows" else "which"
 
@@ -76,15 +97,41 @@ def _find_command(executable: str) -> Optional[Path]:
 
 
 def find_ffmpeg() -> Optional[Path]:
+    """
+    Find the ffmpeg executable in the system.
+
+    Returns:
+        Optional[Path]: the path to the ffmpeg executable, or None if not found
+    """
     return _find_command("ffmpeg")
 
 
 def find_mkvpropedit() -> Optional[Path]:
+    """
+    Find the mkvpropedit executable in the system.
+
+    Returns:
+        Optional[Path]: the path to the mkvpropedit executable, or None if not found
+    """
     return _find_command("mkvpropedit")
 
 
 def prn_info(message: str) -> None:
-    """Prints an informational message to the console."""
+    """
+    Prints an informational message to the console.
+
+    Args:
+        message (str): the informational message
+
+    Returns:
+        None
+
+    Note:
+        If the program is running headless, the message will be printed
+        using the built-in print function as a fallback. The default behavior
+        may raises fatal error if the program is running on a headless
+        environment.
+    """
     try:
         printers.info(message)
     except Exception as _:
@@ -92,7 +139,20 @@ def prn_info(message: str) -> None:
 
 
 def prn_done(message: str) -> None:
-    """Prints a success message to the console."""
+    """
+    Prints a success message to the console.
+
+    Args:
+        message (str): the success message
+
+    Returns:
+        None
+
+    Note:
+        If the program is running headless, the message will be printed
+        using the built-in print function as a fallback. The default behavior
+        may raises fatal error if the program is running on a headless
+    """
     try:
         printers.done(message)
     except Exception as _:
@@ -100,7 +160,21 @@ def prn_done(message: str) -> None:
 
 
 def prn_error(message: str) -> None:
-    """Prints an error message to the console."""
+    """
+    Prints an error message to the console.
+
+    Args:
+        message (str): the error message
+
+    Returns:
+        None
+
+    Note:
+        If the program is running headless, the message will be printed
+        using the built-in print function as a fallback. The default behavior
+        may raises fatal error if the program is running on a headless
+        environment.
+    """
     try:
         printers.fail(message)
     except Exception as _:
@@ -108,7 +182,18 @@ def prn_error(message: str) -> None:
 
 
 def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
-    """Send native notification for Windows, Linux, and macOS"""
+    """
+    Send native notification for Windows, Linux, and macOS, exclusively used
+    for episode download.
+
+    Args:
+        title (str): the title of the episode
+        index (str): the episode index
+        path (Optional[Path], optional): the path to the downloaded file
+
+    Returns:
+        None
+    """
     ins_notify.application_name = "BiliDownloader"
     if path:
         ins_notify.title = f"{title}, E{index} downloaded"
@@ -120,7 +205,15 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
 
 
 def format_human_time(seconds: float) -> str:
-    """Formats a duration in seconds to a human-readable format."""
+    """
+    Formats a duration in seconds to a human-readable format.
+
+    Args:
+        seconds (float): the duration in seconds
+
+    Returns:
+        str: the formatted duration
+    """
     if seconds < 0:
         return "N/A"
     elif seconds == 0:

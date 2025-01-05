@@ -107,9 +107,28 @@ class BiliProcess:
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
+        """
+        Convert known IDs into proper, English episode URL.
+
+        Args:
+            season_id (Union[int, str]): Season ID
+            episode_id (Union[int, str]): Episode ID
+
+        Returns:
+            str: English episode URL
+        """
         return f"https://www.bilibili.tv/en/play/{season_id}/{episode_id}"
 
     def _get_video_info(self, episode_url: str) -> Union[Any, Dict[str, Any], None]:
+        """
+        Get video information from yt-dlp.
+
+        Args:
+            episode_url (str): URL to the episode
+
+        Returns:
+            Union[Any, Dict[str, Any], None]: Video information
+        """
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -133,6 +152,15 @@ class BiliProcess:
 
     @staticmethod
     def _get_episode_chapters(raw_info: Dict[str, Any]) -> List[Chapter]:
+        """
+        Get chapters from video metadata.
+
+        Args:
+            raw_info (Dict[str, Any]): Video metadata
+
+        Returns:
+            List[Chapter]: List of chapters
+        """
         try:
             return [Chapter(**chs) for chs in raw_info["chapters"]]
         except Exception as _:
@@ -505,6 +533,16 @@ class BiliProcess:
         )
 
     def process_episode(self, episode_url: str, forced: bool = False) -> Optional[Path]:
+        """
+        Process episode from Bilibili
+
+        Args:
+            episode_url (str): URL to the episode
+            forced (bool, optional): Force download. Defaults to False.
+
+        Returns:
+            Optional[Path]: Path to downloaded episode
+        """
         tries = 0
         history = History(self.history)
         # use English episode url from other kind of URL using regex from play/{season_id}/{episode_id}
@@ -557,6 +595,16 @@ class BiliProcess:
                 tries += 1
 
     def process_playlist(self, playlist_url: str, forced: bool = False) -> List[Path]:
+        """
+        Process playlist from Bilibili
+
+        Args:
+            playlist_url (str): URL to the playlist
+            forced (bool, optional): Force download. Defaults to False.
+
+        Returns:
+            List[Path]: List of downloaded episodes
+        """
         data = self._get_video_info(playlist_url)
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
@@ -574,6 +622,15 @@ class BiliProcess:
         return final
 
     def process_watchlist(self, forced: bool = False) -> List[Path]:
+        """
+        Process watchlist from Bilibili
+
+        Args:
+            forced (bool, optional): Force download. Defaults to False.
+
+        Returns:
+            List[Path]: List of downloaded episodes
+        """
         final: List[Path] = []
         wl = Watchlist(self.watchlist)
         api = BiliApi()

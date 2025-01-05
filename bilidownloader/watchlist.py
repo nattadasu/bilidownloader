@@ -85,7 +85,17 @@ class Watchlist:
     def _remote_update(
         self, season_id: Union[str, int], action: Literal["add", "del"]
     ) -> None:
-        """Update watchlist on Bilibili's server"""
+        """
+        Update watchlist on Bilibili's server
+
+        Args:
+            season_id (Union[str, int]): Season ID
+            action (Literal["add", "del"]): Action to perform
+
+        Raises:
+            ValueError: Cookie path must be set to perform this action
+            ValueError: Failed to {long_action} {season_id}: {resp.message}
+        """
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
         api = BiliApi(cookie_path=self.cookie)
@@ -101,7 +111,14 @@ class Watchlist:
             prn_error(f"{e}")
 
     def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
-        """Prints the action to the console"""
+        """
+        Prints the action to the console
+        
+        Args:
+            action (str): Action to perform
+            season_id (Union[str, int]): Season ID
+            title (str): Title of the show
+        """
         act = {
             "add": ["added", "to"],
             "delete": ["deleted", "from"],
@@ -115,7 +132,17 @@ class Watchlist:
     def add_watchlist(
         self, season_id: Union[str, int], title: str, remote_update: Optional[bool] = False
     ) -> List[Tuple[str, str]]:
-        """Writes a season ID to the watchlist, raises an error if it already exists."""
+        """
+        Writes a season ID to the watchlist, raises an error if it already exists.
+        
+        Args:
+            season_id (Union[str, int]): Season ID
+            title (str): Title of the show
+            remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
+        
+        Returns:
+            List[Tuple[str, str]]: Updated watchlist
+        """
         for season, _ in self.list:
             if str(season_id) == season:
                 raise DataExistError("Show has been added previously to watchlist")
@@ -131,7 +158,16 @@ class Watchlist:
     def delete_from_watchlist(
         self, season_id: Union[str, int], remote_update: Optional[bool] = False
     ) -> List[Tuple[str, str]]:
-        """Deletes a season ID from the watchlist. Raises an error if the season ID is not found."""
+        """
+        Deletes a season ID from the watchlist. Raises an error if the season ID is not found.
+        
+        Args:
+            season_id (Union[str, int]): Season ID
+            remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
+        
+        Returns:
+            List[Tuple[str, str]]: Updated watchlist
+        """
         # Filter out the season ID to be deleted
         updated_data = [entry for entry in self.list if entry[0] != str(season_id)]
 

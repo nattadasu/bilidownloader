@@ -42,6 +42,9 @@ class BiliApi:
         Args:
             action (Literal["add", "del"]): Action to perform
             show_id (Union[int, str]): Show ID
+
+        Returns:
+            BiliFavoriteResponse: Response in Model Object
         """
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
@@ -60,6 +63,12 @@ class BiliApi:
         return BiliFavoriteResponse(**resp.json())
 
     def get_today_schedule(self) -> List[CardItem]:
+        """
+        Get today's schedule
+
+        Returns:
+            List[CardItem]: List of CardItem
+        """
         data = self.get_anime_timeline()
         final: List[CardItem] = []
         for day in data.data.items:
@@ -68,6 +77,12 @@ class BiliApi:
         return final
 
     def get_all_available_shows(self) -> List[CardItem]:
+        """
+        Get all available shows
+
+        Returns:
+            List[CardItem]: List of CardItem
+        """
         data = self.get_anime_timeline()
         final: List[CardItem] = []
         for day in data.data.items:
@@ -80,6 +95,12 @@ class BiliApi:
         return final
 
     def get_all_shows_simple(self) -> List[Tuple[str, str]]:
+        """
+        Get all available shows in a simple list
+
+        Returns:
+            List[Tuple[str, str]]: List of tuples with season_id and title
+        """
         anime = {}
         data = self.get_anime_timeline()
 
@@ -109,7 +130,15 @@ class BiliHtml:
         )
 
     def get(self, url: str) -> req.Response:
-        """Get an object"""
+        """
+        Get an object
+
+        Args:
+            url (str): URL to get
+
+        Returns:
+            req.Response: Response object
+        """
 
         sess = req.Session()
         if self.cookie:

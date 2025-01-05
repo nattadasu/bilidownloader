@@ -37,7 +37,18 @@ class History:
         return self.list
 
     def check_history(self, episode_url: str) -> List[str]:
-        """Check if the episode was on the history"""
+        """
+        Check if the episode was on the history
+
+        Args:
+            episode_url (str): the episode URL to check
+
+        Returns:
+            List[str]: the history list
+
+        Raises:
+            DataExistError: if the episode was on the history
+        """
         if episode_url in self.list:
             raise DataExistError("Episode was ripped previously")
 
@@ -48,7 +59,15 @@ class History:
             file.write("\n".join([url for url in queue]) + "\n")
 
     def write_history(self, episode_url: str) -> List[str]:
-        """Writes an episode URL to the history."""
+        """
+        Writes an episode URL to the history.
+
+        Args:
+            episode_url (str): the episode URL to write
+
+        Returns:
+            List[str]: the history list
+        """
         self.list.append(episode_url)
 
         self._write(self.list)
