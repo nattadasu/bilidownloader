@@ -113,7 +113,7 @@ class Watchlist:
     def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
         """
         Prints the action to the console
-        
+
         Args:
             action (str): Action to perform
             season_id (Union[str, int]): Season ID
@@ -130,16 +130,19 @@ class Watchlist:
         )
 
     def add_watchlist(
-        self, season_id: Union[str, int], title: str, remote_update: Optional[bool] = False
+        self,
+        season_id: Union[str, int],
+        title: str,
+        remote_update: Optional[bool] = False,
     ) -> List[Tuple[str, str]]:
         """
         Writes a season ID to the watchlist, raises an error if it already exists.
-        
+
         Args:
             season_id (Union[str, int]): Season ID
             title (str): Title of the show
             remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
-        
+
         Returns:
             List[Tuple[str, str]]: Updated watchlist
         """
@@ -160,11 +163,11 @@ class Watchlist:
     ) -> List[Tuple[str, str]]:
         """
         Deletes a season ID from the watchlist. Raises an error if the season ID is not found.
-        
+
         Args:
             season_id (Union[str, int]): Season ID
             remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
-        
+
         Returns:
             List[Tuple[str, str]]: Updated watchlist
         """

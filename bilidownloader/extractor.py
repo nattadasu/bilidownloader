@@ -326,6 +326,17 @@ class BiliProcess:
         def fmt_timing(
             title: str, start: float, end: float
         ) -> Tuple[str, str, str, float]:
+            """
+            Format timing for table
+
+            Args:
+                title (str): Chapter title
+                start (float): Chapter start time
+                end (float): Chapter end time
+
+            Returns:
+                Tuple[str, str, str, float]: Formatted timing
+            """
             return (
                 title,
                 format_human_time(start),
