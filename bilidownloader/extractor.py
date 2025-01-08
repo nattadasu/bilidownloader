@@ -151,6 +151,7 @@ class BiliProcess:
             # Do not show details
             "verbose": False,
             "quiet": True,
+            "referer": "https://www.bilibili.tv/"
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
@@ -614,6 +615,7 @@ class BiliProcess:
             "subtitleslangs": ["all"],
             "updatetime": False,
             "writesubtitles": True,
+            "referer": "https://www.bilibili.tv/"
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
@@ -676,7 +678,7 @@ class BiliProcess:
         else:
             raise ValueError("Invalid episode URL")
         while True:
-            if tries > 3:
+            if tries > 2:
                 prn_error(
                     "Application have tried to retry for 3 times already, terminating"
                 )
@@ -728,7 +730,10 @@ class BiliProcess:
         Returns:
             List[Path]: List of downloaded episodes
         """
-        data = self._get_video_info(playlist_url)
+        try:
+            data = self._get_video_info(playlist_url)
+        except Exception as _:
+            data = None
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
         final = []
