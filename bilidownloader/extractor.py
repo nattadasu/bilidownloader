@@ -151,7 +151,7 @@ class BiliProcess:
             # Do not show details
             "verbose": False,
             "quiet": True,
-            "referer": "https://www.bilibili.tv/"
+            "referer": "https://www.bilibili.tv/",
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
@@ -389,9 +389,7 @@ class BiliProcess:
                 prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")
         with open(metadata_path, "a") as meta_file:
             # Reformatted chapters from deformatted chapters
-            formatted_chapters = [
-                self._format_chapter(ch, ch.title) for ch in deform
-            ]
+            formatted_chapters = [self._format_chapter(ch, ch.title) for ch in deform]
             meta_file.write("\n".join(formatted_chapters))
 
         # 4. Merge changes to the video
@@ -421,7 +419,7 @@ class BiliProcess:
         self,
         video_path: Path,
         language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]],
-    ) -> Path:
+    ) -> List[str]:
         """
         Adds an audio language to the video file.
 
@@ -430,13 +428,10 @@ class BiliProcess:
             language (str): The language to add to the video file.
 
         Returns:
-            Path: The path to the video file with the added audio language.
+            List[str]: mkvpropedit args
         """
         prn_info(
             f"Adding audio language '{language}' to {str(video_path.absolute())} using mkvpropedit"
-        )
-        mkvpropedit = (
-            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
         )
         code = {
             "chi": "Chinese",
@@ -448,15 +443,12 @@ class BiliProcess:
         lang_title = code[language]
         language = language or "und"
         # fmt: off
-        sp.run([
-            mkvpropedit, str(video_path),
+        return [
             "--edit", "track:a1",
             "--set", f"language={language}",
             "--set", f"name={lang_title}",
             "--quiet",
-        ], check=True)
-
-        return video_path
+        ]
 
     def _set_default_subtitle(
         self,
@@ -464,7 +456,7 @@ class BiliProcess:
         language: Optional[
             Literal["eng", "ind", "may", "tha", "vie", "zht", "zhs"]
         ] = None,
-    ) -> Path:
+    ) -> List[str]:
         """
         Sets the default subtitle for the video file.
 
@@ -473,26 +465,26 @@ class BiliProcess:
             language (str): The language to set as the default subtitle.
 
         Returns:
-            Path: The path to the video file with the default subtitle set.
+            List[str]: mkvpropedit args
         """
+
+        def fail(msg: str) -> List[str]:
+            prn_error(msg)
+            return []
+
         if not language:
-            prn_info(
+            return fail(
                 f"Skipping setting default subtitle for {str(video_path.absolute())}"
             )
-            return video_path
         prn_info(
             f"Setting default subtitle to '{language}' for {str(video_path.absolute())}"
         )
         # get the subtitle track number from the video file using mkvmerge as json
         mkvmerge = find_command("mkvmerge")
-        mkvpropedit = (
-            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
-        )
         if not mkvmerge:
-            prn_error(
+            return fail(
                 "mkvmerge is not found in the system, try to install it first or check the path"
             )
-            return video_path
 
         # fmt: off
         result = sp.run([
@@ -501,8 +493,7 @@ class BiliProcess:
         # fmt: on
 
         if result.returncode != 0:
-            prn_error("Failed to get subtitle track number")
-            return video_path
+            return fail("Failed to get subtitle track number")
 
         set_track: Optional[str] = None
         unset_track: List[str] = []
@@ -516,8 +507,7 @@ class BiliProcess:
                     else:
                         unset_track.append(str(track["id"] + 1))
         except Exception as _:
-            prn_error("Failed to get subtitle track number")
-            return video_path
+            return fail("Failed to get subtitle track number")
 
         # set the subtitle track as default
         if set_track:
@@ -526,16 +516,48 @@ class BiliProcess:
             for track in unset_track:
                 unset_ += ["--edit", f"track:{track}", "--set", "flag-default=0"]
             # fmt: off
-            sp.run([
-                mkvpropedit, str(video_path),
+            return [
                 "--edit", f"track:{set_track}",
                 "--set", "flag-default=1",
                 *unset_,
                 "--quiet",
-            ], check=True)
+            ]
             # fmt: on
         else:
-            prn_error("Specified subtitle track is not found in the video file")
+            return fail("Specified subtitle track is not found in the video file")
+
+    def _execute_mkvpropedit(
+        self, video_path: Path, audio_args: List[str], sub_args: List[str]
+    ) -> Path:
+        """
+        Executes mkvpropedit on the video file.
+
+        Args:
+            video_path (Path): The path to the video file.
+            audio_args (List[str]): mkvpropedit args for audio.
+            sub_args (List[str]): mkvpropedit args for subtitle.
+
+        Returns:
+            Path: The path to the video file with added metadata.
+        """
+
+        mkvpropedit = (
+            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
+        )
+        if not audio_args and not sub_args:
+            return video_path
+
+        prn_info(f"Executing mkvpropedit on {str(video_path.absolute())}")
+        # fmt: off
+        sp.run([
+            mkvpropedit, str(video_path),
+            *audio_args,
+            *sub_args,
+            "--quiet",
+            "--add-track-statistics-tags",
+        ], check=True)
+        # fmt: on
+        prn_done(f"Metadata has been added to {str(video_path.absolute())}")
 
         return video_path
 
@@ -615,7 +637,7 @@ class BiliProcess:
             "subtitleslangs": ["all"],
             "updatetime": False,
             "writesubtitles": True,
-            "referer": "https://www.bilibili.tv/"
+            "referer": "https://www.bilibili.tv/",
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
@@ -689,8 +711,9 @@ class BiliProcess:
                 loc, data, language = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
                 final = self._create_ffmpeg_chapters(chapters, loc)
-                final = self._add_audio_language(final, language)
-                final = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
+                aud_args = self._add_audio_language(final, language)
+                sub_args = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
+                final = self._execute_mkvpropedit(final, aud_args, sub_args)
                 if not forced:
                     history.write_history(episode_url)
                 else:
