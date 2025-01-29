@@ -9,13 +9,14 @@ from re import sub as rsub
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from fake_useragent import UserAgent
+from matplotlib import font_manager as font
 from rich.console import Console
 from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
-from yt_dlp import postprocessor as postproc
 
 try:
     from api import BiliApi, BiliHtml
+    from assresample import SSARescaler
     from common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
@@ -33,6 +34,8 @@ try:
     from history import History
     from watchlist import Watchlist
 except ImportError:
+    from bilibili.assresample import SSARescaler
+
     from bilidownloader.api import BiliApi, BiliHtml
     from bilidownloader.common import (
         DEFAULT_HISTORY,
@@ -56,29 +59,31 @@ ua = UserAgent()
 uagent = ua.chrome
 
 
-class SSARescaler(postproc.PostProcessor):
-    def run(self, info) -> tuple[list[Any], Any]:
-        # Replace string from "Noto Sans,100" to "Noto Sans,65" on all
-        # subtitle files
-        def return_dump() -> tuple[list[Any], Any]:
-            return [], info
+def find_font_by_query(font_name: str) -> Path | None:
+    """
+    Find font file from font name
 
-        self.to_screen("Changing subtitle font size")
-        fpath: dict[str, str] = info.get("__files_to_move", {})
-        if len(fpath) == 0:
-            self.report_error("No filepath found in the metadata")
-            return return_dump()
-        for _, sub_file in fpath.items():
-            if not sub_file.endswith("ass"):
-                self.report_warning(f"{sub_file} is skipped as it's not SSA file")
-                continue
-            with open(sub_file, "r", encoding="utf-8") as file:
-                content = file.read()
-            content = content.replace("Noto Sans,100", "Noto Sans,65")
-            with open(sub_file, "w", encoding="utf-8") as file:
-                file.write(content)
-            self.to_screen(f"{sub_file} has been properly formatted")
-        return return_dump()
+    Args:
+        font_name (str): Font name
+
+    Returns:
+        Path: Path to the font file
+    """
+    try:
+        fc_ = font.findfont(
+            font.FontProperties(family=font_name),
+            fallback_to_default=False,
+            rebuild_if_missing=False,
+        )
+    except Exception as _:
+        return None
+
+    # if font is not found, return None
+    if not fc_:
+        return None
+
+    # return absolute path
+    return Path(fc_).absolute()
 
 
 class BiliProcess:
@@ -527,7 +532,11 @@ class BiliProcess:
             return fail("Specified subtitle track is not found in the video file")
 
     def _execute_mkvpropedit(
-        self, video_path: Path, audio_args: List[str], sub_args: List[str]
+        self,
+        video_path: Path,
+        audio_args: List[str],
+        sub_args: List[str],
+        font_args: List[str],
     ) -> Path:
         """
         Executes mkvpropedit on the video file.
@@ -536,6 +545,7 @@ class BiliProcess:
             video_path (Path): The path to the video file.
             audio_args (List[str]): mkvpropedit args for audio.
             sub_args (List[str]): mkvpropedit args for subtitle.
+            font_args (List[str]): mkvpropedit args for fonts to import
 
         Returns:
             Path: The path to the video file with added metadata.
@@ -553,6 +563,7 @@ class BiliProcess:
             mkvpropedit, str(video_path),
             *audio_args,
             *sub_args,
+            *font_args,
             "--quiet",
             "--add-track-statistics-tags",
         ], check=True)
@@ -574,7 +585,6 @@ class BiliProcess:
             Path: Path to downloaded episode
             Any: Data output from yt-dlp
         """
-
         prn_info("Fetching metadata from episode's page")
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
@@ -712,8 +722,25 @@ class BiliProcess:
                 chapters = self._get_episode_chapters(data)
                 final = self._create_ffmpeg_chapters(chapters, loc)
                 aud_args = self._add_audio_language(final, language)
+                font_args: List[str] = []
+                font_json = Path("fonts.json")
+                try:
+                    with open(font_json, "r", encoding="utf-8") as file:
+                        fonts: List[str] = jloads(file.read())
+                except Exception as _:
+                    fonts: List[str] = []
+                for font in fonts:
+                    fpath = find_font_by_query(font)
+                    if fpath:
+                        # fmt: off
+                        font_args += [
+                            "--attachment-name", font,
+                            "--add-attachment", str(fpath),
+                        ]
+                        # fmt: on
+                font_json.unlink(True)
                 sub_args = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
-                final = self._execute_mkvpropedit(final, aud_args, sub_args)
+                final = self._execute_mkvpropedit(final, aud_args, sub_args, font_args)
                 if not forced:
                     history.write_history(episode_url)
                 else:

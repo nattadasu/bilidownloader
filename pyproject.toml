@@ -16,7 +16,9 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
+	"ass", # parsing Advanced SubStation Alpha subtiltes
 	"fake-useragent", # for random user agent
+	"matplotlib", #  only used to get all system fonts
 	"notify-py", # for notification
 	"pydantic", # for data schema and dataclass
 	"requests", # for http request, required to access Bilibili API and HTML
