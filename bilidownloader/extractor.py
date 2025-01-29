@@ -34,9 +34,8 @@ try:
     from history import History
     from watchlist import Watchlist
 except ImportError:
-    from bilibili.assresample import SSARescaler
-
     from bilidownloader.api import BiliApi, BiliHtml
+    from bilidownloader.assresample import SSARescaler
     from bilidownloader.common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
