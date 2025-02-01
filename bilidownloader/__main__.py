@@ -56,8 +56,14 @@ app = typer.Typer(
     no_args_is_help=True,
     help=f"{__DESCRIPTION__} (Version: {__VERSION__})",
 )
-hi_app = typer.Typer(no_args_is_help=True)
-wl_app = typer.Typer(no_args_is_help=True)
+hi_app = typer.Typer(
+    pretty_exceptions_show_locals=False,
+    no_args_is_help=True
+)
+wl_app = typer.Typer(
+    pretty_exceptions_show_locals=False,
+    no_args_is_help=True
+)
 app.add_typer(hi_app, name="history", help="View and manage history")
 
 wl_help = (
