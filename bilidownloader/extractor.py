@@ -85,6 +85,21 @@ def find_font_by_query(font_name: str) -> Path | None:
     return Path(fc_).absolute()
 
 
+def int_to_abc(number: int) -> str:
+    """
+    Convert integer to capital alphabet
+
+    Args:
+        number (int): Number to convert
+
+    Returns:
+        str: Alphabet
+    """
+    # if over 26, use base26 in A-Z:
+    if number > 26:
+        return int_to_abc((number - 1) // 26) + chr((number - 1) % 26 + ord("A"))
+    return chr(number + ord("A") - 1)
+
 class BiliProcess:
     def __init__(
         self,
@@ -282,22 +297,37 @@ class BiliProcess:
         formatted_chapters: List[str] = []
         part_index = 1
 
+        def pidx(index: int) -> tuple[str, int]:
+            return f"Part {int_to_abc(index)}", index + 1
+
+        if len(chapters) == 2:
+            chapters[0].title = "Episode"
+            chapters[1].title = "Ending"
+
         for i, chapter in enumerate(chapters):
-            if chapter.title not in ["Intro", "Outro"]:
-                title = f"Part {part_index}"
-                compr = self._compare_time(chapter)
-                if compr <= 40:
+            compr = self._compare_time(chapter)
+            title = chapter.title
+
+            if title not in ["Intro", "Ending"]:
+                title, _ = pidx(part_index)
+                if compr < 20:
+                    title = "Brandings"
+                elif compr >= 20 and compr <= 60:
                     title = "Recap"
                 elif chapters[i + 1].title == "Intro":
                     title = "Prologue"
                 else:
                     part_index += 1
             else:
-                title = chapter.title
-                # if intro is more than 2 minutes, change it to "Part 1"
-                if title == "Intro" and self._compare_time(chapter) > 120:
-                    title = f"Part {part_index}"
-                    part_index += 1
+                match title:
+                    case "Intro":
+                        title = "Opening"
+                        if compr > 120:
+                            title, part_index = pidx(part_index)
+                    case "Outro":
+                        title = "Ending"
+                    case _:
+                        pass
 
             # Format the current chapter
             formatted_chapters.append(self._format_chapter(chapter, title))
@@ -306,15 +336,15 @@ class BiliProcess:
             if i < len(chapters) - 1:
                 next_chapter = chapters[i + 1]
                 if chapter.end_time < next_chapter.start_time - 0.001:
+                    title, part_index = pidx(part_index)
                     gap_chapter = Chapter(
                         start_time=chapter.end_time,
                         end_time=next_chapter.start_time,
-                        title=f"Part {part_index}",
+                        title=title,
                     )
                     formatted_chapters.append(
                         self._format_chapter(gap_chapter, gap_chapter.title)
                     )
-                    part_index += 1
 
         # Append final chapter that runs to the end of the video
         try:
@@ -328,10 +358,11 @@ class BiliProcess:
                     )
                 else:
                     is_under_minute = drn_ < 60
+                    title, _ = pidx(part_index)
                     final_chapter = Chapter(
                         start_time=chapters[-1].end_time,
                         end_time=total_duration,
-                        title="Preview" if is_under_minute else f"Part {part_index}",
+                        title="Preview" if is_under_minute else title,
                     )
                     formatted_chapters.append(
                         self._format_chapter(final_chapter, final_chapter.title)
