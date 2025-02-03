@@ -302,32 +302,34 @@ class BiliProcess:
 
         if len(chapters) == 2:
             chapters[0].title = "Episode"
-            chapters[1].title = "Ending"
+            chapters[1].title = "Outro"
 
         for i, chapter in enumerate(chapters):
             compr = self._compare_time(chapter)
             title = chapter.title
 
-            if title not in ["Intro", "Ending"]:
+            try:
+                next_chapter = chapters[i + 1]
+            except IndexError as _:
+                next_chapter = None
+
+            if title not in ["Intro", "Outro"]:
                 title, _ = pidx(part_index)
-                if compr < 20:
+                if compr < 25:
                     title = "Brandings"
-                elif compr >= 20 and compr <= 60:
+                elif compr >= 25 and compr <= 60:
                     title = "Recap"
-                elif chapters[i + 1].title == "Intro":
+                elif next_chapter and next_chapter.title == "Intro":
                     title = "Prologue"
                 else:
                     part_index += 1
             else:
-                match title:
-                    case "Intro":
-                        title = "Opening"
-                        if compr > 120:
-                            title, part_index = pidx(part_index)
-                    case "Outro":
-                        title = "Ending"
-                    case _:
-                        pass
+                if title == "Intro":
+                    title = "Opening"
+                    if compr > 120:
+                        title, part_index = pidx(part_index)
+                elif title == "Outro":
+                    title = "Ending"
 
             # Format the current chapter
             formatted_chapters.append(self._format_chapter(chapter, title))
