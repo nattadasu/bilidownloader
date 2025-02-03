@@ -792,7 +792,8 @@ class BiliProcess:
                     f'Modify "{str(self.history)}" to proceed.'
                 )
                 break
-            except KeyboardInterrupt:
+            except (KeyboardInterrupt, SystemExit):
+                print()
                 prn_error("Interrupt signal received, stopping process")
                 exit(1)
             except Exception as err:
