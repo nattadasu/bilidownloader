@@ -271,7 +271,7 @@ class BiliProcess:
         Returns:
             Path: The path to the video file with added chapters.
         """
-        prn_info(f"Creating chapters for {str(video_path.absolute())}")
+        prn_info(f"Creating chapters for {video_path.name}")
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
         ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
@@ -297,7 +297,7 @@ class BiliProcess:
         total_duration = float(result.stdout.strip())
 
         # 1B. Remove existing chapters from the video
-        prn_info(f"Removing existing chapters from {str(video_path.absolute())}, if any")
+        prn_info(f"Removing existing chapters from {video_path.name}, if any")
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
@@ -456,7 +456,7 @@ class BiliProcess:
         # fmt: on
         prn_done("Chapters have been added to the video file")
 
-        prn_info(f"Removing {str(metadata_path.absolute())}")
+        prn_info(f"Removing {metadata_path.name}")
         remove(metadata_path)
         remove(video_path)
         prn_info(f"Renaming {output_path} to {video_path}")
@@ -480,7 +480,7 @@ class BiliProcess:
             List[str]: mkvpropedit args
         """
         prn_info(
-            f"Adding audio language '{language}' to {str(video_path.absolute())} using mkvpropedit"
+            f"Adding audio language '{language}' to {video_path.name} using mkvpropedit"
         )
         code = {
             "chi": "Chinese",
@@ -523,10 +523,10 @@ class BiliProcess:
 
         if not language:
             return fail(
-                f"Skipping setting default subtitle for {str(video_path.absolute())}"
+                f"Skipping setting default subtitle for {video_path.name}"
             )
         prn_info(
-            f"Setting default subtitle to '{language}' for {str(video_path.absolute())}"
+            f"Setting default subtitle to '{language}' for {video_path.name}"
         )
         # get the subtitle track number from the video file using mkvmerge as json
         mkvmerge = find_command("mkvmerge")
@@ -560,7 +560,6 @@ class BiliProcess:
 
         # set the subtitle track as default
         if set_track:
-            prn_info(f"Setting track {set_track} as default subtitle")
             unset_: List[str] = []
             for track in unset_track:
                 unset_ += ["--edit", f"track:{track}", "--set", "flag-default=0"]
@@ -601,7 +600,7 @@ class BiliProcess:
         if not audio_args and not sub_args:
             return video_path
 
-        prn_info(f"Executing mkvpropedit on {str(video_path.absolute())}")
+        prn_info(f"Executing mkvpropedit on {video_path.name}")
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
@@ -612,7 +611,7 @@ class BiliProcess:
             "--add-track-statistics-tags",
         ], check=True)
         # fmt: on
-        prn_done(f"Metadata has been added to {str(video_path.absolute())}")
+        prn_done(f"Metadata has been added to {video_path.name}")
 
         return video_path
 
@@ -629,7 +628,7 @@ class BiliProcess:
             Path: Path to downloaded episode
             Any: Data output from yt-dlp
         """
-        prn_info("Fetching metadata from episode's page")
+        prn_info("Fetching metadata from episode's HTML page")
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
@@ -661,7 +660,7 @@ class BiliProcess:
 
         codec = "avc1" if self.is_avc else "hev1"
 
-        prn_info(f"Start downloading {title}")
+        prn_info(f"Start downloading and processing {title}")
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -883,9 +882,6 @@ class BiliProcess:
                         forced=forced,
                     )
                     if ep is not None:
-                        prn_done(
-                            f"Downloaded {title}, {card.index_show} to ({str(ep.absolute())})"
-                        )
                         final.append(ep)
 
         return final
