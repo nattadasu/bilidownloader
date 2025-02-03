@@ -42,7 +42,8 @@ class SSARescaler(PostProcessor):
                 ass.dump_file(file)
             self.to_screen(f"{sub_file} has been properly formatted")
 
-        with open("fonts.json", "w", encoding="utf-8") as file:
-            file.write(dumps(fonts))
+        if len(fonts) > 0:
+            with open("fonts.json", "w", encoding="utf-8") as file:
+                file.write(dumps(fonts))
 
         return return_dump()
