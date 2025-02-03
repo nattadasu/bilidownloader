@@ -275,6 +275,9 @@ class BiliProcess:
         # 1. Extract metadata and calculate the total duration
         metadata_path = video_path.with_suffix(".meta")
         ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
+        mkvpropedit = (
+            str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
+        )
         with open(metadata_path, "w", encoding="utf-8") as file:
             file.write(";FFMETADATA1\n")
 
@@ -292,6 +295,15 @@ class BiliProcess:
         ], capture_output=True, text=True)
         # fmt: on
         total_duration = float(result.stdout.strip())
+
+        # 1B. Remove existing chapters from the video
+        prn_info(f"Removing existing chapters from {str(video_path.absolute())}, if any")
+        # fmt: off
+        sp.run([
+            mkvpropedit, str(video_path),
+            "--chapter", "",
+            "--quiet",
+        ], check=True)
 
         # 2. Format and modify chapter information
         formatted_chapters: List[str] = []
