@@ -162,9 +162,14 @@ cython_debug/
 #.idea/
 
 
+# Media files
 *.mkv
 *.mp4
 *.txt
 *.log
+*.meta
+*.ass
+*.srt
+fonts.json
 
 ffmpeg*
