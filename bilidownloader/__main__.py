@@ -6,12 +6,15 @@ from pathlib import Path
 from sys import exit
 from typing import List, Optional, Tuple
 
+import requests as req
 import survey
 import typer
 from rich import box
 from rich import print as rprint
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Column, Table
+from tomllib import loads as tloads
 from typing_extensions import Annotated
 
 try:
@@ -56,14 +59,8 @@ app = typer.Typer(
     no_args_is_help=True,
     help=f"{__DESCRIPTION__} (Version: {__VERSION__})",
 )
-hi_app = typer.Typer(
-    pretty_exceptions_show_locals=False,
-    no_args_is_help=True
-)
-wl_app = typer.Typer(
-    pretty_exceptions_show_locals=False,
-    no_args_is_help=True
-)
+hi_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
+wl_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
 app.add_typer(hi_app, name="history", help="View and manage history")
 
 wl_help = (
@@ -834,23 +831,51 @@ def schedule(
         console.print(tab)
 
 
-@app.command("version", help="Show version")
-@app.command("ver", help="Show version", hidden=True)
-def version(
-    plain: Annotated[
-        bool,
-        typer.Option(
-            "--plain",
-            "-p",
-            help="Show version number only",
-        ),
-    ] = False,
-):
-    if plain:
-        print(__VERSION__)
-    else:
-        rprint(f"[bold]BiliDownloader[/] version: [blue]{__VERSION__}[/]")
-    typer.Exit()
+# check for an update
+def app_update() -> bool:
+    """Check for an update from upstream's pyproject.toml"""
+    latest_version = __VERSION__
+    update_url = "https://raw.githubusercontent.com/nattadasu/bilidownloader/main/pyproject.toml"
+    try:
+        resp = req.get(update_url)
+        resp.raise_for_status()
+        data = tloads(resp.text)
+        latest_version = data["project"]["version"]
+        if latest_version != __VERSION__:
+            warn = (
+                f"[bold]BiliDownloader[/] has a new version: [blue]{latest_version}[/] "
+                f"(Current: [red]{__VERSION__}[/]).\n"
+                "Updating is recommended to get the latest features and bug fixes.\n\n"
+                "To update, execute [black]`[/][bold]pipx upgrade bilidownloader[black]`[/]"
+            )
+            panel = Panel(
+                warn,
+                title="Update Available",
+                box=box.ROUNDED,
+                title_align="left",
+                border_style="yellow",
+                expand=False,
+            )
+            console.print(panel)
+            print()
+    except Exception as err:
+        panel = Panel(
+            f"Failed to check for an app update, reason: {err}",
+            title="Update Check Failed",
+            box=box.ROUNDED,
+            title_align="left",
+            border_style="red",
+            expand=False,
+        )
+        console.print(panel)
+        print()
+    rprint(f"[reverse white] BiliDownloader [/][reverse blue bold] {__VERSION__} [/]")
+    return latest_version != __VERSION__
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    app_update()
 
 
 if __name__ == "__main__":
