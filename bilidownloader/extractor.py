@@ -329,7 +329,7 @@ class BiliProcess:
                 title, _ = pidx(part_index)
                 if compr < 25:
                     title = "Brandings"
-                elif compr >= 25 and compr <= 60:
+                elif compr >= 25 and compr <= 40:
                     title = "Recap"
                 elif next_chapter and next_chapter.title == "Intro":
                     title = "Prologue"
