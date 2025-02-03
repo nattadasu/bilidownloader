@@ -301,7 +301,7 @@ class BiliProcess:
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
-            "--chapter", "",
+            "--chapters", "",
             "--quiet",
         ], check=True)
 
