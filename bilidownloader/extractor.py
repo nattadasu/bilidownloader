@@ -1,7 +1,6 @@
 import subprocess as sp
 from html import unescape
 from json import loads as jloads
-from os import remove, rename
 from pathlib import Path
 from re import IGNORECASE
 from re import search as rsearch
@@ -457,10 +456,10 @@ class BiliProcess:
         prn_done("Chapters have been added to the video file")
 
         prn_info(f"Removing {metadata_path.name}")
-        remove(metadata_path)
-        remove(video_path)
+        metadata_path.unlink(True)
+        video_path.unlink(True)
         prn_info(f"Renaming {output_path} to {video_path}")
-        rename(output_path, video_path)
+        output_path.rename(video_path)
 
         return Path(video_path)
 
