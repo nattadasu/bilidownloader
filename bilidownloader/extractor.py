@@ -382,6 +382,9 @@ class BiliProcess:
                     )
         except IndexError as _:
             prn_error("This video does not have any chapters")
+            prn_info(f"Removing {metadata_path.name}")
+            metadata_path.unlink(True)
+            return video_path
 
         def fmt_timing(
             title: str, start: float, end: float
