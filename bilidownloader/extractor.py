@@ -495,7 +495,6 @@ class BiliProcess:
             "--edit", "track:a1",
             "--set", f"language={language}",
             "--set", f"name={lang_title}",
-            "--quiet",
         ]
 
     def _set_default_subtitle(
@@ -567,7 +566,6 @@ class BiliProcess:
                 "--edit", f"track:{set_track}",
                 "--set", "flag-default=1",
                 *unset_,
-                "--quiet",
             ]
             # fmt: on
         else:
@@ -603,6 +601,8 @@ class BiliProcess:
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
+            "--edit", "track:v1",
+            "--set", "name=",
             *audio_args,
             *sub_args,
             *font_args,
