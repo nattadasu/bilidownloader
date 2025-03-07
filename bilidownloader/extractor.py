@@ -23,6 +23,7 @@ try:
         available_res,
         find_command,
         format_human_time,
+        format_mkvmerge_time,
         langcode_to_str,
         prn_done,
         prn_error,
@@ -43,6 +44,7 @@ except ImportError:
         available_res,
         find_command,
         format_human_time,
+        format_mkvmerge_time,
         langcode_to_str,
         prn_done,
         prn_error,
@@ -72,6 +74,7 @@ def int_to_abc(number: int) -> str:
     if number > 26:
         return int_to_abc((number - 1) // 26) + chr((number - 1) % 26 + ord("A"))
     return chr(number + ord("A") - 1)
+
 
 class BiliProcess:
     def __init__(
@@ -231,7 +234,28 @@ class BiliProcess:
             )
         return chapters
 
-    def _create_ffmpeg_chapters(
+    @staticmethod
+    def _to_mkvmerge_chapter(chapters: List[Chapter]) -> List[str]:
+        """
+        Converts a list of chapters to mkvmerge format.
+
+        Args:
+            chapters (List[Chapter]): The list of chapters to convert.
+
+        Returns:
+            :ost[str]: The chapters in mkvmerge format.
+        """
+        mkv_chapters: List[str] = []
+        for i, chapter in enumerate(chapters):
+            mkv_chapters.append(
+                (
+                    f"CHAPTER{i + 1:02d}={format_mkvmerge_time(chapter.start_time)}\n"
+                    f"CHAPTER{i + 1:02d}NAME={chapter.title}"
+                )
+            )
+        return mkv_chapters
+
+    def _embed_chapter_chapters(
         self, chapters: List[Chapter], video_path: Path
     ) -> Path:
         """
@@ -246,13 +270,11 @@ class BiliProcess:
         """
         prn_info(f"Creating chapters for {video_path.name}")
         # 1. Extract metadata and calculate the total duration
-        metadata_path = video_path.with_suffix(".meta")
-        ffmpeg = str(self.ffmpeg_path) if self.ffmpeg_path else "ffmpeg"
+        metadata_path = video_path.with_suffix(".txt")
         mkvpropedit = (
             str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
         )
-        with open(metadata_path, "w", encoding="utf-8") as file:
-            file.write(";FFMETADATA1\n")
+        metadata_path.write_text("")
 
         # Get video duration using ffprobe
         # fmt: off
@@ -269,11 +291,12 @@ class BiliProcess:
         # fmt: on
         total_duration = float(result.stdout.strip())
 
-        # 1B. Remove existing chapters from the video
-        prn_info(f"Removing existing chapters from {video_path.name}, if any")
+        # 1B. Remove existing chapters and metadata from the video
+        prn_info(f"Removing existing metadata from {video_path.name}, if any")
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
+            "--tags", "all:",
             "--chapters", "",
             "--quiet",
         ], check=True)
@@ -412,31 +435,20 @@ class BiliProcess:
         except Exception as _:
             for title, start, end, _, hdur in fdform:
                 prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")
-        with open(metadata_path, "a") as meta_file:
-            # Reformatted chapters from deformatted chapters
-            formatted_chapters = [self._format_chapter(ch, ch.title) for ch in deform]
-            meta_file.write("\n".join(formatted_chapters))
+        metadata_path.write_text("\n".join(self._to_mkvmerge_chapter(deform)))
 
         # 4. Merge changes to the video
-        output_path = video_path.with_stem(video_path.stem + "_temp")
         # fmt: off
         sp.run([
-            ffmpeg, "-v", "error",
-            "-i", str(video_path),
-            "-i", str(metadata_path),
-            "-map", "0",
-            "-map_metadata", "1",
-            "-codec", "copy",
-            str(output_path),
+            mkvpropedit, str(video_path),
+            "--chapters", str(metadata_path),
+            "--quiet",
         ], check=True)
         # fmt: on
         prn_done("Chapters have been added to the video file")
 
         prn_info(f"Removing {metadata_path.name}")
         metadata_path.unlink(True)
-        video_path.unlink(True)
-        prn_info(f"Renaming {output_path} to {video_path}")
-        output_path.rename(video_path)
 
         return Path(video_path)
 
@@ -589,8 +601,6 @@ class BiliProcess:
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
-            "--edit", "track:v1",
-            "--set", "name=",
             *audio_args,
             *sub_args,
             *font_args,
@@ -750,7 +760,7 @@ class BiliProcess:
                     history.check_history(episode_url)
                 loc, data, language = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
-                final = self._create_ffmpeg_chapters(chapters, loc)
+                final = self._embed_chapter_chapters(chapters, loc)
                 aud_args = self._add_audio_language(final, language)
                 font_args: List[str] = []
                 if not self.srt:
