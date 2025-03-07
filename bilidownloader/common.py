@@ -6,6 +6,7 @@ from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
 from typing import Literal, Optional, Union
 
+from langcodes import Language as Lang
 from notifypy import Notify
 from pydantic import BaseModel
 from survey import printers
@@ -228,3 +229,33 @@ def format_human_time(seconds: float) -> str:
     if minutes == 0:
         return f"0:{secs:02}"
     return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
+
+
+def format_mkvmerge_time(mili: float) -> str:
+    """
+    Formats a duration in milliseconds to a format that can be used by mkvmerge.
+
+    Args:
+        mili (float): the duration in milliseconds
+
+    Returns:
+        str: the formatted duration
+    """
+    delta = timedelta(milliseconds=mili)
+    hours, minutes, seconds, mili = (
+        delta.seconds // 3600,
+        delta.seconds // 60 % 60,
+        delta.seconds % 60,
+        delta.microseconds // 1000,
+    )
+    return f"{hours:02}:{minutes:02}:{seconds:02}.{mili:03}"
+
+
+def langcode_to_str(langcode: str) -> str:
+    """Convert language codes into readable"""
+    get_lang = Lang.get(langcode)
+    english = get_lang.display_name("en")
+    native = get_lang.display_name(langcode)
+    if english == native:
+        return english
+    return f"{english} ({native})"
