@@ -18,6 +18,7 @@ keywords = ["anime"]
 dependencies = [
 	"ass", # parsing Advanced SubStation Alpha subtiltes
 	"fake-useragent", # for random user agent
+	"langcodes", # Apply language track title for subtitles
 	"matplotlib", #  only used to get all system fonts
 	"notify-py", # for notification
 	"pydantic", # for data schema and dataclass
