@@ -24,6 +24,7 @@ try:
         available_res,
         find_command,
         format_human_time,
+        langcode_to_str,
         prn_done,
         prn_error,
         prn_info,
@@ -43,6 +44,7 @@ except ImportError:
         available_res,
         find_command,
         format_human_time,
+        langcode_to_str,
         prn_done,
         prn_error,
         prn_info,
@@ -485,10 +487,10 @@ class BiliProcess:
             f"Adding audio language '{language}' to {video_path.name} using mkvpropedit"
         )
         code = {
-            "chi": "Chinese",
-            "jpn": "Japanese",
-            "ind": "Indonesian",
-            "tha": "Thai",
+            "chi": "Chinese (中文)",
+            "jpn": "Japanese (日本語)",
+            "ind": "Indonesian (bahasa Indonesia)",
+            "tha": "Thai (ไทย)",
             None: "Undetermined",
         }
         lang_title = code[language]
@@ -523,12 +525,8 @@ class BiliProcess:
             return []
 
         if not language:
-            return fail(
-                f"Skipping setting default subtitle for {video_path.name}"
-            )
-        prn_info(
-            f"Setting default subtitle to '{language}' for {video_path.name}"
-        )
+            return fail(f"Skipping setting default subtitle for {video_path.name}")
+        prn_info(f"Setting default subtitle to '{language}' for {video_path.name}")
         # get the subtitle track number from the video file using mkvmerge as json
         mkvmerge = find_command("mkvmerge")
         if not mkvmerge:
@@ -545,34 +543,49 @@ class BiliProcess:
         if result.returncode != 0:
             return fail("Failed to get subtitle track number")
 
-        set_track: Optional[str] = None
-        unset_track: List[str] = []
+        set_track: Optional[Tuple[str, str]] = None
+        unset_track: List[Tuple[str, str]] = []
 
         try:
             data = jloads(result.stdout)
             for track in data["tracks"]:
                 if track["type"] == "subtitles":
-                    if track["properties"]["language"] == language:
-                        set_track = str(track["id"] + 1)
+                    track_lang = track["properties"]["language"]
+                    if track_lang == language:
+                        set_track = (str(track["id"] + 1), track_lang)
                     else:
-                        unset_track.append(str(track["id"] + 1))
+                        unset_track.append((str(track["id"] + 1), track_lang))
         except Exception as _:
             return fail("Failed to get subtitle track number")
+
+        if not set_track and len(unset_track) > 0:
+            print(
+                f"Subtitle track for '{language}' not found, using the first subtitle track as default"
+            )
+            set_track = unset_track.pop(0)
 
         # set the subtitle track as default
         if set_track:
             unset_: List[str] = []
             for track in unset_track:
-                unset_ += ["--edit", f"track:{track}", "--set", "flag-default=0"]
+                unset_ += [
+                    "--edit",
+                    f"track:{track[0]}",
+                    "--set",
+                    "flag-default=0",
+                    "--set",
+                    f"name={langcode_to_str(track[1])}",
+                ]
             # fmt: off
             return [
-                "--edit", f"track:{set_track}",
+                "--edit", f"track:{set_track[0]}",
                 "--set", "flag-default=1",
+                "--set", f"name={langcode_to_str(set_track[1])}",
                 *unset_,
             ]
             # fmt: on
         else:
-            return fail("Specified subtitle track is not found in the video file")
+            return fail("Failed to set subtitle track as default")
 
     def _execute_mkvpropedit(
         self,
