@@ -8,7 +8,6 @@ from re import sub as rsub
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from fake_useragent import UserAgent
-from matplotlib import font_manager as font
 from rich.console import Console
 from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
@@ -57,33 +56,6 @@ except ImportError:
 
 ua = UserAgent()
 uagent = ua.chrome
-
-
-def find_font_by_query(font_name: str) -> Path | None:
-    """
-    Find font file from font name
-
-    Args:
-        font_name (str): Font name
-
-    Returns:
-        Path: Path to the font file
-    """
-    try:
-        fc_ = font.findfont(
-            font.FontProperties(family=font_name),
-            fallback_to_default=False,
-            rebuild_if_missing=False,
-        )
-    except Exception as _:
-        return None
-
-    # if font is not found, return None
-    if not fc_:
-        return None
-
-    # return absolute path
-    return Path(fc_).absolute()
 
 
 def int_to_abc(number: int) -> str:
@@ -781,22 +753,33 @@ class BiliProcess:
                 final = self._create_ffmpeg_chapters(chapters, loc)
                 aud_args = self._add_audio_language(final, language)
                 font_args: List[str] = []
-                font_json = Path("fonts.json")
-                try:
-                    with open(font_json, "r", encoding="utf-8") as file:
-                        fonts: List[str] = jloads(file.read())
-                except Exception as _:
-                    fonts: List[str] = []
-                for font in fonts:
-                    fpath = find_font_by_query(font)
-                    if fpath:
-                        # fmt: off
-                        font_args += [
-                            "--attachment-name", font,
-                            "--add-attachment", str(fpath),
-                        ]
-                        # fmt: on
-                font_json.unlink(True)
+                if not self.srt:
+                    font_json = Path("fonts.json")
+                    try:
+                        with open(font_json, "r", encoding="utf-8") as file:
+                            fonts: List[str] = jloads(file.read())
+                    except Exception as _:
+                        fonts: List[str] = []
+
+                    from matplotlib import font_manager as fontm
+
+                    for font in fonts:
+                        try:
+                            fpath = fontm.findfont(
+                                fontm.FontProperties(family=font),
+                                fallback_to_default=False,
+                                rebuild_if_missing=False,
+                            )
+                            if fpath:
+                                # fmt: off
+                                font_args += [
+                                    "--attachment-name", font,
+                                    "--add-attachment", str(Path(fpath).absolute()),
+                                ]
+                                # fmt: on
+                        except Exception as _:
+                            continue
+                    font_json.unlink(True)
                 sub_args = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
                 final = self._execute_mkvpropedit(final, aud_args, sub_args, font_args)
                 if not forced:
