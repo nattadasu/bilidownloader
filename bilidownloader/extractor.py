@@ -26,12 +26,12 @@ try:
         format_human_time,
         format_mkvmerge_time,
         langcode_to_str,
+        pluralize,
         prn_done,
         prn_error,
         prn_info,
         push_notification,
         sanitize_filename,
-        pluralize,
     )
     from history import History
     from watchlist import Watchlist
@@ -49,12 +49,12 @@ except ImportError:
         format_human_time,
         format_mkvmerge_time,
         langcode_to_str,
+        pluralize,
         prn_done,
         prn_error,
         prn_info,
         push_notification,
         sanitize_filename,
-        pluralize,
     )
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
@@ -285,7 +285,10 @@ class BiliProcess:
             # try replacing 
             ffprobe = self.ffmpeg_path.with_stem("ffprobe")
         if not ffprobe or not ffprobe.exists():
-            prn_error("ffprobe is not found in the system, make sure it's available in your ffmpeg directory/installation")
+            prn_error((
+                "ffprobe is not found in the system, make sure it's available "
+                "in your ffmpeg directory/installation"
+            ))
             return video_path
         result = sp.run([
             str(ffprobe), "-v", "error",
@@ -556,16 +559,13 @@ class BiliProcess:
         # set the subtitle track as default
         if set_track:
             unset_: List[str] = []
+            # fmt: off
             for track in unset_track:
                 unset_ += [
-                    "--edit",
-                    f"track:{track[0]}",
-                    "--set",
-                    "flag-default=0",
-                    "--set",
-                    f"name={langcode_to_str(track[1])}",
+                    "--edit", f"track:{track[0]}",
+                    "--set", "flag-default=0",
+                    "--set", f"name={langcode_to_str(track[1])}",
                 ]
-            # fmt: off
             return [
                 "--edit", f"track:{set_track[0]}",
                 "--set", "flag-default=1",
@@ -609,8 +609,7 @@ class BiliProcess:
             *audio_args,
             *sub_args,
             *font_args,
-            "--quiet",
-            "--add-track-statistics-tags",
+            "--quiet", "--add-track-statistics-tags",
         ], check=True)
         # fmt: on
         prn_done(f"Metadata has been added to {video_path.name}")
@@ -858,9 +857,7 @@ class BiliProcess:
             print()
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)
-        clock.echo_format(
-            f"Downloaded {pluralize(flen, 'episode')} from playlist"
-        )
+        clock.echo_format(f"Downloaded {pluralize(flen, 'episode')} from playlist")
         return nnfinal
 
     def process_watchlist(self, forced: bool = False) -> List[Path]:
