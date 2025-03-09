@@ -18,6 +18,7 @@ try:
     from common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        BenchClock,
         Chapter,
         DataExistError,
         available_res,
@@ -39,6 +40,7 @@ except ImportError:
     from bilidownloader.common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        BenchClock,
         Chapter,
         DataExistError,
         available_res,
@@ -626,7 +628,7 @@ class BiliProcess:
             Path: Path to downloaded episode
             Any: Data output from yt-dlp
         """
-        prn_info("Fetching metadata from episode's HTML page")
+        prn_info("Resolving some metadata information of the link, may take a while")
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
@@ -658,7 +660,6 @@ class BiliProcess:
 
         codec = "avc1" if self.is_avc else "hev1"
 
-        prn_info(f"Start downloading and processing {title}")
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -695,7 +696,6 @@ class BiliProcess:
         with YDL(ydl_opts) as ydl:
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
-            prn_info("Fetching required metadata")
             metadata = ydl.extract_info(episode_url, download=False)
             if metadata is None:
                 raise Exception()
@@ -712,7 +712,9 @@ class BiliProcess:
                     title=str(title),
                     index=metadata.get("episode_number", "") if metadata else "",
                 )
-            prn_info("Downloading episode now")
+            prn_info(
+                f'Downloading "{title}"{" E" + str(metadata.get("episode_number", 0)) if metadata else " PV" if metadata and metadata["title"].startswith("PV") else ""}'
+            )
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
             if not (self.dont_rescale or self.srt):
@@ -740,6 +742,7 @@ class BiliProcess:
         Returns:
             Optional[Path]: Path to downloaded episode
         """
+        clock = BenchClock()
         tries = 0
         history = History(self.history)
         # use English episode url from other kind of URL using regex from play/{season_id}/{episode_id}
@@ -797,7 +800,7 @@ class BiliProcess:
                     history.write_history(episode_url)
                 else:
                     prn_info("Forced download, skipping adding to history")
-                prn_done(f"Downloaded {str(final.absolute())}")
+                clock.echo_format(f"Downloaded {final.name}")
                 if self.notification:
                     push_notification(
                         data["btitle"], data.get("episode_number", ""), final
@@ -833,13 +836,14 @@ class BiliProcess:
         Returns:
             List[Path]: List of downloaded episodes
         """
+        clock = BenchClock()
         try:
             data = self._get_video_info(playlist_url)
         except Exception as _:
             data = None
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
-        final = []
+        final: List[Optional[Path]] = []
         total = len(data["entries"])
         for entry in data["entries"]:
             prn_info(f"Processing {len(final) + 1}/{total}")
@@ -850,7 +854,12 @@ class BiliProcess:
                 )
             )
             print()
-        return final
+        nnfinal = [f for f in final if f is not None]
+        flen = len(nnfinal)
+        clock.echo_format(
+            f"Downloaded {flen} episode{'s' if flen > 1 else ''} from playlist"
+        )
+        return nnfinal
 
     def process_watchlist(self, forced: bool = False) -> List[Path]:
         """
@@ -865,6 +874,7 @@ class BiliProcess:
         final: List[Path] = []
         wl = Watchlist(self.watchlist)
         api = BiliApi()
+        clock = BenchClock()
 
         if forced:
             prn_info("Forced switch is enabled, ignoring history")
@@ -893,4 +903,5 @@ class BiliProcess:
                     if ep is not None:
                         final.append(ep)
 
+        clock.echo_format("Processed watchlist queue")
         return final
