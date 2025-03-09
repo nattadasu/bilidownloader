@@ -698,6 +698,7 @@ class BiliProcess:
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
             metadata = ydl.extract_info(episode_url, download=False)
+            final_path = ydl.prepare_filename(metadata)
             if metadata is None:
                 raise Exception()
             if "entries" in metadata:
@@ -724,13 +725,7 @@ class BiliProcess:
 
         metadata["btitle"] = title
 
-        return (
-            Path(
-                f"./[{metadata['extractor']}] {title} - E{metadata['episode_number']} [{metadata['resolution']}, {metadata['vcodec']}].mkv"
-            ),
-            metadata,
-            language,
-        )
+        return (Path(".") / final_path, metadata, language)
 
     def process_episode(self, episode_url: str, forced: bool = False) -> Optional[Path]:
         """
