@@ -4,6 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
+from time import time
 from typing import Literal, Optional, Union
 
 from langcodes import Language as Lang
@@ -231,7 +232,62 @@ def format_human_time(seconds: float) -> str:
     return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
 
 
-def format_mkvmerge_time(mili: float) -> str:
+class BenchClock:
+    """A simple class to measure the time taken to perform a task."""
+
+    def __init__(self) -> None:
+        self.start = time()
+
+    def stop(self) -> float:
+        """Stop the clock and return the time taken."""
+        return time() - self.start
+
+    def reset(self) -> None:
+        """Reset the clock."""
+        self.start = time()
+
+    @property
+    def format(self) -> str:
+        """Format the time taken to a human-readable format."""
+        return format_human_time(self.stop())
+
+    @property
+    def detailed_format(self) -> str:
+        """Format the time taken to a detailed human-readable format."""
+        hrs, mins, secs, mili = (
+            self.stop() // 3600,
+            self.stop() // 60 % 60,
+            self.stop() % 60,
+            (self.stop() * 1000) % 1000,
+        )
+        finals = []
+        if hrs:
+            finals.append(f"{int(hrs)} hour{'s' if hrs > 1 else ''}")
+        if mins:
+            finals.append(f"{int(mins)} minute{'s' if mins > 1 else ''}")
+        if secs:
+            finals.append(f"{int(secs)} second{'s' if secs > 1 else ''}")
+        if mili:
+            finals.append(f"{int(mili)} millisecond{'s' if mili > 1 else ''}")
+
+        # only last element should be connected with 'and', others with ','
+        if len(finals) > 1:
+            return ", ".join(finals[:-1]) + " and " + finals[-1]
+        return finals[0]
+
+    @property
+    def format_mkvmerge(self) -> str:
+        """Format the time taken to a mkvmerge-compatible format."""
+        return format_mkvmerge_time(self.stop())
+
+    def echo_format(self, ctx: str = "") -> None:
+        """Print the formatted time taken."""
+        if ctx:
+            prn_done(f"{ctx}, task took {self.detailed_format}")
+            return
+        prn_done(f"Task took {self.detailed_format}")
+
+
     """
     Formats a duration in milliseconds to a format that can be used by mkvmerge.
 
