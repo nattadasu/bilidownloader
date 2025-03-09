@@ -1,6 +1,5 @@
 import os
 import re
-from datetime import timedelta
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
@@ -243,12 +242,11 @@ def format_human_time(seconds: float) -> str:
         return "N/A"
     elif seconds == 0:
         return "0:00"
-    delta = timedelta(seconds=seconds)
     days, hours, minutes, secs = (
-        delta.days,
-        delta.seconds // 3600,
-        delta.seconds // 60 % 60,
-        delta.seconds % 60,
+        seconds // 86400,
+        seconds // 3600 % 24,
+        seconds // 60 % 60,
+        seconds % 60,
     )
     if minutes == 0:
         return f"0:{secs:02}"
@@ -265,12 +263,11 @@ def format_mkvmerge_time(seconds: float) -> str:
     Returns:
         str: the formatted duration
     """
-    delta = timedelta(seconds=seconds)
     hrs, mins, secs, mili = (
-        delta.seconds // 3600,
-        delta.seconds // 60 % 60,
-        delta.seconds % 60,
-        delta.microseconds // 1000,
+        seconds // 3600,
+        seconds // 60 % 60,
+        seconds % 60,
+        (seconds * 1000) % 1000,
     )
     return f"{hrs:02}:{mins:02}:{secs:02}.{mili:03}"
 
