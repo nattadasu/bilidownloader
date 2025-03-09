@@ -288,23 +288,24 @@ class BenchClock:
         prn_done(f"Task took {self.detailed_format}")
 
 
+def format_mkvmerge_time(seconds: float) -> str:
     """
-    Formats a duration in milliseconds to a format that can be used by mkvmerge.
+    Formats a duration in seconds to a format that can be used by mkvmerge.
 
     Args:
-        mili (float): the duration in milliseconds
+        mili (float): the duration in seconds
 
     Returns:
         str: the formatted duration
     """
-    delta = timedelta(milliseconds=mili)
-    hours, minutes, seconds, mili = (
+    delta = timedelta(seconds=seconds)
+    hrs, mins, secs, mili = (
         delta.seconds // 3600,
         delta.seconds // 60 % 60,
         delta.seconds % 60,
         delta.microseconds // 1000,
     )
-    return f"{hours:02}:{minutes:02}:{seconds:02}.{mili:03}"
+    return f"{hrs:02}:{mins:02}:{secs:02}.{mili:03}"
 
 
 def langcode_to_str(langcode: str) -> str:
