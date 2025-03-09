@@ -232,6 +232,26 @@ def format_human_time(seconds: float) -> str:
     return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
 
 
+def format_mkvmerge_time(seconds: float) -> str:
+    """
+    Formats a duration in seconds to a format that can be used by mkvmerge.
+
+    Args:
+        mili (float): the duration in seconds
+
+    Returns:
+        str: the formatted duration
+    """
+    delta = timedelta(seconds=seconds)
+    hrs, mins, secs, mili = (
+        delta.seconds // 3600,
+        delta.seconds // 60 % 60,
+        delta.seconds % 60,
+        delta.microseconds // 1000,
+    )
+    return f"{hrs:02}:{mins:02}:{secs:02}.{mili:03}"
+
+
 class BenchClock:
     """A simple class to measure the time taken to perform a task."""
 
@@ -286,26 +306,6 @@ class BenchClock:
             prn_done(f"{ctx}, task took {self.detailed_format}")
             return
         prn_done(f"Task took {self.detailed_format}")
-
-
-def format_mkvmerge_time(seconds: float) -> str:
-    """
-    Formats a duration in seconds to a format that can be used by mkvmerge.
-
-    Args:
-        mili (float): the duration in seconds
-
-    Returns:
-        str: the formatted duration
-    """
-    delta = timedelta(seconds=seconds)
-    hrs, mins, secs, mili = (
-        delta.seconds // 3600,
-        delta.seconds // 60 % 60,
-        delta.seconds % 60,
-        delta.microseconds // 1000,
-    )
-    return f"{hrs:02}:{mins:02}:{secs:02}.{mili:03}"
 
 
 def langcode_to_str(langcode: str) -> str:
