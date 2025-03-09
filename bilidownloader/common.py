@@ -206,6 +206,29 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
     ins_notify.send(block=False)
 
 
+def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> str:
+    """
+    Pluralize a word based on a count.
+
+    Args:
+        n (int | float): the count
+        word (str): the word to pluralize
+        plural (Optional[str], optional): the plural form of the word
+
+    Returns:
+        str: the pluralized word
+    """
+    if n == 1:
+        return f"{n} {word}"
+    if plural:
+        return f"{n} {plural}"
+    if word.endswith("y"):
+        return f"{n} {word[:-1]}ies"
+    elif word.endswith("s"):
+        return f"{n} {word}es"
+    return f"{n} {word}s"
+
+
 def format_human_time(seconds: float) -> str:
     """
     Formats a duration in seconds to a human-readable format.
@@ -274,21 +297,25 @@ class BenchClock:
     @property
     def detailed_format(self) -> str:
         """Format the time taken to a detailed human-readable format."""
-        hrs, mins, secs, mili = (
-            self.stop() // 3600,
-            self.stop() // 60 % 60,
-            self.stop() % 60,
-            (self.stop() * 1000) % 1000,
+        _stops = self.stop()
+        dys, hrs, mins, secs, mili = (
+            _stops // 86400,
+            _stops // 3600 % 24,
+            _stops // 60 % 60,
+            _stops % 60,
+            (_stops * 1000) % 1000,
         )
         finals = []
+        if dys:
+            finals.append(pluralize(dys, "day"))
         if hrs:
-            finals.append(f"{int(hrs)} hour{'s' if hrs > 1 else ''}")
+            finals.append(pluralize(hrs, "hour"))
         if mins:
-            finals.append(f"{int(mins)} minute{'s' if mins > 1 else ''}")
+            finals.append(pluralize(mins, "minute"))
         if secs:
-            finals.append(f"{int(secs)} second{'s' if secs > 1 else ''}")
+            finals.append(pluralize(secs, "second"))
         if mili:
-            finals.append(f"{int(mili)} millisecond{'s' if mili > 1 else ''}")
+            finals.append(pluralize(mili, "millisecond"))
 
         # only last element should be connected with 'and', others with ','
         if len(finals) > 1:

@@ -31,6 +31,7 @@ try:
         prn_info,
         push_notification,
         sanitize_filename,
+        pluralize,
     )
     from history import History
     from watchlist import Watchlist
@@ -53,6 +54,7 @@ except ImportError:
         prn_info,
         push_notification,
         sanitize_filename,
+        pluralize,
     )
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
@@ -857,7 +859,7 @@ class BiliProcess:
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)
         clock.echo_format(
-            f"Downloaded {flen} episode{'s' if flen > 1 else ''} from playlist"
+            f"Downloaded {pluralize(flen, 'episode')} from playlist"
         )
         return nnfinal
 
@@ -903,5 +905,9 @@ class BiliProcess:
                     if ep is not None:
                         final.append(ep)
 
-        clock.echo_format("Processed watchlist queue")
-        return final
+        nnfinal = [f for f in final if f is not None]
+        flen = len(nnfinal)
+        clock.echo_format(
+            f"Downloaded {pluralize(flen, 'episode')} from watchlist queue"
+        )
+        return nnfinal
