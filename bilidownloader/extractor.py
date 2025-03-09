@@ -277,8 +277,11 @@ class BiliProcess:
         # Get video duration using ffprobe
         # fmt: off
         ffprobe = find_command("ffprobe")
-        if not ffprobe:
-            prn_error("ffprobe is not found in the system, try to install it first or check the path")
+        if not ffprobe and self.ffmpeg_path:
+            # try replacing 
+            ffprobe = self.ffmpeg_path.with_stem("ffprobe")
+        if not ffprobe or not ffprobe.exists():
+            prn_error("ffprobe is not found in the system, make sure it's available in your ffmpeg directory/installation")
             return video_path
         result = sp.run([
             str(ffprobe), "-v", "error",
