@@ -255,9 +255,7 @@ class BiliProcess:
             )
         return mkv_chapters
 
-    def _embed_chapter_chapters(
-        self, chapters: List[Chapter], video_path: Path
-    ) -> Path:
+    def _embed_chapters(self, chapters: List[Chapter], video_path: Path) -> Path:
         """
         Creates chapter metadata and merges it into the video file.
 
@@ -760,7 +758,7 @@ class BiliProcess:
                     history.check_history(episode_url)
                 loc, data, language = self.download_episode(episode_url)
                 chapters = self._get_episode_chapters(data)
-                final = self._embed_chapter_chapters(chapters, loc)
+                final = self._embed_chapters(chapters, loc)
                 aud_args = self._add_audio_language(final, language)
                 font_args: List[str] = []
                 if not self.srt:
