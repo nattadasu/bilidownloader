@@ -63,7 +63,9 @@ app = typer.Typer(
 )
 hi_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
 wl_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
-app.add_typer(hi_app, name="history", help="View and manage history")
+app.add_typer(hi_app, name="history", help="View and manage history. Alias: his, h")
+app.add_typer(hi_app, name="his", help="View and manage history", hidden=True)
+app.add_typer(hi_app, name="h", help="View and manage history", hidden=True)
 
 wl_help = (
     "View and manage watchlist, or download recently released episodes from watchlist"
@@ -283,10 +285,12 @@ down_shelp = "Download via direct URL"
 
 @app.command(
     name="download",
-    short_help=f"{down_shelp}. Alias: down",
+    short_help=f"{down_shelp}. Alias: down, dl, d",
     no_args_is_help=True,
 )
 @app.command(name="down", short_help=down_shelp, hidden=True, no_args_is_help=True)
+@app.command(name="dl", short_help=down_shelp, hidden=True, no_args_is_help=True)
+@app.command(name="d", short_help=down_shelp, hidden=True, no_args_is_help=True)
 def download_url(
     url: URL_ARG,
     cookie: COOKIE_OPT,
@@ -398,7 +402,15 @@ def _cards_selector(
 
 
 @app.command(
-    "today", help="Get and download anime released today", no_args_is_help=True
+    "today",
+    help="Get and download anime released today. Alias: now",
+    no_args_is_help=True,
+)
+@app.command(
+    "now",
+    help="Get and download anime released today",
+    hidden=True,
+    no_args_is_help=True,
 )
 def download_today_releases(
     cookie: COOKIE_OPT,
@@ -442,7 +454,13 @@ def download_today_releases(
 
 @app.command(
     "released",
+    help="Select and downloads released anime from 3 days prior. Alias: rel",
+    no_args_is_help=True,
+)
+@app.command(
+    "rel",
     help="Select and downloads released anime from 3 days prior",
+    hidden=True,
     no_args_is_help=True,
 )
 def download_all_releases(
@@ -487,7 +505,9 @@ def download_all_releases(
         exit(1)
 
 
-@wl_app.command("list", help="Read list of monitored series on Bilibili")
+@wl_app.command("list", help="Read list of monitored series on Bilibili. Alias: ls, l")
+@wl_app.command("ls", help="Read list of monitored series on Bilibili", hidden=True)
+@wl_app.command("l", help="Read list of monitored series on Bilibili", hidden=True)
 def watchlist_list(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     show_url: SHOWURL_OPT = False,
@@ -540,7 +560,9 @@ def wl_action_msg(action: str) -> str:
     return f"Series URL or ID to be {action} to watchlist. Use this if you obtained media/play URL of the show, and want to skip interactive mode"
 
 
-@wl_app.command("add", help="Add a series to watchlist")
+@wl_app.command("add", help="Add a series to watchlist. Alias: insert, ins")
+@wl_app.command("insert", help="Add a series to watchlist", hidden=True)
+@wl_app.command("ins", help="Add a series to watchlist", hidden=True)
 def watchlist_add(
     series: Annotated[
         Optional[List[str]],
@@ -605,7 +627,11 @@ def watchlist_add(
 wl_del_help = "Delete series from watchlist"
 
 
-@wl_app.command("delete", help=wl_del_help, short_help=f"{wl_del_help}. Alias: del")
+@wl_app.command(
+    "delete", help=wl_del_help, short_help=f"{wl_del_help}. Alias: del, remove, rm"
+)
+@wl_app.command("remove", help=wl_del_help, hidden=True)
+@wl_app.command("rm", help=wl_del_help, hidden=True)
 @wl_app.command("del", help=wl_del_help, hidden=True)
 def watchlist_delete(
     series: Annotated[
@@ -674,10 +700,22 @@ wl_down_shelp = "Download all episodes from watchlist"
 
 
 @wl_app.command(
-    "download", help=f"{wl_down_help}. Alias: down", short_help=wl_down_shelp
+    "download", help=f"{wl_down_help}. Alias: down, dl, d", short_help=wl_down_shelp
 )
 @wl_app.command(
     "down",
+    help=wl_down_help,
+    short_help=wl_down_shelp,
+    hidden=True,
+)
+@wl_app.command(
+    "dl",
+    help=wl_down_help,
+    short_help=wl_down_shelp,
+    hidden=True,
+)
+@wl_app.command(
+    "d",
     help=wl_down_help,
     short_help=wl_down_shelp,
     hidden=True,
@@ -726,8 +764,11 @@ def watchlist_download(
 
 
 @hi_app.command(
-    "list", help="Show history of downloaded URLs, might be unreadable by normal mean"
+    "list",
+    help="Show history of downloaded URLs, might be unreadable by normal mean. Alias: ls, l",
 )
+@hi_app.command("ls", help="Show history of downloaded URLs", hidden=True)
+@hi_app.command("l", help="Show history of downloaded URLs", hidden=True)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
@@ -746,7 +787,10 @@ def history_list(
     console.print(table)
 
 
-@hi_app.command("clear", help="Clear history")
+@hi_app.command("clear", help="Clear history. Alias: clean, purge, cls")
+@hi_app.command("clean", help="Clear history", hidden=True)
+@hi_app.command("purge", help="Clear history", hidden=True)
+@hi_app.command("cls", help="Clear history", hidden=True)
 def history_clear(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
     yes: ASSUMEYES_OPT = False,
@@ -777,7 +821,14 @@ class DayOfWeek(str, Enum):
     SUNDAY = "sunday"
 
 
-@app.command("schedule", help="Get release schedule")
+@app.command(
+    "schedule", help="Get release schedule. Alias: calendar, cal, sch, timetable, tt"
+)
+@app.command("calendar", help="Get release schedule", hidden=True)
+@app.command("cal", help="Get release schedule", hidden=True)
+@app.command("sch", help="Get release schedule", hidden=True)
+@app.command("timetable", help="Get release schedule", hidden=True)
+@app.command("tt", help="Get release schedule", hidden=True)
 def schedule(
     show_url: SHOWURL_OPT = False,
     day: Annotated[
