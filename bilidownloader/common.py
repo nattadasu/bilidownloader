@@ -1,5 +1,6 @@
 import os
 import re
+from enum import Enum
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
@@ -68,6 +69,16 @@ available_res = Union[
     Literal[2160],
 ]
 """Available resolutions on Bstation, 4K was skipped"""
+
+
+class SubtitleLanguage(str, Enum):
+    en = "en"
+    id = "id"
+    ms = "ms"
+    th = "th"
+    vi = "vi"
+    zh_Hans = "zh-Hans"
+    zh_Hant = "zh-Hant"
 
 
 def find_command(executable: str) -> Optional[Path]:

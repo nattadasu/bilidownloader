@@ -23,6 +23,7 @@ try:
     from common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        SubtitleLanguage,
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
@@ -40,6 +41,7 @@ except ImportError:
     from bilidownloader.common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        SubtitleLanguage,
         available_res,
         find_ffmpeg,
         find_mkvpropedit,
@@ -202,13 +204,13 @@ DO_NOT_RESCALE_SSA_OPT = Annotated[
 ]
 """Flag to not rescale SSA subtitle"""
 SUBLANG_OPT = Annotated[
-    Optional[str],
+    Optional[SubtitleLanguage],
     typer.Option(
         "--sub-lang",
         "-l",
         help="Set the selected subtitle language to be default",
         case_sensitive=False,
-        show_choices=False,
+        show_choices=True,
     ),
 ]
 """Set the selected subtitle language to be default"""
@@ -298,7 +300,7 @@ def download_url(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    sub_lang: SUBLANG_OPT = None,
+    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -411,7 +413,7 @@ def download_today_releases(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    sub_lang: SUBLANG_OPT = None,
+    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -456,7 +458,7 @@ def download_all_releases(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    sub_lang: SUBLANG_OPT = None,
+    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -692,7 +694,7 @@ def watchlist_download(
     notification: NOTIFY_OPT = False,
     srtonly: SRT_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    sub_lang: SUBLANG_OPT = None,
+    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
     as_playlist: ASPLAYLIST_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -835,7 +837,9 @@ def schedule(
 def app_update() -> bool:
     """Check for an update from upstream's pyproject.toml"""
     latest_version = __VERSION__
-    update_url = "https://raw.githubusercontent.com/nattadasu/bilidownloader/main/pyproject.toml"
+    update_url = (
+        "https://raw.githubusercontent.com/nattadasu/bilidownloader/main/pyproject.toml"
+    )
     try:
         resp = req.get(update_url)
         resp.raise_for_status()

@@ -35,6 +35,9 @@ try:
         push_notification,
         sanitize_filename,
     )
+    from common import (
+        SubtitleLanguage as SubLang,
+    )
     from history import History
     from watchlist import Watchlist
 except ImportError:
@@ -57,6 +60,9 @@ except ImportError:
         prn_info,
         push_notification,
         sanitize_filename,
+    )
+    from bilidownloader.common import (
+        SubtitleLanguage as SubLang,
     )
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
@@ -96,9 +102,7 @@ class BiliProcess:
         notification: bool = False,
         srt: bool = False,
         dont_rescale: bool = False,
-        subtitle_lang: Optional[
-            Literal["eng", "ind", "may", "tha", "vie", "zht", "zhs"]
-        ] = None,
+        subtitle_lang: SubLang = SubLang.en,
     ):
         self.watchlist = watchlist
         self.history = history
@@ -111,7 +115,7 @@ class BiliProcess:
         self.notification = notification
         self.srt = srt
         self.dont_rescale = dont_rescale
-        self.subtitle_lang = subtitle_lang
+        self.subtitle_lang = subtitle_lang.value
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -498,10 +502,9 @@ class BiliProcess:
 
     def _set_default_subtitle(
         self,
+        raw_data: Dict[str, Any],
         video_path: Path,
-        language: Optional[
-            Literal["eng", "ind", "may", "tha", "vie", "zht", "zhs"]
-        ] = None,
+        language: Literal["en", "id", "ms", "th", "vi", "zh-Hans", "zh-Hant"] = "en",
     ) -> List[str]:
         """
         Sets the default subtitle for the video file.
@@ -514,13 +517,33 @@ class BiliProcess:
             List[str]: mkvpropedit args
         """
 
+        lcodex = {
+            "en": "eng",
+            "id": "ind",
+            "ms": "may",
+            "th": "tha",
+            "vi": "vie",
+            "zh-Hans": "chi",
+            "zh-Hant": "chi",
+        }
+        flang = lcodex.get(language, "eng")
+
         def fail(msg: str) -> List[str]:
             prn_error(msg)
             return []
 
-        if not language:
-            return fail(f"Skipping setting default subtitle for {video_path.name}")
-        prn_info(f"Setting default subtitle to '{language}' for {video_path.name}")
+        # get all name of keys in raw_data["subtitles"]
+        try:
+            keys = raw_data.get("subtitles", {}).keys()
+            # covert dict_keys to list
+            keys = list(keys)
+        except Exception as _:
+            keys = []
+        if not keys:
+            return fail("Failed to get subtitle index from yt-dlp. Does the video have subtitles?")
+
+
+        prn_info(f"Setting default subtitle to '{flang}' for {video_path.name}")
         # get the subtitle track number from the video file using mkvmerge as json
         mkvmerge = find_command("mkvmerge")
         if not mkvmerge:
@@ -545,7 +568,9 @@ class BiliProcess:
             for track in data["tracks"]:
                 if track["type"] == "subtitles":
                     track_lang = track["properties"]["language"]
-                    if track_lang == language:
+                    if track_lang == "chi":
+                        track_lang = keys[track["id"] - 2]
+                    if track_lang == flang:
                         set_track = (str(track["id"] + 1), track_lang)
                     else:
                         unset_track.append((str(track["id"] + 1), track_lang))
@@ -553,8 +578,8 @@ class BiliProcess:
             return fail("Failed to get subtitle track number")
 
         if not set_track and len(unset_track) > 0:
-            print(
-                f"Subtitle track for '{language}' not found, using the first subtitle track as default"
+            prn_error(
+                f"Subtitle track for '{flang}' not found, using the first subtitle track as default"
             )
             set_track = unset_track.pop(0)
 
@@ -566,11 +591,13 @@ class BiliProcess:
                 unset_ += [
                     "--edit", f"track:{track[0]}",
                     "--set", "flag-default=0",
+                    "--set", f"language={track[1]}",
                     "--set", f"name={langcode_to_str(track[1])}",
                 ]
             return [
                 "--edit", f"track:{set_track[0]}",
                 "--set", "flag-default=1",
+                "--set", f"language={set_track[1]}",
                 "--set", f"name={langcode_to_str(set_track[1])}",
                 *unset_,
             ]
@@ -821,6 +848,7 @@ class BiliProcess:
                         except Exception as _:
                             continue
                     font_json.unlink(True)
+                sub_args = self._set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
                 attachment_args = self._insert_thumbnail(data)
                 final = self._execute_mkvpropedit(
                     final, aud_args, sub_args, font_args, attachment_args
