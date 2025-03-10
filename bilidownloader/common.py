@@ -228,6 +228,26 @@ def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> 
     return f"{n} {word}s"
 
 
+def secs_to_proper(seconds: Union[int, float]) -> tuple[int, int, int, int, int]:
+    """
+    Convert seconds to proper time format.
+
+    Args:
+        seconds (int | float): the duration in seconds
+
+    Returns:
+        tuple[int, int, int, int, int]: the duration in days, hours, minutes, seconds, and milliseconds
+    """
+    days, hours, minutes, secs = (
+        seconds // 86400,
+        seconds // 3600 % 24,
+        seconds // 60 % 60,
+        seconds % 60,
+    )
+    mili = (seconds * 1000) % 1000
+    return int(days), int(hours), int(minutes), int(secs), int(mili)
+
+
 def format_human_time(seconds: float) -> str:
     """
     Formats a duration in seconds to a human-readable format.
@@ -242,15 +262,10 @@ def format_human_time(seconds: float) -> str:
         return "N/A"
     elif seconds == 0:
         return "0:00"
-    days, hours, minutes, secs = (
-        seconds // 86400,
-        seconds // 3600 % 24,
-        seconds // 60 % 60,
-        seconds % 60,
-    )
-    if minutes == 0:
-        return f"0:{secs:02}"
-    return f"{days:02}:{hours:02}:{minutes:02}:{secs:02}".lstrip("0:").lstrip("0")
+    d_, h_, m_, s_, _ = secs_to_proper(seconds)
+    if m_ == 0:
+        return f"0:{s_:02}"
+    return f"{d_}:{h_:02}:{m_:02}:{s_:02}".lstrip("0:").lstrip("0")
 
 
 def format_mkvmerge_time(seconds: float) -> str:
@@ -263,13 +278,8 @@ def format_mkvmerge_time(seconds: float) -> str:
     Returns:
         str: the formatted duration
     """
-    hrs, mins, secs, mili = (
-        seconds // 3600,
-        seconds // 60 % 60,
-        seconds % 60,
-        (seconds * 1000) % 1000,
-    )
-    return f"{hrs:02}:{mins:02}:{secs:02}.{mili:03}"
+    _, h_, m_, s_, ms_ = secs_to_proper(seconds)
+    return f"{h_:02}:{m_:02}:{s_:02}.{ms_:03}"
 
 
 class BenchClock:
@@ -277,14 +287,17 @@ class BenchClock:
 
     def __init__(self) -> None:
         self.start = time()
+        self.stop_ = 0.0
 
     def stop(self) -> float:
         """Stop the clock and return the time taken."""
-        return time() - self.start
+        self.stop_ = time() if not self.stop_ else self.stop_
+        return self.stop_ - self.start
 
     def reset(self) -> None:
         """Reset the clock."""
         self.start = time()
+        self.stop_ = 0.0
 
     @property
     def format(self) -> str:
@@ -294,25 +307,18 @@ class BenchClock:
     @property
     def detailed_format(self) -> str:
         """Format the time taken to a detailed human-readable format."""
-        _stops = self.stop()
-        dys, hrs, mins, secs, mili = (
-            _stops // 86400,
-            _stops // 3600 % 24,
-            _stops // 60 % 60,
-            _stops % 60,
-            (_stops * 1000) % 1000,
-        )
+        d_, h_, m_, s_, ms_ = secs_to_proper(self.stop())
         finals = []
-        if dys:
-            finals.append(pluralize(dys, "day"))
-        if hrs:
-            finals.append(pluralize(hrs, "hour"))
-        if mins:
-            finals.append(pluralize(mins, "minute"))
-        if secs:
-            finals.append(pluralize(secs, "second"))
-        if mili:
-            finals.append(pluralize(mili, "millisecond"))
+        if d_:
+            finals.append(pluralize(d_, "day", "days"))
+        if h_:
+            finals.append(pluralize(h_, "hour"))
+        if m_:
+            finals.append(pluralize(m_, "minute"))
+        if s_:
+            finals.append(pluralize(s_, "second"))
+        if ms_:
+            finals.append(pluralize(ms_, "millisecond"))
 
         # only last element should be connected with 'and', others with ','
         if len(finals) > 1:
@@ -327,9 +333,9 @@ class BenchClock:
     def echo_format(self, ctx: str = "") -> None:
         """Print the formatted time taken."""
         if ctx:
-            prn_done(f"{ctx}, task took {self.detailed_format}")
+            prn_done(f"{ctx}, task took {self.detailed_format} ({self.format})")
             return
-        prn_done(f"Task took {self.detailed_format}")
+        prn_done(f"Task took {self.detailed_format} ({self.format})")
 
 
 def langcode_to_str(langcode: str) -> str:
