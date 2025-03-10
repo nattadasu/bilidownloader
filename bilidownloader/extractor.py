@@ -1,4 +1,5 @@
 import subprocess as sp
+import traceback
 from html import unescape
 from json import loads as jloads
 from pathlib import Path
@@ -815,9 +816,9 @@ class BiliProcess:
                 print()
                 prn_error("Interrupt signal received, stopping process")
                 exit(1)
-            except Exception as err:
+            except Exception as _:
                 prn_error("An exception has been thrown:")
-                prn_error(str(err))
+                prn_error(traceback.format_exc())
                 prn_info("Retrying...")
                 tries += 1
 
