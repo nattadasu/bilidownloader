@@ -170,6 +170,6 @@ cython_debug/
 *.meta
 *.ass
 *.srt
-fonts.json
+*.json
 
 ffmpeg*
