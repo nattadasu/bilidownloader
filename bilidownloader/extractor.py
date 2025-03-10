@@ -8,6 +8,7 @@ from re import search as rsearch
 from re import sub as rsub
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+import requests as reqs
 from fake_useragent import UserAgent
 from rich.console import Console
 from rich.table import Column, Table, box
@@ -577,12 +578,40 @@ class BiliProcess:
         else:
             return fail("Failed to set subtitle track as default")
 
+    def _insert_thumbnail(self, raw_info: Dict[str, Any]) -> List[str]:
+        """
+        Inserts a thumbnail into the video file.
+
+        Args:
+            raw_info (Dict[str, Any]): Video metadata.
+
+        Returns:
+            List[str]: mkvpropedit args
+        """
+        thumbnail = raw_info.get("thumbnail")
+        if not thumbnail:
+            return []
+
+        prn_info("Downloading thumbnail and adding it to the video file")
+        thumbnail_path = Path("thumbnail.png")
+        with reqs.get(thumbnail) as resp:
+            thumbnail_path.write_bytes(resp.content)
+
+        # fmt: off
+        return [
+            "--attachment-name", "cover.png",
+            "--attachment-mime-type", "image/png",
+            "--add-attachment", str(thumbnail_path),
+        ]
+        # fmt: on
+
     def _execute_mkvpropedit(
         self,
         video_path: Path,
         audio_args: List[str],
         sub_args: List[str],
         font_args: List[str],
+        attachment_args: List[str],
     ) -> Path:
         """
         Executes mkvpropedit on the video file.
@@ -610,6 +639,7 @@ class BiliProcess:
             *audio_args,
             *sub_args,
             *font_args,
+            *attachment_args,
             "--quiet", "--add-track-statistics-tags",
         ], check=True)
         # fmt: on
@@ -791,8 +821,11 @@ class BiliProcess:
                         except Exception as _:
                             continue
                     font_json.unlink(True)
-                sub_args = self._set_default_subtitle(final, self.subtitle_lang)  # type: ignore
-                final = self._execute_mkvpropedit(final, aud_args, sub_args, font_args)
+                attachment_args = self._insert_thumbnail(data)
+                final = self._execute_mkvpropedit(
+                    final, aud_args, sub_args, font_args, attachment_args
+                )
+                Path("thumbnail.png").unlink(True)
                 if not forced:
                     history.write_history(episode_url)
                 else:
