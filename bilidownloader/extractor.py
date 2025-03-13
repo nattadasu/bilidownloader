@@ -698,7 +698,7 @@ class BiliProcess:
         )
         if ftitle:
             title = rsub(
-                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*Bstation$", "", ftitle.group(1)
+                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$", "", ftitle.group(1)
             )
             title = sanitize_filename(unescape(title))
         else:
