@@ -101,6 +101,7 @@ class BiliProcess:
         mkvpropedit_path: Optional[Path] = None,
         notification: bool = False,
         srt: bool = False,
+        dont_thumbnail: bool = False,
         dont_rescale: bool = False,
         subtitle_lang: SubLang = SubLang.en,
     ):
@@ -114,6 +115,7 @@ class BiliProcess:
         self.mkvpropedit_path = mkvpropedit_path
         self.notification = notification
         self.srt = srt
+        self.dont_thumbnail = dont_thumbnail
         self.dont_rescale = dont_rescale
         self.subtitle_lang = subtitle_lang.value
 
@@ -849,7 +851,10 @@ class BiliProcess:
                             continue
                     font_json.unlink(True)
                 sub_args = self._set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
-                attachment_args = self._insert_thumbnail(data)
+                if not self.dont_thumbnail:
+                    attachment_args = self._insert_thumbnail(data)
+                else:
+                    attachment_args = []
                 final = self._execute_mkvpropedit(
                     final, aud_args, sub_args, font_args, attachment_args
                 )
