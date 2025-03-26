@@ -207,7 +207,10 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
     else:
         ins_notify.title = f"Downloading {title}, E{index}"
         ins_notify.message = "We will notify you when it's done"
-    ins_notify.send(block=False)
+    try:
+        ins_notify.send(block=False)
+    except Exception as _:
+        ...
 
 
 def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> str:
