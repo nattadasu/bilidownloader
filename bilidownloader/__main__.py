@@ -856,27 +856,27 @@ def history_clear(
 
 class DayOfWeek(str, Enum):
     TODAY = "today"
-    MONDAY = "monday"
-    TUESDAY = "tuesday"
-    WEDNESDAY = "wednesday"
-    THURSDAY = "thursday"
-    FRIDAY = "friday"
-    SATURDAY = "saturday"
-    SUNDAY = "sunday"
     NOW = "now"
+    MONDAY = "monday"
     MON = "mon"
-    TUE = "tue"
-    WED = "wed"
-    THU = "thu"
-    FRI = "fri"
-    SAT = "sat"
-    SUN = "sun"
     MO = "mo"
+    TUESDAY = "tuesday"
+    TUE = "tue"
     TU = "tu"
+    WEDNESDAY = "wednesday"
+    WED = "wed"
     WE = "we"
+    THURSDAY = "thursday"
+    THU = "thu"
     TH = "th"
+    FRIDAY = "friday"
+    FRI = "fri"
     FR = "fr"
+    SATURDAY = "saturday"
+    SAT = "sat"
     SA = "sa"
+    SUNDAY = "sunday"
+    SUN = "sun"
     SU = "su"
 
 
@@ -896,11 +896,7 @@ def schedule(
         typer.Option(
             "--day",
             "-d",
-            help=(
-                "Filter by a specific day. Possible values: now/today, "
-                "mo(n(day)), tu(e(sday)), wed(nesday), th(u(rsday)), fr(i(day)), "
-                "sa(t(urday)), su(n(day))"
-            ),
+            help="Filter by a specific day",
             rich_help_panel="Filter",
             show_choices=False,
             show_default=False,
