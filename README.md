@@ -18,18 +18,35 @@ Assist you in ripping episode from BiliIntl.
 This tool requires following libraries/programs to be installed first:
 
 * Python => 3.11
-* Latest FFmpeg, and available on PATH
-* MKVToolNix, not containerized (Flatpak, Snap, etc) and available on PATH. `mkvpropedit` must be available from the bundle.
+* `git` to clone the repository before installing
 * `pipx` (install with `pip install pipx`)
+* Latest FFmpeg, and available on PATH
+* MKVToolNix, not containerized (Flatpak, Snap, etc) and available on PATH.
+  `mkvpropedit` must be available from the bundle.
 
 Additionally, you also required to obtain your own cookie.txt from BiliIntl and
 Premium is activated as well.
 
 ## Installation
 
+> [!NOTE]
+>
+> We only support installation via `pipx` for now for better management of the
+> package. If you don't have `pipx` installed, you can install it by running
+> `pip install pipx` or lookup if your distro's package manager has it.
+
 ```bash
 pipx install git+https://github.com/nattadasu/bilidownloader.git
+
+# To enable ASS support, use the following command instead:
+# Note that depending on devices, this can take from a minute install up to an hour! 
+pipx install 'bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git'
 ```
+
+Starting from version `2.1.0`, dependencies for ASS support have been removed to
+ensure compatibility with headless devices and non-x86 architectures.
+This change eliminates the need for compiling dependencies but comes at the
+expense of ASS track support.
 
 ## Usage
 
