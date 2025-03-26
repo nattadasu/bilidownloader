@@ -108,26 +108,6 @@ def find_command(executable: str) -> Optional[Path]:
         return None
 
 
-def find_ffmpeg() -> Optional[Path]:
-    """
-    Find the ffmpeg executable in the system.
-
-    Returns:
-        Optional[Path]: the path to the ffmpeg executable, or None if not found
-    """
-    return find_command("ffmpeg")
-
-
-def find_mkvpropedit() -> Optional[Path]:
-    """
-    Find the mkvpropedit executable in the system.
-
-    Returns:
-        Optional[Path]: the path to the mkvpropedit executable, or None if not found
-    """
-    return find_command("mkvpropedit")
-
-
 def prn_info(message: str) -> None:
     """
     Prints an informational message to the console.

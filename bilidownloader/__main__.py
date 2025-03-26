@@ -25,8 +25,7 @@ try:
         DEFAULT_WATCHLIST,
         SubtitleLanguage,
         available_res,
-        find_ffmpeg,
-        find_mkvpropedit,
+        find_command,
         prn_done,
         prn_error,
         prn_info,
@@ -43,8 +42,7 @@ except ImportError:
         DEFAULT_WATCHLIST,
         SubtitleLanguage,
         available_res,
-        find_ffmpeg,
-        find_mkvpropedit,
+        find_command,
         prn_done,
         prn_error,
         prn_info,
@@ -89,8 +87,8 @@ def resolution_autocomplete():
     return resos
 
 
-FFMPEG_PATH = find_ffmpeg()
-MKVPROPEX_PATH = find_mkvpropedit()
+FFMPEG_PATH = find_command("ffmpeg")
+MKVPROPEX_PATH = find_command("mkvpropedit")
 
 
 def raise_ffmpeg(path: Optional[Path]):
