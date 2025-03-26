@@ -16,7 +16,6 @@ from yt_dlp import YoutubeDL as YDL
 
 try:
     from api import BiliApi, BiliHtml
-    from assresample import SSARescaler
     from common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
@@ -45,7 +44,6 @@ try:
     from watchlist import Watchlist
 except ImportError:
     from bilidownloader.api import BiliApi, BiliHtml
-    from bilidownloader.assresample import SSARescaler
     from bilidownloader.common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
@@ -801,6 +799,10 @@ class BiliProcess:
             ydl.params["verbose"] = True
             if not (self.dont_rescale or self.srt):
                 if check_package("ass"):
+                    try:
+                        from assresample import SSARescaler
+                    except ImportError:
+                        from bilidownloader.assresample import SSARescaler
                     ydl.add_post_processor(SSARescaler(), when="before_dl")
                 else:
                     # fmt: off
