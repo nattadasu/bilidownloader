@@ -1,6 +1,7 @@
 import os
 import re
 from enum import Enum
+from importlib.util import find_spec
 from pathlib import Path
 from platform import system as psys
 from subprocess import PIPE, CalledProcessError, run
@@ -106,6 +107,19 @@ def find_command(executable: str) -> Optional[Path]:
             return None
     except CalledProcessError:
         return None
+
+
+def check_package(pkg_name: str) -> bool:
+    """
+    Check if the required package is installed
+
+    Args:
+        pkg_name (str): the package name
+
+    Returns:
+        bool: True if the package is installed, False otherwise
+    """
+    return find_spec(pkg_name) is not None
 
 
 def prn_info(message: str) -> None:
