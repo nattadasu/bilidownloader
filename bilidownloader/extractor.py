@@ -38,6 +38,7 @@ try:
     from common import (
         SubtitleLanguage as SubLang,
     )
+    from fontmanager import loop_font_lookup
     from history import History
     from watchlist import Watchlist
 except ImportError:
@@ -64,6 +65,7 @@ except ImportError:
     from bilidownloader.common import (
         SubtitleLanguage as SubLang,
     )
+    from bilidownloader.fontmanager import loop_font_lookup
     from bilidownloader.history import History
     from bilidownloader.watchlist import Watchlist
 
@@ -825,30 +827,7 @@ class BiliProcess:
                 font_args: List[str] = []
                 if not self.srt:
                     font_json = Path("fonts.json")
-                    try:
-                        with open(font_json, "r", encoding="utf-8") as file:
-                            fonts: List[str] = jloads(file.read())
-                    except Exception as _:
-                        fonts: List[str] = []
-
-                    from matplotlib import font_manager as fontm
-
-                    for font in fonts:
-                        try:
-                            fpath = fontm.findfont(
-                                fontm.FontProperties(family=font),
-                                fallback_to_default=False,
-                                rebuild_if_missing=False,
-                            )
-                            if fpath:
-                                # fmt: off
-                                font_args += [
-                                    "--attachment-name", font,
-                                    "--add-attachment", str(Path(fpath).absolute()),
-                                ]
-                                # fmt: on
-                        except Exception as _:
-                            continue
+                    font_json, font_args = loop_font_lookup(font_json, font_args)
                     font_json.unlink(True)
                 sub_args = self._set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
                 if not self.dont_thumbnail:
