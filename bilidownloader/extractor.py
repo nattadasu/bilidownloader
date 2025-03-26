@@ -14,63 +14,33 @@ from rich.console import Console
 from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
 
-try:
-    from api import BiliApi, BiliHtml
-    from common import (
-        DEFAULT_HISTORY,
-        DEFAULT_WATCHLIST,
-        REINSTALL_ARGS,
-        BenchClock,
-        Chapter,
-        DataExistError,
-        available_res,
-        check_package,
-        find_command,
-        format_human_time,
-        format_mkvmerge_time,
-        langcode_to_str,
-        pluralize,
-        prn_done,
-        prn_error,
-        prn_info,
-        push_notification,
-        sanitize_filename,
-    )
-    from common import (
-        SubtitleLanguage as SubLang,
-    )
-    from fontmanager import loop_font_lookup
-    from history import History
-    from watchlist import Watchlist
-except ImportError:
-    from bilidownloader.api import BiliApi, BiliHtml
-    from bilidownloader.common import (
-        DEFAULT_HISTORY,
-        DEFAULT_WATCHLIST,
-        REINSTALL_ARGS,
-        BenchClock,
-        Chapter,
-        DataExistError,
-        available_res,
-        check_package,
-        find_command,
-        format_human_time,
-        format_mkvmerge_time,
-        langcode_to_str,
-        pluralize,
-        prn_done,
-        prn_error,
-        prn_info,
-        push_notification,
-        sanitize_filename,
-    )
-    from bilidownloader.common import (
-        SubtitleLanguage as SubLang,
-    )
-    from bilidownloader.fontmanager import loop_font_lookup
-    from bilidownloader.history import History
-    from bilidownloader.watchlist import Watchlist
-
+from bilidownloader.api import BiliApi, BiliHtml
+from bilidownloader.common import (
+    DEFAULT_HISTORY,
+    DEFAULT_WATCHLIST,
+    REINSTALL_ARGS,
+    BenchClock,
+    Chapter,
+    DataExistError,
+    available_res,
+    check_package,
+    find_command,
+    format_human_time,
+    format_mkvmerge_time,
+    langcode_to_str,
+    pluralize,
+    prn_done,
+    prn_error,
+    prn_info,
+    push_notification,
+    sanitize_filename,
+)
+from bilidownloader.common import (
+    SubtitleLanguage as SubLang,
+)
+from bilidownloader.fontmanager import loop_font_lookup
+from bilidownloader.history import History
+from bilidownloader.watchlist import Watchlist
 
 ua = UserAgent()
 uagent = ua.chrome

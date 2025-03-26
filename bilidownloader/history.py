@@ -2,20 +2,12 @@ from os import path as opath
 from pathlib import Path
 from typing import List
 
-try:
-    from common import (
-        DEFAULT_HISTORY,
-        DataExistError,
-        prn_done,
-        prn_info,
-    )
-except ImportError:
-    from bilidownloader.common import (
-        DEFAULT_HISTORY,
-        DataExistError,
-        prn_done,
-        prn_info,
-    )
+from bilidownloader.common import (
+    DEFAULT_HISTORY,
+    DataExistError,
+    prn_done,
+    prn_info,
+)
 
 
 class History:

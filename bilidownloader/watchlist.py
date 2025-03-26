@@ -3,24 +3,14 @@ from os import path as opath
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
 
-try:
-    from api import BiliApi
-    from common import (
-        DEFAULT_WATCHLIST,
-        DataExistError,
-        prn_done,
-        prn_error,
-        prn_info,
-    )
-except ImportError:
-    from bilidownloader.api import BiliApi
-    from bilidownloader.common import (
-        DEFAULT_WATCHLIST,
-        DataExistError,
-        prn_done,
-        prn_error,
-        prn_info,
-    )
+from bilidownloader.api import BiliApi
+from bilidownloader.common import (
+    DEFAULT_WATCHLIST,
+    DataExistError,
+    prn_done,
+    prn_error,
+    prn_info,
+)
 
 
 class Watchlist:
