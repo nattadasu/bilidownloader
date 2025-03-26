@@ -544,8 +544,9 @@ class BiliProcess:
         except Exception as _:
             keys = []
         if not keys:
-            return fail("Failed to get subtitle index from yt-dlp. Does the video have subtitles?")
-
+            return fail(
+                "Failed to get subtitle index from yt-dlp. Does the video have subtitles?"
+            )
 
         prn_info(f"Setting default subtitle to '{flang}' for {video_path.name}")
         # get the subtitle track number from the video file using mkvmerge as json
@@ -700,7 +701,9 @@ class BiliProcess:
         )
         if ftitle:
             title = rsub(
-                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$", "", ftitle.group(1)
+                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                "",
+                ftitle.group(1),
             )
             title = sanitize_filename(unescape(title))
         else:
