@@ -25,6 +25,7 @@ try:
         DEFAULT_WATCHLIST,
         SubtitleLanguage,
         available_res,
+        check_package,
         find_command,
         prn_done,
         prn_error,
@@ -42,6 +43,7 @@ except ImportError:
         DEFAULT_WATCHLIST,
         SubtitleLanguage,
         available_res,
+        check_package,
         find_command,
         prn_done,
         prn_error,
@@ -101,6 +103,9 @@ def raise_mkvpropedit(path: Optional[Path]):
         raise FileNotFoundError("mkvpropedit binary couldn't be found!")
 
 
+ass_status = check_package("ass")
+
+
 ##############################
 # ARGS AND FLAGS DEFINITIONS #
 ##############################
@@ -111,6 +116,7 @@ URL_ARG = Annotated[
         ...,
         help="Video or Playlist URL on Bilibili",
         show_default=False,
+        rich_help_panel="Input",
     ),
 ]
 """URL Argument for the command to download"""
@@ -122,6 +128,7 @@ cookie_option = typer.Option(
     help=cookies_help,
     prompt=True,
     show_default=False,
+    rich_help_panel="Data Management",
 )
 optcookie = deepcopy(cookie_option)
 optcookie.help = f"{cookies_help}. Use this argument option if you also want to update your Bilibili information"
@@ -138,6 +145,8 @@ WATCHLIST_OPT = Annotated[
         "--watchlist-file",
         "-w",
         help="Path to your watchlist.txt file",
+        rich_help_panel="Data Management",
+        resolve_path=True,
     ),
 ]
 """Watchlist option for the command to manage watchlist"""
@@ -148,6 +157,8 @@ HISTORY_OPT = Annotated[
         "--history-file",
         "-h",
         help="Path to your history.txt file",
+        rich_help_panel="Data Management",
+        resolve_path=True,
     ),
 ]
 """History option for the command to manage history"""
@@ -157,6 +168,7 @@ FORCED_OPT = Annotated[
         "--force",
         "-F",
         help="Force download the video even if it was downloaded previously",
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Forced flag for the command to download"""
@@ -171,6 +183,7 @@ RESO_OPT = Annotated[
         max=2160,
         callback=resolution_callback,
         autocompletion=resolution_autocomplete,
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Resolution option for the command to download"""
@@ -180,7 +193,8 @@ AVC_OPT = Annotated[
         "--is-avc",
         "--avc",
         "-a",
-        help="Download the video with AVC as codec instead of HEVC. Enable this option if you had compability issue",
+        help="Download the video with AVC as codec instead of HEVC.",
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Flag to change the codec to AVC"""
@@ -190,7 +204,11 @@ SRT_OPT = Annotated[
         "--srt-only",
         "--plain",
         "-S",
-        help="Download the embedded subtitle as SRT only rather to prioritize SSA/SRT. Best for compatibility and readability",
+        help=(
+            "Download subtitles in SRT format only, instead of SSA/SRT. "
+            "Enabled by default on a base installation."
+        ),
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Flag to download SRT only"""
@@ -199,7 +217,12 @@ DO_NOT_RESCALE_SSA_OPT = Annotated[
     typer.Option(
         "--no-rescale",
         "-N",
-        help="Do not rescale SSA subtitle to fix subtitle size when by default it's too big",
+        help=(
+            "Prevent rescaling of SSA subtitles, which is typically done to adjust "
+            "subtitle size when it appears too large by default. "
+            "No action will be taken on a base installation."
+        ),
+        rich_help_panel="Post-Processing",
     ),
 ]
 """Flag to not rescale SSA subtitle"""
@@ -209,6 +232,7 @@ DO_NOT_ATTACH_THUMBNAIL_OPT = Annotated[
         "--no-thumbnail",
         "-X",
         help="Do not download thumbnail from BiliBili then embed it",
+        rich_help_panel="Post-Processing",
     ),
 ]
 SUBLANG_OPT = Annotated[
@@ -219,6 +243,7 @@ SUBLANG_OPT = Annotated[
         help="Set the selected subtitle language to be default",
         case_sensitive=False,
         show_choices=True,
+        rich_help_panel="Post-Processing",
     ),
 ]
 """Set the selected subtitle language to be default"""
@@ -226,7 +251,8 @@ PV_OPT = Annotated[
     bool,
     typer.Option(
         "--pv",
-        help="Also download PV, only affects if the url is a Playlist",
+        help="Download promotional videos (PV) as well. Only applicable if the URL is a playlist.",
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Flag to download PV"""
@@ -235,7 +261,8 @@ FFMPEG_OPT = Annotated[
     typer.Option(
         "--ffmpeg-path",
         "--ffmpeg",
-        help="Location of the ffmpeg binary; either the path to the binary or its containing directory",
+        help="Specify the path to the ffmpeg binary or its containing directory",
+        rich_help_panel="Binaries",
     ),
 ]
 """Path to ffmpeg binary"""
@@ -244,12 +271,19 @@ MKVPROPEX_OPT = Annotated[
     typer.Option(
         "--mkvpropedit-path",
         "--mkvpropedit",
-        help="Location of the mkvpropedit binary; either the path to the binary or its containing directory",
+        help="Specify the path to the mkvpropedit binary or its containing directory",
+        rich_help_panel="Binaries",
     ),
 ]
 """Path to mkvpropedit binary"""
 SHOWURL_OPT = Annotated[
-    bool, typer.Option("--show-url", "-u", help="Generate URL to the show as well")
+    bool,
+    typer.Option(
+        "--show-url",
+        "-u",
+        help="Generate URL to the show as well",
+        rich_help_panel="Output",
+    ),
 ]
 """Flag to show URL"""
 NOTIFY_OPT = Annotated[
@@ -258,13 +292,17 @@ NOTIFY_OPT = Annotated[
         "--notify",
         "-n",
         help="Send a notification when an episode has been downloaded",
+        rich_help_panel="Post-Processing",
     ),
 ]
 """Flag to send notification"""
 ASSUMEYES_OPT = Annotated[
     bool,
     typer.Option(
-        "--assumeyes", "-y", help="Automatically answer yes for all questions"
+        "--assumeyes",
+        "-y",
+        help="Automatically answer yes for all questions",
+        rich_help_panel="Input",
     ),
 ]
 """Flag to force accept all prompts to True"""
@@ -273,11 +311,12 @@ ASPLAYLIST_OPT = Annotated[
     typer.Option(
         "--as-playlist",
         help=(
-            "Download monitored series as a playlist (play/) instead of "
-            "default behaviour by relying on recently released episodes in "
-            "past 3 days. This option will download all episodes available "
+            "Download monitored series as a playlist (play/) instead of the "
+            "default behavior by relying on recently released episodes in the "
+            "past 3 days. This option will download all episodes available, "
             "including the old ones, so use with caution."
         ),
+        rich_help_panel="Filtering & Selection",
     ),
 ]
 """Flag to override default behaviour of downloading watchlist"""
@@ -301,16 +340,16 @@ def download_url(
     url: URL_ARG,
     cookie: COOKIE_OPT,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    forced: FORCED_OPT = False,
     resolution: RESO_OPT = 1080,
+    srtonly: SRT_OPT = not ass_status,
     is_avc: AVC_OPT = False,
     download_pv: PV_OPT = False,
+    forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    notification: NOTIFY_OPT = False,
-    srtonly: SRT_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
+    notification: NOTIFY_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
@@ -403,7 +442,7 @@ def _cards_selector(
     wl = Watchlist(watchlist_file)
     if not wl.search_watchlist(season_id=anime.season_id):
         if survey.routines.inquire(
-            f"Do you want to save {anime.title} to watchlist? You can easily download latest episodes with dedicated commands. ",
+            f"Would you like to add {anime.title} to your watchlist? This allows you to quickly download the latest episodes using dedicated commands.",
             default=False,
         ):
             wl.add_watchlist(anime.season_id, anime.title)
@@ -426,16 +465,16 @@ def download_today_releases(
     cookie: COOKIE_OPT,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    forced: FORCED_OPT = False,
     resolution: RESO_OPT = 1080,
+    srtonly: SRT_OPT = not ass_status,
     is_avc: AVC_OPT = False,
     download_pv: PV_OPT = False,
+    forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    notification: NOTIFY_OPT = False,
-    srtonly: SRT_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
+    notification: NOTIFY_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -466,12 +505,12 @@ def download_today_releases(
 
 @app.command(
     "released",
-    help="Select and downloads released anime from 3 days prior. Alias: rel",
+    help="Select and download anime released in the past 3 days. Alias: rel",
     no_args_is_help=True,
 )
 @app.command(
     "rel",
-    help="Select and downloads released anime from 3 days prior",
+    help="Select and download anime released in the past 3 days",
     hidden=True,
     no_args_is_help=True,
 )
@@ -479,16 +518,16 @@ def download_all_releases(
     cookie: COOKIE_OPT,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    forced: FORCED_OPT = False,
     resolution: RESO_OPT = 1080,
+    srtonly: SRT_OPT = not ass_status,
     is_avc: AVC_OPT = False,
     download_pv: PV_OPT = False,
+    forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    notification: NOTIFY_OPT = False,
-    srtonly: SRT_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
+    notification: NOTIFY_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -523,8 +562,8 @@ def download_all_releases(
 @wl_app.command("ls", help="Read list of monitored series on Bilibili", hidden=True)
 @wl_app.command("l", help="Read list of monitored series on Bilibili", hidden=True)
 def watchlist_list(
-    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     show_url: SHOWURL_OPT = False,
+    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
 ):
     wl = Watchlist(file_path)
 
@@ -571,7 +610,11 @@ def _wl_do_proc(serial_url: str) -> Tuple[str, str]:
 
 
 def wl_action_msg(action: str) -> str:
-    return f"Series URL or ID to be {action} to watchlist. Use this if you obtained media/play URL of the show, and want to skip interactive mode"
+    return (
+        f"Provide the series URL or ID to be {action} in the watchlist."
+        "Use this option if you have the media/play URL of the show and want "
+        "to bypass interactive mode."
+    )
 
 
 @wl_app.command("add", help="Add a series to watchlist. Alias: insert, ins")
@@ -584,11 +627,12 @@ def watchlist_add(
             ...,
             help=wl_action_msg("added"),
             show_default=False,
+            rich_help_panel="Input",
         ),
     ] = None,
+    assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
-    assume_yes: ASSUMEYES_OPT = False,
 ):
     wl = Watchlist(file_path, cookies)
     wids = {item[0] for item in wl.list}
@@ -654,11 +698,12 @@ def watchlist_delete(
             ...,
             help=wl_action_msg("deleted"),
             show_default=False,
+            rich_help_panel="Input",
         ),
     ] = None,
+    assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
-    assume_yes: ASSUMEYES_OPT = False,
 ):
     wl = Watchlist(file_path, cookies)
     index: Optional[List[int]] = None
@@ -671,11 +716,11 @@ def watchlist_delete(
                 if wl.search_watchlist(season_id=media_id):
                     filt.append((media_id, title))
                 else:
-                    prn_info(f"{title} is not exist on watchlist, skipping prompt")
+                    prn_info(f"{title} is not found in the watchlist, skipping.")
             except Exception as e:
                 prn_error(f"Error: {e}")
         if len(filt) == 0:
-            prn_error("All series are not exist on watchlist")
+            prn_error("None of the specified series are found in the watchlist.")
             exit(2)
         # properly set index to avoid error by comparing from wl.list
         find = [media_id for media_id, _ in filt]
@@ -738,16 +783,16 @@ def watchlist_download(
     cookie: COOKIE_OPT,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    forced: FORCED_OPT = False,
+    as_playlist: ASPLAYLIST_OPT = False,
     resolution: RESO_OPT = 1080,
+    srtonly: SRT_OPT = not ass_status,
     is_avc: AVC_OPT = False,
+    forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    notification: NOTIFY_OPT = False,
-    srtonly: SRT_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
-    as_playlist: ASPLAYLIST_OPT = False,
+    notification: NOTIFY_OPT = False,
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -781,20 +826,20 @@ def watchlist_download(
 
 @hi_app.command(
     "list",
-    help="Show history of downloaded URLs, might be unreadable by normal mean. Alias: ls, l",
+    help="Display the history of downloaded URLs. Note: URLs may not be human-readable. Alias: ls, l",
 )
-@hi_app.command("ls", help="Show history of downloaded URLs", hidden=True)
-@hi_app.command("l", help="Show history of downloaded URLs", hidden=True)
+@hi_app.command("ls", help="Display the history of downloaded URLs", hidden=True)
+@hi_app.command("l", help="Display the history of downloaded URLs", hidden=True)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
     hi = History(file_path)
 
     if len(hi.list) == 0 or hi.list[0] == "":
-        prn_error("Your history is clean!")
+        prn_error("Your download history is empty!")
         exit(2)
 
-    prn_info("Below is list of downloaded URLs:\n")
+    prn_info("Here is the list of downloaded URLs:\n")
 
     items = sorted(hi.list)
     table = Table(Column("No.", justify="right"), "URL", box=box.ROUNDED)
@@ -803,13 +848,15 @@ def history_list(
     console.print(table)
 
 
-@hi_app.command("clear", help="Clear history. Alias: clean, purge, cls")
+@hi_app.command("clear", help="Clear history. Alias: clean, purge, cls, del, rm")
 @hi_app.command("clean", help="Clear history", hidden=True)
 @hi_app.command("purge", help="Clear history", hidden=True)
 @hi_app.command("cls", help="Clear history", hidden=True)
+@hi_app.command("del", help="Clear history", hidden=True)
+@hi_app.command("rm", help="Clear history", hidden=True)
 def history_clear(
-    file_path: HISTORY_OPT = DEFAULT_HISTORY,
     yes: ASSUMEYES_OPT = False,
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
     hi = History(file_path)
     prompt = False
@@ -835,20 +882,48 @@ class DayOfWeek(str, Enum):
     FRIDAY = "friday"
     SATURDAY = "saturday"
     SUNDAY = "sunday"
+    NOW = "now"
+    MON = "mon"
+    TUE = "tue"
+    WED = "wed"
+    THU = "thu"
+    FRI = "fri"
+    SAT = "sat"
+    SUN = "sun"
+    MO = "mo"
+    TU = "tu"
+    WE = "we"
+    TH = "th"
+    FR = "fr"
+    SA = "sa"
+    SU = "su"
 
 
 @app.command(
-    "schedule", help="Get release schedule. Alias: calendar, cal, sch, timetable, tt"
+    "schedule",
+    help="View the release schedule. Alias: calendar, cal, sch, timetable, tt",
 )
-@app.command("calendar", help="Get release schedule", hidden=True)
-@app.command("cal", help="Get release schedule", hidden=True)
-@app.command("sch", help="Get release schedule", hidden=True)
-@app.command("timetable", help="Get release schedule", hidden=True)
-@app.command("tt", help="Get release schedule", hidden=True)
+@app.command("calendar", help="View the release schedule", hidden=True)
+@app.command("cal", help="View the release schedule", hidden=True)
+@app.command("sch", help="View the release schedule", hidden=True)
+@app.command("timetable", help="View the release schedule", hidden=True)
+@app.command("tt", help="View the release schedule", hidden=True)
 def schedule(
     show_url: SHOWURL_OPT = False,
     day: Annotated[
-        Optional[DayOfWeek], typer.Option("--day", "-d", help="Only show selected day")
+        Optional[DayOfWeek],
+        typer.Option(
+            "--day",
+            "-d",
+            help=(
+                "Filter by a specific day. Possible values: now/today, "
+                "mo(n(day)), tu(e(sday)), wed(nesday), th(u(rsday)), fr(i(day)), "
+                "sa(t(urday)), su(n(day))"
+            ),
+            rich_help_panel="Filter",
+            show_choices=False,
+            show_default=False,
+        ),
     ] = None,
 ):
     api = BiliApi()
@@ -856,8 +931,28 @@ def schedule(
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")
     rprint(
-        "[reverse green] Note [/] [green]Episodes that already aired have no airtime on the table"
+        "[reverse green] Note [/] [green]Episodes that have already aired will not display an airtime in the table."
     )
+    # Map short names to full day names
+    short_to_full = {
+        DayOfWeek.MON: DayOfWeek.MONDAY,
+        DayOfWeek.MO: DayOfWeek.MONDAY,
+        DayOfWeek.TUE: DayOfWeek.TUESDAY,
+        DayOfWeek.TU: DayOfWeek.TUESDAY,
+        DayOfWeek.WED: DayOfWeek.WEDNESDAY,
+        DayOfWeek.WE: DayOfWeek.WEDNESDAY,
+        DayOfWeek.THU: DayOfWeek.THURSDAY,
+        DayOfWeek.TH: DayOfWeek.THURSDAY,
+        DayOfWeek.FRI: DayOfWeek.FRIDAY,
+        DayOfWeek.FR: DayOfWeek.FRIDAY,
+        DayOfWeek.SAT: DayOfWeek.SATURDAY,
+        DayOfWeek.SA: DayOfWeek.SATURDAY,
+        DayOfWeek.SUN: DayOfWeek.SUNDAY,
+        DayOfWeek.SU: DayOfWeek.SUNDAY,
+        DayOfWeek.NOW: DayOfWeek.TODAY,
+    }
+    if day:
+        day = short_to_full.get(day, day)
     for dow in data.data.items:
         if dow.is_today and day == DayOfWeek.TODAY:
             day = DayOfWeek(dow.full_day_of_week.lower())
