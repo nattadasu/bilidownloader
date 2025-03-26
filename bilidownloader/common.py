@@ -14,8 +14,8 @@ from pydantic import BaseModel
 from survey import printers
 
 WEB_API_URL = "https://api.bilibili.tv/intl/gateway/web/v2"
-DEFAULT_HISTORY = Path("~/Bilibili/history.txt").expanduser()
-DEFAULT_WATCHLIST = Path("~/Bilibili/watchlist.txt").expanduser()
+DEFAULT_HISTORY = Path("~/Bilibili/history.txt").expanduser().resolve()
+DEFAULT_WATCHLIST = Path("~/Bilibili/watchlist.txt").expanduser().resolve()
 
 
 ins_notify = Notify()
