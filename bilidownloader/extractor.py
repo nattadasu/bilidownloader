@@ -128,8 +128,9 @@ class BiliProcess:
             prn_error((
                 "`matplotlib` package is not found inside the environment, "
                 "please reinstall `bilidownloader` by executing this command to "
-                f"install the required package:\n{REINSTALL_ARGS}"
+                "install the required package:"
             ))
+            prn_error(REINSTALL_ARGS)
             # fmt: on
             prn_info("Reverting to use SRT")
             self.srt = True
@@ -809,8 +810,9 @@ class BiliProcess:
                     prn_error((
                         "`ass` package is not found inside the environment, "
                         "please reinstall `bilidownloader` by executing this "
-                        f"command to install the required package:\n{REINSTALL_ARGS}"
+                        "command to install the required package:"
                     ))
+                    prn_error(REINSTALL_ARGS)
                     # fmt: on
                     prn_info("Reverting to use SRT")
                     self.srt = True

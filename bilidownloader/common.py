@@ -356,4 +356,4 @@ def langcode_to_str(langcode: str) -> str:
     return f"{english} ({native})"
 
 
-REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git'
+REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git"'
