@@ -20,10 +20,12 @@ try:
     from common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        REINSTALL_ARGS,
         BenchClock,
         Chapter,
         DataExistError,
         available_res,
+        check_package,
         find_command,
         format_human_time,
         format_mkvmerge_time,
@@ -47,10 +49,12 @@ except ImportError:
     from bilidownloader.common import (
         DEFAULT_HISTORY,
         DEFAULT_WATCHLIST,
+        REINSTALL_ARGS,
         BenchClock,
         Chapter,
         DataExistError,
         available_res,
+        check_package,
         find_command,
         format_human_time,
         format_mkvmerge_time,
@@ -120,6 +124,17 @@ class BiliProcess:
         self.dont_thumbnail = dont_thumbnail
         self.dont_rescale = dont_rescale
         self.subtitle_lang = subtitle_lang.value
+
+        if not srt and not check_package("matplotlib"):
+            # fmt: off
+            prn_error((
+                "`matplotlib` package is not found inside the environment, "
+                "please reinstall `bilidownloader` by executing this command to "
+                f"install the required package:\n{REINSTALL_ARGS}"
+            ))
+            # fmt: on
+            prn_info("Reverting to use SRT")
+            self.srt = True
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -785,7 +800,21 @@ class BiliProcess:
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
             if not (self.dont_rescale or self.srt):
-                ydl.add_post_processor(SSARescaler(), when="before_dl")
+                if check_package("ass"):
+                    ydl.add_post_processor(SSARescaler(), when="before_dl")
+                else:
+                    # fmt: off
+                    prn_error((
+                        "`ass` package is not found inside the environment, "
+                        "please reinstall `bilidownloader` by executing this "
+                        f"command to install the required package:\n{REINSTALL_ARGS}"
+                    ))
+                    # fmt: on
+                    prn_info("Reverting to use SRT")
+                    self.srt = True
+                    self.dont_rescale = False
+                    ydl.params["subtitlesformat"] = "srt"
+
             ydl.download([episode_url])
 
         metadata["btitle"] = title

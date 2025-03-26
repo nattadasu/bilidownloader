@@ -354,3 +354,6 @@ def langcode_to_str(langcode: str) -> str:
     if english == native:
         return english
     return f"{english} ({native})"
+
+
+REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git'
