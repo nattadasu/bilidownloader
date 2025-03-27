@@ -16,20 +16,20 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
-	"fake-useragent", # for random user agent
-	"langcodes", # Apply language track title for subtitles
-	"notify-py", # for notification
-	"pydantic", # for data schema and dataclass
-	"requests", # for http request, required to access Bilibili API and HTML
-	"survey", # for interactive prompt in CLI
-	"typer", # backend for CLI
-	"yt-dlp" # the most important dependency, downloader
+	"fake-useragent",               # for random user agent
+	"langcodes",                    # Apply language track title for subtitles
+	"notify-py",                    # for notification
+	"pydantic",                     # for data schema and dataclass
+	"requests >= 2.32.3",           # for http request, required to access Bilibili API and HTML
+	"survey",                       # for interactive prompt in CLI
+	"typer >= 0.13.1",              # backend for CLI
+	"yt-dlp[default] >= 2025.3.26", # the most important dependency, downloader
 ]
 
 [project.optional-dependencies]
 ass = [
-	"ass", # parsing Advanced SubStation Alpha subtiltes
-	"matplotlib" #  only used to get all system fonts and allow download ASS
+	"ass",        # parsing Advanced SubStation Alpha subtiltes
+	"matplotlib", #  only used to get all system fonts and allow download ASS
 ]
 
 [project.scripts]
