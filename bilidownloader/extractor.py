@@ -298,10 +298,18 @@ class BiliProcess:
         # fmt: off
         sp.run([
             mkvpropedit, str(video_path),
+            "--edit", "track:v1",
+            "--delete", "name",
+            "--edit", "track:a1",
+            "--delete", "name",
+            "--delete", "language",
+            "--delete-attachments", "mime-type:font/ttf",
+            "--delete-attachments", "mime-type:font/otf",
             "--tags", "all:",
             "--chapters", "",
             "--quiet",
         ], check=True)
+        # fmt: on
 
         # 2. Format and modify chapter information
         formatted_chapters: List[str] = []
