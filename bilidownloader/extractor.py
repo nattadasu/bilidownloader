@@ -93,10 +93,10 @@ class BiliProcess:
         self.dont_rescale = dont_rescale
         self.subtitle_lang = subtitle_lang.value
 
-        if not srt and not check_package("matplotlib"):
+        if srt == False and srt == check_package("ass"):
             # fmt: off
             prn_error((
-                "`matplotlib` package is not found inside the environment, "
+                "`ass` package is not found inside the environment, "
                 "please reinstall `bilidownloader` by executing this command to "
                 "install the required package:"
             ))
