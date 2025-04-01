@@ -583,7 +583,7 @@ class BiliProcess:
             for track in data["tracks"]:
                 if track["type"] == "subtitles":
                     track_lang = track["properties"]["language"]
-                    if track_lang == "chi":
+                    if track_lang == "zh" or track_lang == "chi":
                         track_lang = keys[track["id"] - 2]
                     if track_lang == flang:
                         set_track = (str(track["id"] + 1), track_lang)
@@ -725,10 +725,13 @@ class BiliProcess:
         if language is None:
             language = "jpn" if "Japan" in resp.text else language
         jp_dub = ["JP Ver", "JPN Dub"]
+        ch_dub = ["Dub CN", "พากย์จีน"]
         id_dub = ["Dub Indo", "ID dub"]
         th_dub = ["Thai Dub", "TH dub"]
         if any(x.lower() in str(title).lower() for x in jp_dub):
             language = "jpn"
+        elif any(x.lower() in str(title).lower() for x in ch_dub):
+            language = "chi"
         elif any(x.lower() in str(title).lower() for x in id_dub):
             language = "ind"
         elif any(x.lower() in str(title).lower() for x in th_dub):
