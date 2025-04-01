@@ -20,6 +20,7 @@ from typing_extensions import Annotated
 from bilidownloader.api import BiliApi, BiliHtml
 from bilidownloader.api_model import CardItem
 from bilidownloader.common import (
+    DEFAULT_COOKIES,
     DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
     SubtitleLanguage,
@@ -319,7 +320,7 @@ down_shelp = "Download via direct URL"
 @app.command(name="d", short_help=down_shelp, hidden=True, no_args_is_help=True)
 def download_url(
     url: URL_ARG,
-    cookie: COOKIE_OPT,
+    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
     resolution: RESO_OPT = 1080,
     srtonly: SRT_OPT = not ass_status,
@@ -443,7 +444,7 @@ def _cards_selector(
     no_args_is_help=True,
 )
 def download_today_releases(
-    cookie: COOKIE_OPT,
+    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
     resolution: RESO_OPT = 1080,
@@ -496,7 +497,7 @@ def download_today_releases(
     no_args_is_help=True,
 )
 def download_all_releases(
-    cookie: COOKIE_OPT,
+    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
     resolution: RESO_OPT = 1080,
@@ -761,7 +762,7 @@ wl_down_shelp = "Download all episodes from watchlist"
     hidden=True,
 )
 def watchlist_download(
-    cookie: COOKIE_OPT,
+    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     history_file: HISTORY_OPT = DEFAULT_HISTORY,
     as_playlist: ASPLAYLIST_OPT = False,

@@ -16,6 +16,7 @@ from yt_dlp import YoutubeDL as YDL
 
 from bilidownloader.api import BiliApi, BiliHtml
 from bilidownloader.common import (
+    DEFAULT_COOKIES,
     DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
     REINSTALL_ARGS,
@@ -65,7 +66,7 @@ def int_to_abc(number: int) -> str:
 class BiliProcess:
     def __init__(
         self,
-        cookie: Path,
+        cookie: Path = DEFAULT_COOKIES,
         history: Path = DEFAULT_HISTORY,
         watchlist: Path = DEFAULT_WATCHLIST,
         resolution: available_res = 1080,  # type: ignore
