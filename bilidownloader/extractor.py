@@ -79,7 +79,24 @@ class BiliProcess:
         dont_thumbnail: bool = False,
         dont_rescale: bool = False,
         subtitle_lang: SubLang = SubLang.en,
-    ):
+    ) -> None:
+        """
+        Initialize BiliProcess object
+        Args:
+            cookie (Path, optional): Path to the cookie file
+            history (Path, optional): Path to the history file. Defaults to DEFAULT_HISTORY.
+            watchlist (Path, optional): Path to the watchlist file. Defaults to DEFAULT_WATCHLIST.
+            resolution (available_res, optional): Video resolution. Defaults to 1080.
+            is_avc (bool, optional): Use AVC codec. Defaults to False.
+            download_pv (bool, optional): Download PV. Defaults to False.
+            ffmpeg_path (Optional[Path], optional): Path to ffmpeg. Defaults to None.
+            mkvpropedit_path (Optional[Path], optional): Path to mkvpropedit. Defaults to None.
+            notification (bool, optional): Enable notification. Defaults to False.
+            srt (bool, optional): Use SRT subtitles. Defaults to False.
+            dont_thumbnail (bool, optional): Disable thumbnail download. Defaults to False.
+            dont_rescale (bool, optional): Disable rescaling. Defaults to False.
+            subtitle_lang (SubLang, optional): Subtitle language. Defaults to SubLang.en.
+        """
         self.watchlist = watchlist
         self.history = history
         self.cookie = cookie
