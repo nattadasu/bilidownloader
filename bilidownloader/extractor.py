@@ -79,6 +79,7 @@ class BiliProcess:
         dont_thumbnail: bool = False,
         dont_rescale: bool = False,
         subtitle_lang: SubLang = SubLang.en,
+        only_audio: bool = False,
     ) -> None:
         """
         Initialize BiliProcess object
@@ -96,6 +97,7 @@ class BiliProcess:
             dont_thumbnail (bool, optional): Disable thumbnail download. Defaults to False.
             dont_rescale (bool, optional): Disable rescaling. Defaults to False.
             subtitle_lang (SubLang, optional): Subtitle language. Defaults to SubLang.en.
+            only_audio (bool, optional): Only download audio. Defaults to False.
         """
         self.watchlist = watchlist
         self.history = history
@@ -110,8 +112,9 @@ class BiliProcess:
         self.dont_thumbnail = dont_thumbnail
         self.dont_rescale = dont_rescale
         self.subtitle_lang = subtitle_lang.value
+        self.only_audio = only_audio
 
-        if srt == False and srt == check_package("ass"):
+        if not srt and srt == check_package("ass"):
             # fmt: off
             prn_error((
                 "`ass` package is not found inside the environment, "
@@ -770,6 +773,11 @@ class BiliProcess:
             "writesubtitles": True,
             "referer": "https://www.bilibili.tv/",
         }
+        if self.only_audio:
+            ydl_opts["format"] = "ba"
+            del ydl_opts["subtitlesformat"]
+            del ydl_opts["subtitleslangs"]
+            del ydl_opts["writesubtitles"]
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:
@@ -797,7 +805,7 @@ class BiliProcess:
             )
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
-            if not (self.dont_rescale or self.srt):
+            if not (self.dont_rescale or self.srt) and not self.only_audio:
                 if check_package("ass"):
                     try:
                         from assresample import SSARescaler
@@ -865,7 +873,7 @@ class BiliProcess:
                     font_json, font_args = loop_font_lookup(font_json, font_args)
                     font_json.unlink(True)
                 sub_args = self._set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
-                if not self.dont_thumbnail:
+                if not self.dont_thumbnail and not self.only_audio:
                     attachment_args = self._insert_thumbnail(data)
                 else:
                     attachment_args = []

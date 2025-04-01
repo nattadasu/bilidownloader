@@ -194,6 +194,15 @@ SRT_OPT = Annotated[
     ),
 ]
 """Flag to download SRT only"""
+AUDIO_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--audio-only",
+        "-A",
+        help="Download audio only. Will override ALL other options: resolution, codec, etc.",
+        rich_help_panel="Filtering & Selection",
+    ),
+]
 DO_NOT_RESCALE_SSA_OPT = Annotated[
     bool,
     typer.Option(
@@ -333,6 +342,7 @@ def download_url(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    audio_only: AUDIO_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
@@ -354,6 +364,7 @@ def download_url(
         dont_thumbnail=no_thumbnail,
         dont_rescale=no_rescale,
         subtitle_lang=sub_lang,  # type: ignore
+        only_audio=audio_only,
     )
     if matches:
         if not forced:
@@ -384,6 +395,7 @@ def _cards_selector(
     no_rescale: bool = False,
     sub_lang: Optional[str] = None,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    audio_only: AUDIO_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -419,6 +431,7 @@ def _cards_selector(
         no_rescale=no_rescale,
         sub_lang=sub_lang,  # type: ignore
         no_thumbnail=no_thumbnail,
+        audio_only=audio_only,
     )
 
     wl = Watchlist(watchlist_file)
@@ -458,6 +471,7 @@ def download_today_releases(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    audio_only: AUDIO_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
 
@@ -480,6 +494,7 @@ def download_today_releases(
             no_rescale=no_rescale,
             sub_lang=sub_lang,
             no_thumbnail=no_thumbnail,
+            audio_only=audio_only,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -511,6 +526,7 @@ def download_all_releases(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    audio_only: AUDIO_OPT = False
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -535,6 +551,7 @@ def download_all_releases(
             no_rescale=no_rescale,
             sub_lang=sub_lang,
             no_thumbnail=no_thumbnail,
+            audio_only=audio_only,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -776,6 +793,7 @@ def watchlist_download(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    audio_only: AUDIO_OPT = False
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
@@ -795,6 +813,7 @@ def watchlist_download(
         dont_rescale=no_rescale,
         subtitle_lang=sub_lang,  # type: ignore
         dont_thumbnail=no_thumbnail,
+        only_audio=audio_only,
     )
     if not as_playlist:
         bili.process_watchlist(forced=forced)
