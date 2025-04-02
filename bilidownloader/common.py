@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from survey import printers
 
 WEB_API_URL = "https://api.bilibili.tv/intl/gateway/web/v2"
-BASE_DIR = Path("~/BiliBili").expanduser().resolve()
+BASE_DIR = Path("~/Bilibili").expanduser().resolve()
 BASE_DIR.mkdir(exist_ok=True)
 DEFAULT_COOKIES = BASE_DIR / "cookies.txt"
 DEFAULT_HISTORY = BASE_DIR / "history.txt"
