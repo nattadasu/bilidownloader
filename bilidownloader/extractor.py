@@ -784,16 +784,20 @@ class BiliProcess:
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
             metadata = ydl.extract_info(episode_url, download=False)
-            if metadata["title"].startswith("PV") and not self.download_pv:
+            if metadata is None:
+                raise Exception()
+            try:
+                final_path = ydl.prepare_filename(metadata)
+                is_pv = metdata["title"].startswith("PV")
+                if is_pv and not self.download_pv:
+                    raise NameError()
+            except AttributeError:
+                raise ReferenceError(f"{episode_url} does not have preferred resolution of {self.resolution}")
+            except (TypeError, NameError):
                 raise NameError(
                     f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
                 )
-            try:
-                final_path = ydl.prepare_filename(metadata)
-            except AttributeError:
-                raise ReferenceError(f"{episode_url} does not have preferred resolution of {self.resolution}")
-            if metadata is None:
-                raise Exception()
+            except 
             if "entries" in metadata:
                 raise ReferenceError(
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
