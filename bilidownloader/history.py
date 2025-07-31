@@ -64,6 +64,6 @@ class History:
 
         self._write(self.list)
 
-        prn_done(f"{episode_url} has beed added to history")
+        prn_done(f"{episode_url} has been added to history")
 
         return self.list
