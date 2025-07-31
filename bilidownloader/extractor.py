@@ -784,9 +784,9 @@ class BiliProcess:
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
             metadata = ydl.extract_info(episode_url, download=False)
-            if metadata is None:
-                raise Exception()
             try:
+                if metadata is None:
+                    raise NameError()
                 final_path = ydl.prepare_filename(metadata)
                 is_pv = metadata["title"].startswith("PV")
                 if is_pv and not self.download_pv:
