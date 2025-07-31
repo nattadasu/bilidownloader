@@ -788,7 +788,7 @@ class BiliProcess:
                 raise Exception()
             try:
                 final_path = ydl.prepare_filename(metadata)
-                is_pv = metdata["title"].startswith("PV")
+                is_pv = metadata["title"].startswith("PV")
                 if is_pv and not self.download_pv:
                     raise NameError()
             except AttributeError:
@@ -796,8 +796,7 @@ class BiliProcess:
             except (TypeError, NameError):
                 raise NameError(
                     f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
-                )
-            except 
+                ) 
             if "entries" in metadata:
                 raise ReferenceError(
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
