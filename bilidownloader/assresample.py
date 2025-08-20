@@ -23,11 +23,11 @@ class SSARescaler(PostProcessor):
                 self.report_warning(f"{sub_file} is skipped as it's not SSA file")
                 continue
             try:
-                with open(sub_file, "r", encoding="utf-8") as file:
+                with open(sub_file, "r", encoding="utf-8-sig") as file:
                     content = file.read()
                     ass = ass_loads(content)
             except ValueError:
-                with open(sub_file, "r", encoding="utf-8-sig") as file:
+                with open(sub_file, "r", encoding="utf-8") as file:
                     content = file.read()
                     ass = ass_loads(content)
 
@@ -38,7 +38,7 @@ class SSARescaler(PostProcessor):
                     style.fontsize = 65
                 if style.fontsize == 200:
                     style.fontsize = 100
-            with open(sub_file, "w", encoding="utf-8") as file:
+            with open(sub_file, "w", encoding="utf-8-sig") as file:
                 ass.dump_file(file)
             self.to_screen(f"{sub_file} has been properly formatted")
 
