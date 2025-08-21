@@ -1,4 +1,6 @@
 from json import dumps
+from math import modf
+from re import search
 from typing import Any
 
 from ass import parse_string as ass_loads
@@ -31,13 +33,36 @@ class SSARescaler(PostProcessor):
                     content = file.read()
                     ass = ass_loads(content)
 
+            ass.fields["Title"] = "Modified with github:nattadasu/bilidownloader"
+            size_mod = 0.75
+
             for style in ass.styles:
                 if style.fontname not in fonts:
                     fonts.append(style.fontname)
-                if style.fontsize == 100:
-                    style.fontsize = 65
-                if style.fontsize == 200:
-                    style.fontsize = 100
+                style.fontsize = style.fontsize * size_mod
+                style.outline = style.outline * size_mod
+                style.shadow = style.shadow * size_mod
+                if '-' not in style.name:
+                    style.margin_v = int(style.margin_v * 0.6)
+                    style.margin_r = int(style.margin_l * 0.6)
+                    style.margin_l = int(style.margin_r * 0.6)
+
+            def valmod(value: str) -> int | float | str:
+                try:
+                    val = float(value) * size_mod
+                    frac, _ = modf(val)
+                    return int(val) if frac == 0.0 else val
+                except ValueError:
+                    return value
+
+            for line in ass.events:
+                if fs := search(r"\\fs([\d\.]+)", line.text):
+                    line.text = line.text.replace(f"\\fs{fs}", f"\\fs{valmod(fs)})")
+                if bord := search(r"\\bord([\d\.]+)", line.text):
+                    line.text = line.text.replace(f"\\bord{bord}", f"\\bord{valmod(bord)}")
+                if shad := search(r"\\shad([\d\.]+)", line.text):
+                    line.text = line.text.replace(f"\\shad{shad_}", f"\\shad{valmod(shad)}")
+
             with open(sub_file, "w", encoding="utf-8-sig") as file:
                 ass.dump_file(file)
             self.to_screen(f"{sub_file} has been properly formatted")
@@ -47,3 +72,4 @@ class SSARescaler(PostProcessor):
                 file.write(dumps(fonts))
 
         return return_dump()
+
