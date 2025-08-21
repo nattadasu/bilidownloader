@@ -1,0 +1,102 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  APP_NAME: bilidownloader
+
+tasks:
+  remove-test:
+    desc: Remove test installation of the package
+    cmds:
+      - pipx uninstall "{{.APP_NAME}}_test" -q
+    preconditions:
+      - sh: pipx list | grep -q "{{.APP_NAME}}_test"
+        msg: "{{.APP_NAME}}_test is not installed"
+
+  install-test:
+    desc: Install the package for testing with pipx
+    cmds:
+      - pipx install --suffix "_test" ".[ass]"
+    silent: true
+
+  install:
+    desc: Install the package locally with pipx
+    cmds:
+      - pipx install "."
+
+  install-dev:
+    desc: Install the package in development mode with all optional dependencies
+    cmds:
+      - pip install -e ".[ass]"
+
+  uninstall:
+    desc: Uninstall the package
+    cmds:
+      - pipx uninstall "{{.APP_NAME}}"
+    preconditions:
+      - sh: pipx list | grep -q "{{.APP_NAME}}"
+        msg: "{{.APP_NAME}} is not installed"
+
+  clean:
+    desc: Clean build artifacts and cache
+    cmds:
+      - rm -rf build/
+      - rm -rf dist/
+      - rm -rf *.egg-info/
+      - find . -type d -name __pycache__ -exec rm -rf {} +
+      - find . -type f -name "*.pyc" -delete
+
+  build:
+    desc: Build the package
+    cmds:
+      - python -m build
+
+  lint:
+    desc: Run ruff linter
+    cmds:
+      - python -m ruff check bilidownloader/
+    preconditions:
+      - sh: python -c "import ruff"
+        msg: "ruff must be installed (pip install ruff)"
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - python -m ruff format bilidownloader/
+    preconditions:
+      - sh: python -c "import ruff"
+        msg: "ruff must be installed (pip install ruff)"
+
+  lint-fix:
+    desc: Run ruff linter and fix auto-fixable issues
+    cmds:
+      - python -m ruff check --fix bilidownloader/
+    preconditions:
+      - sh: python -c "import ruff"
+        msg: "ruff must be installed (pip install ruff)"
+
+  check:
+    desc: Run all code quality checks
+    deps: [lint, format]
+
+  run:
+    desc: Run the application
+    cmds:
+      - python -m bilidownloader {{.CLI_ARGS}}
+
+  test-run:
+    desc: Run the test installation
+    deps: [remove-test, install-test]
+    cmds:
+      - "{{.APP_NAME}}_test --help"
+
+  deps-install:
+    desc: Install development dependencies
+    cmds:
+      - pip install build ruff pytest
+
+  deps-update:
+    desc: Update dependencies to latest versions
+    cmds:
+      - pip install --upgrade build ruff pytest
