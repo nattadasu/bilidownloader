@@ -55,13 +55,19 @@ class SSARescaler(PostProcessor):
                 except ValueError:
                     return value
 
+            used_styles: list = []
+
             for line in ass.events:
+                if line.style not in used_styles:
+                    used_styles.append(line.style)
                 if fs := search(r"\\fs([\d\.]+)", line.text):
                     line.text = line.text.replace(f"\\fs{fs}", f"\\fs{valmod(fs)})")
                 if bord := search(r"\\bord([\d\.]+)", line.text):
                     line.text = line.text.replace(f"\\bord{bord}", f"\\bord{valmod(bord)}")
                 if shad := search(r"\\shad([\d\.]+)", line.text):
                     line.text = line.text.replace(f"\\shad{shad_}", f"\\shad{valmod(shad)}")
+
+            ass.styles = [style for style in ass.styles if style.name in used_styles]
 
             with open(sub_file, "w", encoding="utf-8-sig") as file:
                 ass.dump_file(file)
