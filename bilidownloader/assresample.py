@@ -1,6 +1,6 @@
 from json import dumps
 from math import modf
-from re import search
+from re import search, Match
 from typing import Any
 
 from ass import parse_string as ass_loads
@@ -34,20 +34,23 @@ class SSARescaler(PostProcessor):
                     ass = ass_loads(content)
 
             ass.fields["Title"] = "Modified with github:nattadasu/bilidownloader"
-            size_mod = 0.75
+            size_mod = 0.8
 
             for style in ass.styles:
                 if style.fontname not in fonts:
                     fonts.append(style.fontname)
-                style.fontsize = style.fontsize * size_mod
+                style.fontsize = int(style.fontsize * size_mod)
                 style.outline = style.outline * size_mod
                 style.shadow = style.shadow * size_mod
+                style.outline_color.r = 0x00
+                style.outline_color.g = 0x00
                 if '-' not in style.name:
-                    style.margin_v = int(style.margin_v * 0.6)
                     style.margin_r = int(style.margin_l * 0.6)
                     style.margin_l = int(style.margin_r * 0.6)
 
-            def valmod(value: str) -> int | float | str:
+            def valmod(value: str | Match) -> int | float | str:
+                if isinstance(value, Match):
+                    value = str(value.group(1))
                 try:
                     val = float(value) * size_mod
                     frac, _ = modf(val)
@@ -65,7 +68,7 @@ class SSARescaler(PostProcessor):
                 if bord := search(r"\\bord([\d\.]+)", line.text):
                     line.text = line.text.replace(f"\\bord{bord}", f"\\bord{valmod(bord)}")
                 if shad := search(r"\\shad([\d\.]+)", line.text):
-                    line.text = line.text.replace(f"\\shad{shad_}", f"\\shad{valmod(shad)}")
+                    line.text = line.text.replace(f"\\shad{shad}", f"\\shad{valmod(shad)}")
 
             ass.styles = [style for style in ass.styles if style.name in used_styles]
 
