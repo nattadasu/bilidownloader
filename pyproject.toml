@@ -38,3 +38,16 @@ bilidownloader = "bilidownloader.__main__:app"
 
 [tool.setuptools]
 packages = ["bilidownloader"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.pypi-dependencies]
+bilidownloader = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+ass = { features = ["ass"], solve-group = "default" }
+
+[tool.pixi.tasks]
