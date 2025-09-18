@@ -6,8 +6,9 @@ styles for optimization.
 """
 
 import re
-from json import dumps
+from json import dumps, loads
 from math import floor, modf
+from os import path
 from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from ass import Document as AssDocument
@@ -387,6 +388,11 @@ class SSARescaler(PostProcessor):
             for font in sorted(list(all_fonts_found)):
                 self.write_debug(f"  - {font}")
             try:
+                # loads existing fonts from fonts.json
+                if path.exists("fonts.json"):
+                    with open("fonts.json", "r", encoding="utf-8") as file:
+                        existing_fonts = set(loads(file.read()))
+                        all_fonts_found.update(existing_fonts)
                 with open("fonts.json", "w", encoding="utf-8") as file:
                     # Convert set to a sorted list for consistent JSON output
                     file.write(dumps(sorted(list(all_fonts_found)), indent=2))
