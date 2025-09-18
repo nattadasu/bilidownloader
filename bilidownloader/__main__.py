@@ -14,6 +14,7 @@ from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Column, Table
+from semver import Version
 from tomllib import loads as tloads
 from typing_extensions import Annotated
 
@@ -1023,8 +1024,9 @@ def app_update() -> bool:
         resp = req.get(update_url)
         resp.raise_for_status()
         data = tloads(resp.text)
-        latest_version = data["project"]["version"]
-        if latest_version != __VERSION__:
+        latest_version = Version.parse(data["project"]["version"])
+        current = Version.parse(__VERSION__)
+        if latest_version > current:
             warn = (
                 f"[bold]BiliDownloader[/] has a new version: [blue]{latest_version}[/] "
                 f"(Current: [red]{__VERSION__}[/]).\n"
