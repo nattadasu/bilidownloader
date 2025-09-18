@@ -1,5 +1,3 @@
-from copy import deepcopy
-from os import path as opath
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
 
@@ -11,6 +9,11 @@ from bilidownloader.common import (
     prn_error,
     prn_info,
 )
+
+# Constants
+HEAD = "ID\tTitle"
+SEP = "\t"
+C_SEP = ", "
 
 
 class Watchlist:
@@ -26,12 +29,12 @@ class Watchlist:
         self.add_header = add_header
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        if not opath.exists(self.path):
+        if not self.path.exists():
             prn_info(f"Watchlist file can't be found on {str(path)}, creating...")
             self.path.touch()
         if cookie_path:
             self.cookie = Path(cookie_path)
-        
+
         self._migrate_to_tsv()
         self.read_watchlist()
 
@@ -39,61 +42,96 @@ class Watchlist:
         """Check if the file has a header line"""
         if not lines:
             return False
-        first_line = lines[0].strip()
-        return first_line.lower() == "id\ttitle"
+        first_line = lines[0].strip().lower()
+        return first_line in ("id\ttitle", "id\ttitle\n")
 
     def _migrate_to_tsv(self) -> None:
         """Migrate watchlist file from old format (comma-separated) to new format (tab-separated)"""
-        if not opath.exists(self.path) or opath.getsize(self.path) == 0:
-            if self.add_header:
-                with open(self.path, "w", encoding="utf8") as file:
-                    file.write("ID\tTitle\n")
+        if not self.path.exists() or self.path.stat().st_size == 0:
+            self._create_empty_file_with_header()
             return
 
-        with open(self.path, "r", encoding="utf8") as file:
-            data = file.read().splitlines()
-        
+        data = self._read_file_lines()
         if not data:
-            if self.add_header:
-                with open(self.path, "w", encoding="utf8") as file:
-                    file.write("ID\tTitle\n")
+            self._create_empty_file_with_header()
             return
 
         has_header = self._has_header(data)
-        migrated = False
-        new_data = []
-        
-        # Add header if needed and not present
-        if self.add_header and not has_header:
-            new_data.append("ID\tTitle")
-        elif has_header:
-            new_data.append(data[0])  # Keep existing header
-            data = data[1:]  # Skip header for processing
+        new_data, migrated = self._process_migration_data(data, has_header)
 
-        for entry in data:
-            if not entry.strip():  # Skip empty lines
-                continue
-            if ", " in entry and "\t" not in entry:
-                # Old comma-separated format
-                spl = entry.split(", ", 1)
-                if len(spl) == 2:
-                    new_data.append(f"{spl[0]}\t{spl[1]}")
-                    migrated = True
-            elif "\t" in entry:
-                # Already tab-separated
-                new_data.append(entry)
-            else:
-                # Single value or malformed entry, skip
-                continue
-        
-        if migrated or (self.add_header and not has_header and len(new_data) > 1):
-            if migrated:
-                prn_info("Migrating watchlist file to new format (tab-separated)")
-            if self.add_header and not has_header:
-                prn_info("Adding header to watchlist file")
-            
+        if self._should_write_file(migrated, has_header, new_data):
+            self._write_migration_messages(migrated, has_header)
+            self._write_file_lines(new_data)
+
+    def _create_empty_file_with_header(self) -> None:
+        """Create an empty file with header if needed"""
+        if self.add_header:
             with open(self.path, "w", encoding="utf8") as file:
-                file.write("\n".join(new_data) + "\n")
+                file.write(f"{HEAD}\n")
+
+    def _read_file_lines(self) -> List[str]:
+        """Read and return file lines"""
+        with open(self.path, "r", encoding="utf8") as file:
+            return file.read().splitlines()
+
+    def _process_migration_data(
+        self, data: List[str], has_header: bool
+    ) -> Tuple[List[str], bool]:
+        """Process data for migration and return new data and migration status"""
+        new_data = []
+        migrated = False
+
+        # Handle header
+        if self.add_header and not has_header:
+            new_data.append(HEAD)
+        elif has_header:
+            new_data.append(data[0])
+            data = data[1:]
+
+        # Process data lines
+        for entry in data:
+            if not entry.strip():
+                continue
+
+            processed_entry, was_migrated = self._process_entry(entry)
+            if processed_entry:
+                new_data.append(processed_entry)
+                if was_migrated:
+                    migrated = True
+
+        return new_data, migrated
+
+    def _process_entry(self, entry: str) -> Tuple[Optional[str], bool]:
+        """Process a single entry and return the processed entry and migration status"""
+        if C_SEP in entry and SEP not in entry:
+            # Old comma-separated format
+            parts = entry.split(C_SEP, 1)
+            if len(parts) == 2:
+                return f"{parts[0]}{SEP}{parts[1]}", True
+        elif SEP in entry:
+            # Already tab-separated
+            return entry, False
+
+        # Single value or malformed entry
+        return None, False
+
+    def _should_write_file(
+        self, migrated: bool, has_header: bool, new_data: List[str]
+    ) -> bool:
+        """Determine if the file should be written"""
+        return migrated or (self.add_header and not has_header and len(new_data) > 1)
+
+    def _write_migration_messages(self, migrated: bool, has_header: bool) -> None:
+        """Write appropriate migration messages"""
+        if migrated:
+            prn_info("Migrating watchlist file to new format (tab-separated)")
+        if self.add_header and not has_header:
+            prn_info("Adding header to watchlist file")
+
+    def _write_file_lines(self, lines: List[str]) -> None:
+        """Write lines to file"""
+        with open(self.path, "w", encoding="utf8") as file:
+            file.write("\n".join(lines) + "\n")
 
     def read_watchlist(self) -> List[Tuple[str, str]]:
         """Reads the watchlist from the specified file path.
@@ -101,27 +139,35 @@ class Watchlist:
         Returns:
             List[Tuple[str, str]]: List of Season ID and title as tuples
         """
-        self.list = []  # Clear existing list
-        
-        if not opath.exists(self.path) or opath.getsize(self.path) == 0:
+        self.list = []
+
+        if not self.path.exists() or self.path.stat().st_size == 0:
             return self.list
 
-        with open(self.path, "r", encoding="utf8") as file:
-            data = file.read().splitlines()
-        
+        data = self._read_file_lines()
+
         # Skip header if present
         if self._has_header(data):
             data = data[1:]
-        
+
         for entry in data:
-            if not entry.strip():  # Skip empty lines
-                continue
-            if "\t" in entry:
-                spl = entry.split("\t", 1)
-                if len(spl) == 2:
-                    self.list.append((spl[0], spl[1]))
-        
+            parsed_entry = self._parse_watchlist_entry(entry)
+            if parsed_entry:
+                self.list.append(parsed_entry)
+
         return self.list
+
+    def _parse_watchlist_entry(self, entry: str) -> Optional[Tuple[str, str]]:
+        """Parse a single watchlist entry"""
+        if not entry.strip():
+            return None
+
+        if SEP in entry:
+            parts = entry.split(SEP, 1)
+            if len(parts) == 2:
+                return (parts[0], parts[1])
+
+        return None
 
     def search_watchlist(
         self, title: Optional[str] = None, season_id: Optional[Union[int, str]] = None
@@ -136,22 +182,30 @@ class Watchlist:
             Optional[Tuple[str, str]]: Season ID and Title, None if can't be found
 
         Raises:
-            NameError: Both title and season_id were empty
+            ValueError: Both title and season_id were empty
         """
         if not title and not season_id:
-            raise NameError("Query is empty. Please fill either title or season_id")
-        for entry in self.list:
-            if (str(season_id) == entry[0]) or (title == entry[1]):
-                return entry
+            raise ValueError("Query is empty. Please provide either title or season_id")
+
+        season_id_str = str(season_id) if season_id is not None else None
+
+        for entry_id, entry_title in self.list:
+            if (season_id_str and season_id_str == entry_id) or (
+                title and title == entry_title
+            ):
+                return (entry_id, entry_title)
+
         return None
 
     def _write_watchlist(self) -> None:
         """Write data to Watchlist file"""
-        with open(self.path, "w", encoding="utf8") as file:
-            if self.add_header:
-                file.write("ID\tTitle\n")
-            for season, name in self.list:
-                file.write(f"{season}\t{name}\n")
+        lines = []
+        if self.add_header:
+            lines.append(HEAD)
+
+        lines.extend(f"{season_id}{SEP}{title}" for season_id, title in self.list)
+
+        self._write_file_lines(lines)
 
     def _remote_update(
         self, season_id: Union[str, int], action: Literal["add", "del"]
@@ -165,21 +219,25 @@ class Watchlist:
 
         Raises:
             ValueError: Cookie path must be set to perform this action
-            ValueError: Failed to {long_action} {season_id}: {resp.message}
+            ValueError: Failed to perform remote action
         """
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
+
         api = BiliApi(cookie_path=self.cookie)
-        long_action = "delete" if action == "del" else "add"
-        prn_info(
-            f"Cookies found, updating watchlist on Bilibili's server: {long_action} {season_id}"
-        )
+        action_name = "delete" if action == "del" else "add"
+
+        prn_info(f"Updating watchlist on Bilibili's server: {action_name} {season_id}")
+
         try:
             resp = api.post_favorite(action, season_id)
             if resp.code != 0:
-                raise ValueError(f"Failed to {long_action} {season_id}: {resp.message}")
+                error_msg = f"Failed to {action_name} {season_id}: {resp.message}"
+                prn_error(error_msg)
+                raise ValueError(error_msg)
         except Exception as e:
-            prn_error(f"{e}")
+            prn_error(f"Remote update failed: {e}")
+            raise
 
     def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
         """
@@ -204,7 +262,7 @@ class Watchlist:
         self,
         season_id: Union[str, int],
         title: str,
-        remote_update: Optional[bool] = False,
+        remote_update: bool = False,
     ) -> List[Tuple[str, str]]:
         """
         Writes a season ID to the watchlist, raises an error if it already exists.
@@ -212,49 +270,63 @@ class Watchlist:
         Args:
             season_id (Union[str, int]): Season ID
             title (str): Title of the show
-            remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
+            remote_update (bool, optional): Update watchlist on Bilibili's server. Defaults to False.
 
         Returns:
             List[Tuple[str, str]]: Updated watchlist
+
+        Raises:
+            DataExistError: If the show is already in the watchlist
+            ValueError: If season_id or title is empty
         """
-        for season, _ in self.list:
-            if str(season_id) == season:
-                raise DataExistError("Show has been added previously to watchlist")
+        if not season_id or not title.strip():
+            raise ValueError("Season ID and title cannot be empty")
+
+        season_id_str = str(season_id)
+
+        # Check if already exists
+        if any(season_id_str == existing_id for existing_id, _ in self.list):
+            raise DataExistError("Show has been added previously to watchlist")
 
         if remote_update:
             self._remote_update(season_id, "add")
 
-        self.list.append((str(season_id), title))
+        self.list.append((season_id_str, title.strip()))
         self._write_watchlist()
         self._prn_rw("add", season_id, title)
         return self.list
 
     def delete_from_watchlist(
-        self, season_id: Union[str, int], remote_update: Optional[bool] = False
+        self, season_id: Union[str, int], remote_update: bool = False
     ) -> List[Tuple[str, str]]:
         """
         Deletes a season ID from the watchlist. Raises an error if the season ID is not found.
 
         Args:
             season_id (Union[str, int]): Season ID
-            remote_update (Optional[bool], optional): Update watchlist on Bilibili's server. Defaults to False.
+            remote_update (bool, optional): Update watchlist on Bilibili's server. Defaults to False.
 
         Returns:
             List[Tuple[str, str]]: Updated watchlist
-        """
-        # Filter out the season ID to be deleted
-        updated_data = [entry for entry in self.list if entry[0] != str(season_id)]
 
-        if len(updated_data) == len(self.list):
-            raise ValueError("Season ID not found in watchlist")
+        Raises:
+            ValueError: If the season ID is not found in the watchlist
+        """
+        if not season_id:
+            raise ValueError("Season ID cannot be empty")
+
+        # Find the entry to delete
+        entry_to_delete = self.search_watchlist(season_id=season_id)
+        if not entry_to_delete:
+            raise ValueError(f"Season ID {season_id} not found in watchlist")
 
         if remote_update:
             self._remote_update(season_id, "del")
 
-        idx = self.search_watchlist(season_id=season_id)
-        if not idx:
-            raise ValueError("Season ID not found in watchlist")
-        self.list = deepcopy(updated_data)
+        # Remove the entry
+        season_id_str = str(season_id)
+        self.list = [entry for entry in self.list if entry[0] != season_id_str]
+
         self._write_watchlist()
-        self._prn_rw("delete", season_id, idx[1])
-        return updated_data
+        self._prn_rw("delete", season_id, entry_to_delete[1])
+        return self.list
