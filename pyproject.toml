@@ -29,8 +29,9 @@ dependencies = [
 
 [project.optional-dependencies]
 ass = [
-	"ass",        # parsing Advanced SubStation Alpha subtiltes
-	"matplotlib", #  only used to get all system fonts and allow download ASS
+	"ass",            # parsing Advanced SubStation Alpha subtiltes
+	"matplotlib",     #  only used to get all system fonts and allow download ASS
+	"alive-progress"  # shows download progress bar when downloading fonts
 ]
 
 [project.scripts]

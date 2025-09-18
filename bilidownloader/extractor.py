@@ -39,7 +39,7 @@ from bilidownloader.common import (
 from bilidownloader.common import (
     SubtitleLanguage as SubLang,
 )
-from bilidownloader.fontmanager import loop_font_lookup
+from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
 from bilidownloader.history import History
 from bilidownloader.watchlist import Watchlist
 
@@ -125,6 +125,8 @@ class BiliProcess:
             # fmt: on
             prn_info("Reverting to use SRT")
             self.srt = True
+        else:
+            initialize_fonts()
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
