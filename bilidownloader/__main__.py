@@ -226,6 +226,16 @@ DO_NOT_ATTACH_THUMBNAIL_OPT = Annotated[
         rich_help_panel="Post-Processing",
     ),
 ]
+DO_NOT_CONVERT_SRT_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--no-convert",
+        "-C",
+        help="Do not convert SRT subtitles to ASS format",
+        rich_help_panel="Post-Processing",
+    ),
+]
+"""Flag to skip SRT to ASS conversion"""
 SUBLANG_OPT = Annotated[
     Optional[SubtitleLanguage],
     typer.Option(
@@ -342,6 +352,7 @@ def download_url(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
     audio_only: AUDIO_OPT = False,
 ):
     """Download via direct URL, let the app decide what type of the URL"""
@@ -363,6 +374,7 @@ def download_url(
         srt=srtonly,
         dont_thumbnail=no_thumbnail,
         dont_rescale=no_rescale,
+        dont_convert=no_convert,
         subtitle_lang=sub_lang,  # type: ignore
         only_audio=audio_only,
     )
@@ -395,6 +407,7 @@ def _cards_selector(
     no_rescale: bool = False,
     sub_lang: Optional[str] = None,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    no_convert: bool = False,
     audio_only: AUDIO_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -431,6 +444,7 @@ def _cards_selector(
         no_rescale=no_rescale,
         sub_lang=sub_lang,  # type: ignore
         no_thumbnail=no_thumbnail,
+        no_convert=no_convert,
         audio_only=audio_only,
     )
 
@@ -471,6 +485,7 @@ def download_today_releases(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
     audio_only: AUDIO_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -494,6 +509,7 @@ def download_today_releases(
             no_rescale=no_rescale,
             sub_lang=sub_lang,
             no_thumbnail=no_thumbnail,
+            no_convert=no_convert,
             audio_only=audio_only,
         )
     except survey.widgets.Escape:
@@ -526,6 +542,7 @@ def download_all_releases(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
     audio_only: AUDIO_OPT = False
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -551,6 +568,7 @@ def download_all_releases(
             no_rescale=no_rescale,
             sub_lang=sub_lang,
             no_thumbnail=no_thumbnail,
+            no_convert=no_convert,
             audio_only=audio_only,
         )
     except survey.widgets.Escape:
@@ -793,6 +811,7 @@ def watchlist_download(
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
+    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
     audio_only: AUDIO_OPT = False
 ):
     raise_ffmpeg(ffmpeg_path)
@@ -811,6 +830,7 @@ def watchlist_download(
         notification=notification,
         srt=srtonly,
         dont_rescale=no_rescale,
+        dont_convert=no_convert,
         subtitle_lang=sub_lang,  # type: ignore
         dont_thumbnail=no_thumbnail,
         only_audio=audio_only,

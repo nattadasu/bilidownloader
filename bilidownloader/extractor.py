@@ -1,6 +1,7 @@
 import subprocess as sp
 import traceback
 from html import unescape
+from json import dumps as jdumps
 from json import loads as jloads
 from pathlib import Path
 from re import IGNORECASE
@@ -78,6 +79,7 @@ class BiliProcess:
         srt: bool = False,
         dont_thumbnail: bool = False,
         dont_rescale: bool = False,
+        dont_convert: bool = False,
         subtitle_lang: SubLang = SubLang.en,
         only_audio: bool = False,
     ) -> None:
@@ -96,6 +98,7 @@ class BiliProcess:
             srt (bool, optional): Use SRT subtitles. Defaults to False.
             dont_thumbnail (bool, optional): Disable thumbnail download. Defaults to False.
             dont_rescale (bool, optional): Disable rescaling. Defaults to False.
+            dont_convert (bool, optional): Disable SRT to ASS conversion. Defaults to False.
             subtitle_lang (SubLang, optional): Subtitle language. Defaults to SubLang.en.
             only_audio (bool, optional): Only download audio. Defaults to False.
         """
@@ -111,6 +114,7 @@ class BiliProcess:
         self.srt = srt
         self.dont_thumbnail = dont_thumbnail
         self.dont_rescale = dont_rescale
+        self.dont_convert = dont_convert
         self.subtitle_lang = subtitle_lang.value
         self.only_audio = only_audio
 
@@ -758,16 +762,7 @@ class BiliProcess:
                     inp=title
                 )
             },
-            "postprocessors": [
-                {"already_have_subtitle": False, "key": "FFmpegEmbedSubtitle"},
-                {
-                    "add_chapters": False,
-                    "add_infojson": None,
-                    "add_metadata": False,
-                    "key": "FFmpegMetadata",
-                },
-                {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"},
-            ],
+            "postprocessors": [],
             "retries": 10,
             "subtitlesformat": "srt" if self.srt else "ass/srt",
             "subtitleslangs": ["all"],
@@ -775,6 +770,31 @@ class BiliProcess:
             "writesubtitles": True,
             "referer": "https://www.bilibili.tv/",
         }
+
+        # Build postprocessors list in the correct order
+        postprocessors = []
+
+        # Add subtitle embedding
+        postprocessors.append(
+            {"already_have_subtitle": False, "key": "FFmpegEmbedSubtitle"}
+        )
+
+        # Add metadata processor
+        postprocessors.append(
+            {
+                "add_chapters": False,
+                "add_infojson": None,
+                "add_metadata": False,
+                "key": "FFmpegMetadata",
+            }
+        )
+
+        # Add concat processor
+        postprocessors.append(
+            {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
+        )
+
+        ydl_opts["postprocessors"] = postprocessors
         if self.only_audio:
             ydl_opts["format"] = "ba"
             del ydl_opts["subtitlesformat"]
@@ -815,7 +835,18 @@ class BiliProcess:
             )
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
-            if not (self.dont_rescale or self.srt) and not self.only_audio:
+
+            # Add SRT to ASS converter if needed (must run before FFmpegEmbedSubtitle)
+            if not self.srt and not self.only_audio and not self.dont_convert:
+                if check_package("ass"):
+                    try:
+                        from srttoass import SRTToASSConverter
+                    except ImportError:
+                        from bilidownloader.srttoass import SRTToASSConverter
+                    ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
+
+            # Add ASS rescaler if conditions are met
+            if not self.srt and not self.only_audio and not self.dont_rescale:
                 if check_package("ass"):
                     try:
                         from assresample import SSARescaler
@@ -834,7 +865,6 @@ class BiliProcess:
                     prn_info("Reverting to use SRT")
                     self.srt = True
                     self.dont_rescale = False
-                    ydl.params["subtitlesformat"] = "srt"
 
             ydl.download([episode_url])
 
@@ -878,10 +908,12 @@ class BiliProcess:
                 final = self._embed_chapters(chapters, loc)
                 aud_args = self._add_audio_language(final, language)
                 font_args: List[str] = []
-                if not self.srt:
+                # Handle fonts for ASS files (either original ASS or converted from SRT)
+                if not self.srt or not self.dont_convert:
                     font_json = Path("fonts.json")
-                    font_json, font_args = loop_font_lookup(font_json, font_args)
-                    font_json.unlink(True)
+                    if font_json.exists():
+                        font_json, font_args = loop_font_lookup(font_json, font_args)
+                        font_json.unlink(True)
                 sub_args = self._set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
                 if not self.dont_thumbnail and not self.only_audio:
                     attachment_args = self._insert_thumbnail(data)
