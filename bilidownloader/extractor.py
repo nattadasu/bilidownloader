@@ -901,15 +901,6 @@ class BiliProcess:
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
 
-            # Add SRT to ASS converter if needed (must run before FFmpegEmbedSubtitle)
-            if not self.srt and not self.only_audio and not self.dont_convert:
-                if check_package("ass"):
-                    try:
-                        from srttoass import SRTToASSConverter
-                    except ImportError:
-                        from bilidownloader.srttoass import SRTToASSConverter
-                    ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
-
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
                 if check_package("ass"):
@@ -918,6 +909,15 @@ class BiliProcess:
                     except ImportError:
                         from bilidownloader.assresample import SSARescaler
                     ydl.add_post_processor(SSARescaler(), when="before_dl")
+
+            # Add SRT to ASS converter if needed (must run before FFmpegEmbedSubtitle)
+            if not self.srt and not self.only_audio and not self.dont_convert:
+                if check_package("ass"):
+                    try:
+                        from srttoass import SRTToASSConverter
+                    except ImportError:
+                        from bilidownloader.srttoass import SRTToASSConverter
+                    ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
                 else:
                     # fmt: off
                     prn_error((
