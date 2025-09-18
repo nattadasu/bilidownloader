@@ -1,6 +1,7 @@
 import subprocess as sp
 import traceback
 from html import unescape
+from io import BytesIO
 from json import dumps as jdumps
 from json import loads as jloads
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 import requests as reqs
 from fake_useragent import UserAgent
+from PIL import Image
 from rich.console import Console
 from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
@@ -629,6 +631,67 @@ class BiliProcess:
         else:
             return fail("Failed to set subtitle track as default")
 
+    @staticmethod
+    def _resize_thumbnail_for_mkv(image_data: bytes) -> bytes:
+        """
+        Resize thumbnail to MKV maximum cover specifications (600x600).
+        
+        According to Matroska specifications, cover art should be resized to
+        a maximum of 600x600 pixels for optimal compatibility and file size.
+        
+        Args:
+            image_data (bytes): Original image data
+            
+        Returns:
+            bytes: Resized image data as PNG
+        """
+        try:
+            # Open image from bytes
+            image = Image.open(BytesIO(image_data))
+            
+            # Convert to RGB if necessary (handles RGBA, P mode, etc.)
+            if image.mode not in ('RGB', 'RGBA'):
+                if image.mode == 'P':
+                    # Convert palette mode to RGBA first to preserve transparency
+                    image = image.convert('RGBA')
+                else:
+                    image = image.convert('RGB')
+            
+            # Calculate new size maintaining aspect ratio
+            original_width, original_height = image.size
+            max_size = 600
+            
+            # Only resize if image is larger than max_size
+            if original_height > max_size:
+                new_height = max_size
+                new_width = int((max_size * original_width) / original_height)
+                
+                # Use LANCZOS for high-quality downsampling
+                image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Save to bytes as PNG (lossless and widely supported)
+            output = BytesIO()
+            
+            # If image has transparency (RGBA), keep it; otherwise convert to RGB
+            if image.mode == 'RGBA':
+                image.save(output, format='PNG', optimize=True)
+            else:
+                # Convert RGBA to RGB if no transparency is actually used
+                if image.mode == 'RGBA':
+                    # Check if alpha channel has any transparency
+                    alpha = image.split()[3]
+                    if alpha.getextrema()[0] == 255:  # No transparency
+                        image = image.convert('RGB')
+                
+                image.save(output, format='PNG', optimize=True)
+            
+            return output.getvalue()
+            
+        except Exception as e:
+            prn_error(f"Failed to resize thumbnail: {e}")
+            # Return original data if resizing fails
+            return image_data
+
     def _insert_thumbnail(self, raw_info: Dict[str, Any]) -> List[str]:
         """
         Inserts a thumbnail into the video file.
@@ -645,12 +708,15 @@ class BiliProcess:
 
         prn_info("Downloading thumbnail and adding it to the video file")
         thumbnail_path = Path("thumbnail.png")
+        
         with reqs.get(thumbnail) as resp:
-            thumbnail_path.write_bytes(resp.content)
+            # Resize thumbnail to MKV specifications before saving
+            resized_thumbnail_data = self._resize_thumbnail_for_mkv(resp.content)
+            thumbnail_path.write_bytes(resized_thumbnail_data)
 
         # fmt: off
         return [
-            "--attachment-name", "cover.png",
+            "--attachment-name", "cover_land.png",
             "--attachment-mime-type", "image/png",
             "--add-attachment", str(thumbnail_path),
         ]

@@ -20,6 +20,7 @@ dependencies = [
 	"fake-useragent",               # for random user agent
 	"langcodes",                    # Apply language track title for subtitles
 	"notify-py",                    # for notification
+	"Pillow",                       # for image processing and thumbnail resizing
 	"pydantic",                     # for data schema and dataclass
 	"requests >= 2.32.3",           # for http request, required to access Bilibili API and HTML
 	"semver",                       # for version comparison
