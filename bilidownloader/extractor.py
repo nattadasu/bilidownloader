@@ -171,7 +171,7 @@ class BiliProcess:
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
-        with YDL(ydl_opts) as ydl:
+        with YDL(ydl_opts) as ydl:  # type: ignore
             return ydl.extract_info(episode_url, download=False)
 
     @staticmethod
@@ -782,7 +782,7 @@ class BiliProcess:
             del ydl_opts["writesubtitles"]
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
-        with YDL(ydl_opts) as ydl:
+        with YDL(ydl_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
             metadata = ydl.extract_info(episode_url, download=False)
@@ -790,15 +790,17 @@ class BiliProcess:
                 if metadata is None:
                     raise NameError()
                 final_path = ydl.prepare_filename(metadata)
-                is_pv = metadata["title"].startswith("PV")
+                is_pv = metadata["title"].startswith("PV")  # type: ignore
                 if is_pv and not self.download_pv:
                     raise NameError()
             except AttributeError:
-                raise ReferenceError(f"{episode_url} does not have preferred resolution of {self.resolution}")
+                raise ReferenceError(
+                    f"{episode_url} does not have preferred resolution of {self.resolution}"
+                )
             except (TypeError, NameError):
                 raise NameError(
                     f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
-                ) 
+                )
             if "entries" in metadata:
                 raise ReferenceError(
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
@@ -836,7 +838,7 @@ class BiliProcess:
 
             ydl.download([episode_url])
 
-        metadata["btitle"] = title
+        metadata["btitle"] = title  # type: ignore
 
         return (Path(".") / final_path, metadata, language)
 
