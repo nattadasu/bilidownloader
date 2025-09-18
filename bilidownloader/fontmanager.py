@@ -133,28 +133,109 @@ def initialize_fonts() -> None:
         download_fonts(font_family)
 
 
+def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[str]]:
+    """Process fonts from a JSON file and add them to font arguments list.
+
+    This function reads a JSON file containing a list of font names, resolves
+    their file paths (either from NATIVE_FONTS or system fonts), and adds
+    appropriate yt-dlp attachment arguments for each found font.
+
+    Args:
+        font_json: Path to the JSON file containing the list of font names.
+        font_args: List of command-line arguments to append font attachments to.
+
+    Returns:
+        A tuple containing the original font_json path and the updated font_args list.
+
+    Note:
+        The function prioritizes NATIVE_FONTS over system fonts and gracefully
+        handles missing files or parsing errors.
+    """
+    # Load font list from JSON file
     try:
         fonts: List[str] = jloads(font_json.read_text(encoding="utf-8"))
-    except Exception as _:
-        fonts: List[str] = []
+    except (OSError, ValueError) as e:
+        prn_error(f"Failed to read or parse font JSON file '{font_json}': {e}")
+        fonts = []
 
-    from matplotlib import font_manager as fontm
+    if not fonts:
+        return font_json, font_args
 
-    for font in fonts:
-        try:
-            fpath = fontm.findfont(
-                fontm.FontProperties(family=font),
-                fallback_to_default=False,
-                rebuild_if_missing=False,
-            )
-            if fpath:
-                # fmt: off
-                font_args += [
-                    "--attachment-name", font,
-                    "--add-attachment", str(Path(fpath).absolute()),
+    # Import matplotlib font manager for system font lookup
+    try:
+        from matplotlib import font_manager as fontm
+    except ImportError:
+        prn_error("matplotlib is required for font lookup but not installed.")
+        return font_json, font_args
+
+    for font_name in fonts:
+        font_path: Optional[Path] = None
+
+        # First, check if it's a native font we manage
+        font_path = _resolve_native_font(font_name)
+
+        # If not found in native fonts, try system font lookup
+        if not font_path:
+            font_path = _resolve_system_font(font_name, fontm)
+
+        # Add to arguments if font was found and file exists
+        if font_path and font_path.exists():
+            font_args.extend(
+                [
+                    "--attachment-name",
+                    font_path.name,
+                    "--add-attachment",
+                    str(font_path),
                 ]
-                # fmt: on
-        except Exception as _:
-            continue
+            )
+        else:
+            prn_error(f"Font '{font_name}' not found or file does not exist.")
 
     return font_json, font_args
+
+
+def _resolve_native_font(font_name: str) -> Optional[Path]:
+    """Resolve a font name to a path from NATIVE_FONTS.
+
+    Args:
+        font_name: The name of the font to resolve.
+
+    Returns:
+        Path to the native font file if found, None otherwise.
+    """
+    # Check for exact match or variant (e.g., "Noto Sans::Italic")
+    for native_font_name, font_info in NATIVE_FONTS.items():
+        if font_name == native_font_name or font_name.startswith(
+            f"{native_font_name}::"
+        ):
+            return font_info["path"]
+    return None
+
+
+def _resolve_system_font(font_name: str, fontm) -> Optional[Path]:
+    """Resolve a font name to a system font path using matplotlib.
+
+    Args:
+        font_name: The name of the font to resolve.
+        fontm: The matplotlib font_manager module.
+
+    Returns:
+        Path to the system font file if found, None otherwise.
+    """
+    try:
+        font_path_str: str = fontm.findfont(
+            fontm.FontProperties(family=font_name),
+            fallback_to_default=False,
+            rebuild_if_missing=False,
+        )
+
+        font_path = Path(font_path_str).absolute()
+
+        # Verify the found font is not a fallback (basic heuristic)
+        if font_path.exists() and font_path.name.lower() != "dejavusans.ttf":
+            return font_path
+
+    except Exception as e:
+        prn_error(f"Error resolving system font '{font_name}': {e}")
+
+    return None
