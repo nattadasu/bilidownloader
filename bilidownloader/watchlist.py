@@ -18,10 +18,12 @@ class Watchlist:
         self,
         path: Path = DEFAULT_WATCHLIST,
         cookie_path: Optional[Path] = None,
+        add_header: bool = True,
     ):
         self.path = path
         self.list: List[Tuple[str, str]] = []
         self.cookie: Optional[Path] = None
+        self.add_header = add_header
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if not opath.exists(self.path):
@@ -29,7 +31,69 @@ class Watchlist:
             self.path.touch()
         if cookie_path:
             self.cookie = Path(cookie_path)
+        
+        self._migrate_to_tsv()
         self.read_watchlist()
+
+    def _has_header(self, lines: List[str]) -> bool:
+        """Check if the file has a header line"""
+        if not lines:
+            return False
+        first_line = lines[0].strip()
+        return first_line.lower() == "id\ttitle"
+
+    def _migrate_to_tsv(self) -> None:
+        """Migrate watchlist file from old format (comma-separated) to new format (tab-separated)"""
+        if not opath.exists(self.path) or opath.getsize(self.path) == 0:
+            if self.add_header:
+                with open(self.path, "w", encoding="utf8") as file:
+                    file.write("ID\tTitle\n")
+            return
+
+        with open(self.path, "r", encoding="utf8") as file:
+            data = file.read().splitlines()
+        
+        if not data:
+            if self.add_header:
+                with open(self.path, "w", encoding="utf8") as file:
+                    file.write("ID\tTitle\n")
+            return
+
+        has_header = self._has_header(data)
+        migrated = False
+        new_data = []
+        
+        # Add header if needed and not present
+        if self.add_header and not has_header:
+            new_data.append("ID\tTitle")
+        elif has_header:
+            new_data.append(data[0])  # Keep existing header
+            data = data[1:]  # Skip header for processing
+
+        for entry in data:
+            if not entry.strip():  # Skip empty lines
+                continue
+            if ", " in entry and "\t" not in entry:
+                # Old comma-separated format
+                spl = entry.split(", ", 1)
+                if len(spl) == 2:
+                    new_data.append(f"{spl[0]}\t{spl[1]}")
+                    migrated = True
+            elif "\t" in entry:
+                # Already tab-separated
+                new_data.append(entry)
+            else:
+                # Single value or malformed entry, skip
+                continue
+        
+        if migrated or (self.add_header and not has_header and len(new_data) > 1):
+            if migrated:
+                prn_info("Migrating watchlist file to new format (tab-separated)")
+            if self.add_header and not has_header:
+                prn_info("Adding header to watchlist file")
+            
+            with open(self.path, "w", encoding="utf8") as file:
+                file.write("\n".join(new_data) + "\n")
 
     def read_watchlist(self) -> List[Tuple[str, str]]:
         """Reads the watchlist from the specified file path.
@@ -37,11 +101,26 @@ class Watchlist:
         Returns:
             List[Tuple[str, str]]: List of Season ID and title as tuples
         """
-        with open(self.path, "r+", encoding="utf8") as file:
+        self.list = []  # Clear existing list
+        
+        if not opath.exists(self.path) or opath.getsize(self.path) == 0:
+            return self.list
+
+        with open(self.path, "r", encoding="utf8") as file:
             data = file.read().splitlines()
+        
+        # Skip header if present
+        if self._has_header(data):
+            data = data[1:]
+        
         for entry in data:
-            spl = entry.split(", ", 1)
-            self.list.append((spl[0], spl[1]))
+            if not entry.strip():  # Skip empty lines
+                continue
+            if "\t" in entry:
+                spl = entry.split("\t", 1)
+                if len(spl) == 2:
+                    self.list.append((spl[0], spl[1]))
+        
         return self.list
 
     def search_watchlist(
@@ -68,9 +147,11 @@ class Watchlist:
 
     def _write_watchlist(self) -> None:
         """Write data to Watchlist file"""
-        with open(self.path, "w+", encoding="utf8") as file:
+        with open(self.path, "w", encoding="utf8") as file:
+            if self.add_header:
+                file.write("ID\tTitle\n")
             for season, name in self.list:
-                file.write(f"{season}, {name}\n")
+                file.write(f"{season}\t{name}\n")
 
     def _remote_update(
         self, season_id: Union[str, int], action: Literal["add", "del"]
