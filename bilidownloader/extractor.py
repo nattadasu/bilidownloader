@@ -2,7 +2,6 @@ import subprocess as sp
 import traceback
 from html import unescape
 from io import BytesIO
-from json import dumps as jdumps
 from json import loads as jloads
 from pathlib import Path
 from re import IGNORECASE
