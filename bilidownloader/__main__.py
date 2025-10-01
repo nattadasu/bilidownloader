@@ -848,25 +848,34 @@ def watchlist_download(
 
 @hi_app.command(
     "list",
-    help="Display the history of downloaded URLs. Note: URLs may not be human-readable. Alias: ls, l",
+    help="Display the history of downloaded episodes. Alias: ls, l",
 )
-@hi_app.command("ls", help="Display the history of downloaded URLs", hidden=True)
-@hi_app.command("l", help="Display the history of downloaded URLs", hidden=True)
+@hi_app.command("ls", help="Display the history of downloaded episodes", hidden=True)
+@hi_app.command("l", help="Display the history of downloaded episodes", hidden=True)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
 ):
     hi = History(file_path)
 
-    if len(hi.list) == 0 or hi.list[0] == "":
+    if len(hi.list) == 0:
         prn_error("Your download history is empty!")
         exit(2)
 
-    prn_info("Here is the list of downloaded URLs:\n")
+    prn_info("Here is the list of downloaded episodes:\n")
 
-    items = sorted(hi.list)
-    table = Table(Column("No.", justify="right"), "URL", box=box.ROUNDED)
+    items = sorted(hi.list, key=lambda x: (x[2], x[3]))  # Sort by title, then episode
+    table = Table(
+        Column("No.", justify="right"),
+        "Series Title",
+        Column("Series ID", justify="right"),
+        Column("Episode ID", justify="right"),
+        "Downloaded",
+        box=box.ROUNDED
+    )
     for index, item in enumerate(items):
-        table.add_row(str(index + 1), item)
+        timestamp, series_id, series_title, episode_id = item
+        date_str = hi.format_timestamp(timestamp)
+        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
     console.print(table)
 
 
@@ -891,7 +900,7 @@ def history_clear(
         yes = survey.routines.inquire("Are you sure? ", default=False)  # type: ignore
 
     if yes or not prompt:
-        hi._write([])
+        hi.purge_all(confirm=False)
         prn_info("History successfully cleared!")
 
 
