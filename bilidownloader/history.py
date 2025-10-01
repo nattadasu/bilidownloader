@@ -6,7 +6,6 @@ from time import time
 from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
-from bilidownloader.api import BiliApi
 from bilidownloader.common import (
     DEFAULT_HISTORY,
     DataExistError,
@@ -92,13 +91,36 @@ class History:
 
     def _convert_old_format_to_tsv(self, urls: List[str]) -> List[str]:
         """Convert old URL-only format to TSV format with metadata"""
+        from time import sleep
+        
         new_data = [HEAD]
         
         # Pattern to extract series_id and episode_id from URL
         pattern = re.compile(r"play/(\d+)/(\d+)")
         
-        # Cache for series titles to minimize API calls
-        series_cache: Dict[str, str] = {}
+        total_urls = len([u for u in urls if u.strip()])
+        
+        if total_urls == 0:
+            return new_data
+        
+        prn_info(f"Migrating {total_urls} entries to new format...")
+        prn_info("Fetching metadata from yt-dlp (this may take a while)...")
+        
+        try:
+            # Try to import extractor for yt-dlp metadata
+            from bilidownloader.extractor import BiliProcess
+            from bilidownloader.common import DEFAULT_COOKIES
+            
+            # Create extractor instance
+            extractor = BiliProcess(cookie=DEFAULT_COOKIES)
+            use_ytdlp = True
+        except Exception:
+            # Fallback to API method if extractor fails
+            use_ytdlp = False
+            prn_info("Fallback to API-based metadata fetching")
+        
+        # Progress tracking
+        processed = 0
         
         for url in urls:
             url = url.strip()
@@ -109,40 +131,36 @@ class History:
             if match:
                 series_id = match.group(1)
                 episode_id = match.group(2)
+                series_title = f"Series {series_id}"
                 
-                # Get series title from cache or API
-                if series_id not in series_cache:
-                    series_title = self._fetch_series_title(series_id, series_cache)
-                else:
-                    series_title = series_cache[series_id]
+                # Try to get info from yt-dlp
+                if use_ytdlp:
+                    try:
+                        info = extractor._get_video_info(url)
+                        if info and isinstance(info, dict):
+                            # Extract series title from yt-dlp metadata
+                            series_title = info.get("series", info.get("title", series_title))
+                            # Clean up the title
+                            if " - " in series_title:
+                                series_title = series_title.split(" - ")[0].strip()
+                        sleep(0.5)  # Rate limiting
+                    except Exception:
+                        # Fall back to placeholder on error
+                        pass
                 
                 # Use timestamp 0 for legacy entries
                 entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_id}"
                 new_data.append(entry)
+                
+                processed += 1
+                # Show progress every 5 items or at the end
+                if processed % 5 == 0 or processed == total_urls:
+                    prn_info(f"Progress: {processed}/{total_urls} entries migrated")
         
+        prn_info("Migration complete!")
         return new_data
 
-    def _fetch_series_title(self, series_id: str, cache: Dict[str, str]) -> str:
-        """Fetch series title from API and cache it"""
-        if series_id in cache:
-            return cache[series_id]
-        
-        try:
-            api = BiliApi()
-            # Get all shows and find the matching one
-            shows = api.get_all_shows_simple()
-            for show_id, title in shows:
-                cache[show_id] = title
-                if show_id == series_id:
-                    return title
-            
-            # If not found, return a placeholder
-            cache[series_id] = f"Series {series_id}"
-            return cache[series_id]
-        except Exception:
-            # If API fails, use placeholder
-            cache[series_id] = f"Series {series_id}"
-            return cache[series_id]
+
 
     def _create_empty_file_with_header(self) -> None:
         """Create an empty file with header"""
@@ -281,7 +299,8 @@ class History:
         
         # Fetch series title if not provided
         if not series_title:
-            series_title = self._fetch_series_title(series_id, {})
+            # Use a placeholder if title not provided
+            series_title = f"Series {series_id}"
         
         # Get current timestamp
         timestamp = int(time())
@@ -446,18 +465,22 @@ class History:
         
         return self.list
 
-    def format_timestamp(self, timestamp: int) -> str:
+    def format_timestamp(self, timestamp: int, use_rich: bool = False) -> str:
         """Format a UNIX timestamp for display.
         
         Args:
             timestamp (int): UNIX timestamp
+            use_rich (bool): Whether to use rich markup for migrated entries
             
         Returns:
             str: Formatted date string
         """
         if timestamp == 0:
-            return "Unknown (migrated)"
+            if use_rich:
+                return "[i]Migrated[/i]"
+            return "Migrated"
         
+        # Use localtime for conversion
         dt = datetime.fromtimestamp(timestamp)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 

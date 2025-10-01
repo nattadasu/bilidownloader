@@ -863,7 +863,8 @@ def history_list(
 
     prn_info("Here is the list of downloaded episodes:\n")
 
-    items = sorted(hi.list, key=lambda x: (x[2], x[3]))  # Sort by title, then episode
+    # Sort by date (timestamp), newest first
+    items = sorted(hi.list, key=lambda x: x[0], reverse=True)
     table = Table(
         Column("No.", justify="right"),
         "Series Title",
@@ -874,8 +875,10 @@ def history_list(
     )
     for index, item in enumerate(items):
         timestamp, series_id, series_title, episode_id = item
-        date_str = hi.format_timestamp(timestamp)
-        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
+        date_str = hi.format_timestamp(timestamp, use_rich=True)
+        # Add episode number after series title
+        series_with_ep = f"{series_title} - Ep.{episode_id}"
+        table.add_row(str(index + 1), series_with_ep, series_id, episode_id, date_str)
     console.print(table)
 
 
@@ -914,7 +917,8 @@ def history_query(
 
     prn_info(f"Found {len(results)} matching entries:\n")
 
-    items = sorted(results, key=lambda x: (x[2], x[3]))  # Sort by title, then episode
+    # Sort by date (timestamp), newest first
+    items = sorted(results, key=lambda x: x[0], reverse=True)
     table = Table(
         Column("No.", justify="right"),
         "Series Title",
@@ -925,8 +929,10 @@ def history_query(
     )
     for index, item in enumerate(items):
         timestamp, series_id, series_title, episode_id = item
-        date_str = hi.format_timestamp(timestamp)
-        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
+        date_str = hi.format_timestamp(timestamp, use_rich=True)
+        # Add episode number after series title
+        series_with_ep = f"{series_title} - Ep.{episode_id}"
+        table.add_row(str(index + 1), series_with_ep, series_id, episode_id, date_str)
     console.print(table)
 
 
