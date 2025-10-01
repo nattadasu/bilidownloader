@@ -989,7 +989,17 @@ class BiliProcess:
                 )
                 Path("thumbnail.png").unlink(True)
                 if not forced:
-                    history.write_history(episode_url)
+                    # Extract metadata for history
+                    series_id = ep_url.group(1) if ep_url else None
+                    episode_id = ep_url.group(2) if ep_url else None
+                    series_title = data.get("btitle", data.get("series", f"Series {series_id}"))
+                    
+                    history.write_history(
+                        episode_url, 
+                        series_id=series_id,
+                        series_title=series_title,
+                        episode_id=episode_id
+                    )
                 else:
                     prn_info("Forced download, skipping adding to history")
                 clock.echo_format(f"Downloaded {final.name}")
