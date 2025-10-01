@@ -879,6 +879,57 @@ def history_list(
     console.print(table)
 
 
+@hi_app.command(
+    "query",
+    help="Search history by series title, ID, or episode ID. Alias: q, search, find",
+)
+@hi_app.command("q", help="Search history", hidden=True)
+@hi_app.command("search", help="Search history", hidden=True)
+@hi_app.command("find", help="Search history", hidden=True)
+def history_query(
+    query: Annotated[
+        str,
+        typer.Argument(help="Search query (series title, series ID, or episode ID)")
+    ],
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
+):
+    hi = History(file_path)
+
+    if len(hi.list) == 0:
+        prn_error("Your download history is empty!")
+        exit(2)
+
+    # Try to search by series title first (fuzzy match), then by IDs
+    results = hi.search_history(series_title=query)
+    
+    # If no fuzzy title matches, try exact ID matches
+    if not results:
+        results = hi.search_history(series_id=query)
+    if not results:
+        results = hi.search_history(episode_id=query)
+
+    if not results:
+        prn_error(f"No history entries found matching: {query}")
+        exit(2)
+
+    prn_info(f"Found {len(results)} matching entries:\n")
+
+    items = sorted(results, key=lambda x: (x[2], x[3]))  # Sort by title, then episode
+    table = Table(
+        Column("No.", justify="right"),
+        "Series Title",
+        Column("Series ID", justify="right"),
+        Column("Episode ID", justify="right"),
+        "Downloaded",
+        box=box.ROUNDED
+    )
+    for index, item in enumerate(items):
+        timestamp, series_id, series_title, episode_id = item
+        date_str = hi.format_timestamp(timestamp)
+        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
+    console.print(table)
+
+
 @hi_app.command("clear", help="Clear history. Alias: clean, purge, cls, del, rm")
 @hi_app.command("clean", help="Clear history", hidden=True)
 @hi_app.command("purge", help="Clear history", hidden=True)
@@ -888,8 +939,42 @@ def history_list(
 def history_clear(
     yes: ASSUMEYES_OPT = False,
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    by_series: Annotated[
+        Optional[str],
+        typer.Option(
+            "--by-series",
+            "-s",
+            help="Clear history for a specific series (fuzzy match on title or exact match on ID)",
+        ),
+    ] = None,
+    by_date: Annotated[
+        Optional[str],
+        typer.Option(
+            "--by-date",
+            "-d",
+            help="Clear history older than specified date (YYYY-MM-DD format)",
+        ),
+    ] = None,
 ):
     hi = History(file_path)
+    
+    # Handle by_series option
+    if by_series:
+        prn_info(f"Searching for series matching: {by_series}")
+        hi.purge_by_series(by_series, interactive=False)
+        return
+    
+    # Handle by_date option
+    if by_date:
+        prn_info(f"Purging entries older than: {by_date}")
+        try:
+            hi.purge_by_date(by_date)
+        except ValueError as e:
+            prn_error(str(e))
+            exit(1)
+        return
+    
+    # Default: clear all
     prompt = False
     if not yes:
         prompt = survey.routines.inquire(

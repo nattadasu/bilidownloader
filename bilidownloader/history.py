@@ -5,6 +5,7 @@ from pathlib import Path
 from time import time
 from typing import Dict, List, Optional, Tuple, Union
 
+from thefuzz import fuzz
 from bilidownloader.api import BiliApi
 from bilidownloader.common import (
     DEFAULT_HISTORY,
@@ -300,15 +301,17 @@ class History:
         self,
         series_id: Optional[str] = None,
         series_title: Optional[str] = None,
-        episode_id: Optional[str] = None
+        episode_id: Optional[str] = None,
+        fuzzy_threshold: int = 70
     ) -> List[Tuple[int, str, str, str]]:
         """
         Search history by series ID, title, or episode ID.
 
         Args:
-            series_id (Optional[str]): Search by series ID
-            series_title (Optional[str]): Search by series title (partial match)
-            episode_id (Optional[str]): Search by episode ID
+            series_id (Optional[str]): Search by series ID (exact match)
+            series_title (Optional[str]): Search by series title (fuzzy match)
+            episode_id (Optional[str]): Search by episode ID (exact match)
+            fuzzy_threshold (int): Minimum fuzzy match score (0-100, default: 70)
 
         Returns:
             List[Tuple[int, str, str, str]]: Matching history entries
@@ -320,8 +323,11 @@ class History:
             
             if series_id and s_id != series_id:
                 match = False
-            if series_title and series_title.lower() not in s_title.lower():
-                match = False
+            if series_title:
+                # Use fuzzy matching for title search
+                ratio = fuzz.partial_ratio(series_title.lower(), s_title.lower())
+                if ratio < fuzzy_threshold:
+                    match = False
             if episode_id and e_id != episode_id:
                 match = False
             
@@ -333,14 +339,16 @@ class History:
     def purge_by_series(
         self,
         series_id_or_title: str,
-        interactive: bool = False
+        interactive: bool = False,
+        fuzzy_threshold: int = 70
     ) -> List[Tuple[int, str, str, str]]:
         """
-        Purge history entries by series ID or title.
+        Purge history entries by series ID or title (with fuzzy matching).
 
         Args:
             series_id_or_title (str): Series ID or title to search for
             interactive (bool): Show matching entries and confirm deletion
+            fuzzy_threshold (int): Minimum fuzzy match score for title matching (0-100, default: 70)
 
         Returns:
             List[Tuple[int, str, str, str]]: Updated history list
@@ -349,8 +357,13 @@ class History:
         matches = []
         for entry in self.list:
             _, s_id, s_title, _ = entry
-            if s_id == series_id_or_title or series_id_or_title.lower() in s_title.lower():
+            # Exact match on series ID or fuzzy match on title
+            if s_id == series_id_or_title:
                 matches.append(entry)
+            else:
+                ratio = fuzz.partial_ratio(series_id_or_title.lower(), s_title.lower())
+                if ratio >= fuzzy_threshold:
+                    matches.append(entry)
         
         if not matches:
             prn_info(f"No history entries found for: {series_id_or_title}")
@@ -374,17 +387,31 @@ class History:
         prn_done(f"Removed {len(matches)} entries from history")
         return self.list
 
-    def purge_by_date(self, days_ago: int) -> List[Tuple[int, str, str, str]]:
+    def purge_by_date(self, date_input: Union[int, str]) -> List[Tuple[int, str, str, str]]:
         """
-        Purge entries older than specified number of days.
+        Purge entries older than specified date.
 
         Args:
-            days_ago (int): Remove entries older than this many days
+            date_input (Union[int, str]): Either:
+                - Number of days ago (int)
+                - Date string in YYYY-MM-DD format (str)
 
         Returns:
             List[Tuple[int, str, str, str]]: Updated history list
         """
-        threshold = int(time()) - (days_ago * 86400)  # 86400 seconds in a day
+        if isinstance(date_input, int):
+            # Days ago
+            threshold = int(time()) - (date_input * 86400)
+            date_desc = f"{date_input} days"
+        else:
+            # Parse date string (YYYY-MM-DD)
+            try:
+                dt = datetime.strptime(date_input, "%Y-%m-%d")
+                # Convert to local time epoch
+                threshold = int(dt.timestamp())
+                date_desc = date_input
+            except ValueError:
+                raise ValueError(f"Invalid date format: {date_input}. Expected YYYY-MM-DD")
         
         old_count = len(self.list)
         self.list = [entry for entry in self.list if entry[0] >= threshold]
@@ -392,9 +419,9 @@ class History:
         
         if removed_count > 0:
             self._write(self.list)
-            prn_done(f"Removed {removed_count} entries older than {days_ago} days")
+            prn_done(f"Removed {removed_count} entries older than {date_desc}")
         else:
-            prn_info(f"No entries found older than {days_ago} days")
+            prn_info(f"No entries found older than {date_desc}")
         
         return self.list
 
