@@ -132,6 +132,8 @@ class History:
                     series_id = match.group(1)
                     episode_id = match.group(2)
                     series_title = f"Series {series_id}"
+                    episode_idx = ""
+                    info = None
                     
                     # Try to get info from yt-dlp
                     if use_ytdlp:
@@ -143,21 +145,25 @@ class History:
                                 # Clean up the title
                                 if " - " in series_title:
                                     series_title = series_title.split(" - ")[0].strip()
-                            sleep(0.5)  # Rate limiting
-                        except Exception:
-                            # Fall back to placeholder on error
-                            pass
-                    
-                    # Try to extract episode number from yt-dlp info
-                    episode_idx = ""
-                    if use_ytdlp:
-                        try:
-                            if info and isinstance(info, dict):
+                                
+                                # Extract episode number from yt-dlp info
                                 episode_num = info.get("episode_number", "")
                                 if episode_num:
                                     episode_idx = str(episode_num)
-                        except Exception:
-                            pass
+                            sleep(0.5)  # Rate limiting
+                        except Exception as e:
+                            # Check if it's a geo-restriction or unavailable video error
+                            error_str = str(e).lower()
+                            if any(keyword in error_str for keyword in [
+                                "geo restriction", "not available", "video is not available",
+                                "geo-restriction", "georestriction", "unavailable"
+                            ]):
+                                prn_info(f"⚠ Unreachable video (geo-restricted/removed): {url}")
+                                series_title = "Unreachable Series"
+                            else:
+                                # Other errors - log but use fallback
+                                prn_info(f"⚠ Failed to fetch metadata for: {url}")
+                            sleep(0.5)  # Rate limiting even on error
                     
                     # Use timestamp 0 for legacy entries
                     entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
