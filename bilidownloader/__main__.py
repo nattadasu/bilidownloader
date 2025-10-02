@@ -39,6 +39,15 @@ from bilidownloader.watchlist import Watchlist
 
 console = Console()
 
+
+# Enums
+class HistorySortBy(str, Enum):
+    """Sort options for history list and query commands"""
+    DATE = "date"
+    TITLE = "title"
+    SERIES_ID = "series-id"
+    EPISODE_ID = "episode-id"
+
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
     no_args_is_help=True,
@@ -855,12 +864,12 @@ def watchlist_download(
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
     sort_by: Annotated[
-        Optional[str],
+        HistorySortBy,
         typer.Option(
             "--sort-by",
-            help="Sort by: date (default), title, series-id, episode-id"
+            help="Sort by field"
         ),
-    ] = "date",
+    ] = HistorySortBy.DATE,
 ):
     hi = History(file_path)
 
@@ -871,12 +880,12 @@ def history_list(
     prn_info("Here is the list of downloaded episodes:\n")
 
     # Sort based on user choice
-    if sort_by == "title":
+    if sort_by == HistorySortBy.TITLE:
         items = sorted(hi.list, key=lambda x: x[2])  # Sort by series title
-    elif sort_by == "series-id":
+    elif sort_by == HistorySortBy.SERIES_ID:
         items = sorted(hi.list, key=lambda x: x[1])  # Sort by series ID
-    elif sort_by == "episode-id":
-        items = sorted(hi.list, key=lambda x: x[3])  # Sort by episode ID
+    elif sort_by == HistorySortBy.EPISODE_ID:
+        items = sorted(hi.list, key=lambda x: x[4])  # Sort by episode ID
     else:  # date (default)
         items = sorted(hi.list, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
     
@@ -884,14 +893,15 @@ def history_list(
         Column("No.", justify="right"),
         "Series Title",
         Column("Series ID", justify="right"),
-        Column("Episode", justify="right"),
+        Column("Ep. #", justify="right"),
+        Column("Episode ID", justify="right"),
         "Downloaded",
         box=box.ROUNDED
     )
     for index, item in enumerate(items):
-        timestamp, series_id, series_title, episode_id = item
+        timestamp, series_id, series_title, episode_idx, episode_id = item
         date_str = hi.format_timestamp(timestamp, use_rich=True)
-        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
+        table.add_row(str(index + 1), series_title, series_id, episode_idx or "—", episode_id, date_str)
     console.print(table)
 
 
@@ -909,12 +919,12 @@ def history_query(
     ],
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
     sort_by: Annotated[
-        Optional[str],
+        HistorySortBy,
         typer.Option(
             "--sort-by",
-            help="Sort by: date (default), title, series-id, episode-id"
+            help="Sort by field"
         ),
-    ] = "date",
+    ] = HistorySortBy.DATE,
 ):
     hi = History(file_path)
 
@@ -938,12 +948,12 @@ def history_query(
     prn_info(f"Found {len(results)} matching entries:\n")
 
     # Sort based on user choice
-    if sort_by == "title":
+    if sort_by == HistorySortBy.TITLE:
         items = sorted(results, key=lambda x: x[2])  # Sort by series title
-    elif sort_by == "series-id":
+    elif sort_by == HistorySortBy.SERIES_ID:
         items = sorted(results, key=lambda x: x[1])  # Sort by series ID
-    elif sort_by == "episode-id":
-        items = sorted(results, key=lambda x: x[3])  # Sort by episode ID
+    elif sort_by == HistorySortBy.EPISODE_ID:
+        items = sorted(results, key=lambda x: x[4])  # Sort by episode ID
     else:  # date (default)
         items = sorted(results, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
     
@@ -951,14 +961,15 @@ def history_query(
         Column("No.", justify="right"),
         "Series Title",
         Column("Series ID", justify="right"),
-        Column("Episode", justify="right"),
+        Column("Ep. #", justify="right"),
+        Column("Episode ID", justify="right"),
         "Downloaded",
         box=box.ROUNDED
     )
     for index, item in enumerate(items):
-        timestamp, series_id, series_title, episode_id = item
+        timestamp, series_id, series_title, episode_idx, episode_id = item
         date_str = hi.format_timestamp(timestamp, use_rich=True)
-        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
+        table.add_row(str(index + 1), series_title, series_id, episode_idx or "—", episode_id, date_str)
     console.print(table)
 
 

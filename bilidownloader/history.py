@@ -14,14 +14,14 @@ from bilidownloader.common import (
 )
 
 # Constants for TSV format
-HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode ID"
+HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"
 SEP = "\t"
 
 
 class History:
     def __init__(self, path: Path = DEFAULT_HISTORY):
         self.path = path
-        self.list: List[Tuple[int, str, str, str]] = []
+        self.list: List[Tuple[int, str, str, str, str]] = []
         self._legacy_list: List[str] = []  # For backward compatibility during migration
 
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -148,8 +148,19 @@ class History:
                             # Fall back to placeholder on error
                             pass
                     
+                    # Try to extract episode number from yt-dlp info
+                    episode_idx = ""
+                    if use_ytdlp:
+                        try:
+                            if info and isinstance(info, dict):
+                                episode_num = info.get("episode_number", "")
+                                if episode_num:
+                                    episode_idx = str(episode_num)
+                        except Exception:
+                            pass
+                    
                     # Use timestamp 0 for legacy entries
-                    entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_id}"
+                    entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
                     new_data.append(entry)
                 
                 bar()  # Update progress bar
@@ -174,11 +185,11 @@ class History:
         with open(self.path, "w", encoding="utf8") as file:
             file.write("\n".join(lines) + "\n")
 
-    def read_history(self) -> List[Tuple[int, str, str, str]]:
+    def read_history(self) -> List[Tuple[int, str, str, str, str]]:
         """Reads the history from the specified file path.
         
         Returns:
-            List[Tuple[int, str, str, str]]: List of (timestamp, series_id, series_title, episode_id)
+            List[Tuple[int, str, str, str, str]]: List of (timestamp, series_id, series_title, episode_idx, episode_id)
         """
         self.list = []
         self._legacy_list = []
@@ -199,26 +210,38 @@ class History:
 
         return self.list
 
-    def _parse_history_entry(self, entry: str) -> Optional[Tuple[int, str, str, str]]:
+    def _parse_history_entry(self, entry: str) -> Optional[Tuple[int, str, str, str, str]]:
         """Parse a single history entry"""
         if not entry.strip():
             return None
 
         if SEP in entry:
             parts = entry.split(SEP)
-            if len(parts) == 4:
+            # Support both old format (4 fields) and new format (5 fields)
+            if len(parts) == 5:
+                try:
+                    timestamp = int(parts[0])
+                    series_id = parts[1]
+                    series_title = parts[2]
+                    episode_idx = parts[3]
+                    episode_id = parts[4]
+                    return (timestamp, series_id, series_title, episode_idx, episode_id)
+                except ValueError:
+                    return None
+            elif len(parts) == 4:
+                # Old format without episode_idx
                 try:
                     timestamp = int(parts[0])
                     series_id = parts[1]
                     series_title = parts[2]
                     episode_id = parts[3]
-                    return (timestamp, series_id, series_title, episode_id)
+                    return (timestamp, series_id, series_title, "", episode_id)
                 except ValueError:
                     return None
 
         return None
 
-    def check_history(self, episode_url: str) -> List[Tuple[int, str, str, str]]:
+    def check_history(self, episode_url: str) -> List[Tuple[int, str, str, str, str]]:
         """
         Check if the episode was on the history
 
@@ -226,7 +249,7 @@ class History:
             episode_url (str): the episode URL to check
 
         Returns:
-            List[Tuple[int, str, str, str]]: the history list
+            List[Tuple[int, str, str, str, str]]: the history list
 
         Raises:
             DataExistError: if the episode was on the history
@@ -242,17 +265,17 @@ class History:
         episode_id = match.group(2)
         
         # Check if this series+episode combination exists
-        for _, s_id, _, e_id in self.list:
+        for _, s_id, _, _, e_id in self.list:
             if s_id == series_id and e_id == episode_id:
                 raise DataExistError("Episode was ripped previously")
 
         return self.list
 
-    def _write(self, entries: List[Tuple[int, str, str, str]]) -> None:
+    def _write(self, entries: List[Tuple[int, str, str, str, str]]) -> None:
         """Write entries to file in TSV format"""
         lines = [HEAD]
-        for timestamp, series_id, series_title, episode_id in entries:
-            lines.append(f"{timestamp}{SEP}{series_id}{SEP}{series_title}{SEP}{episode_id}")
+        for timestamp, series_id, series_title, episode_idx, episode_id in entries:
+            lines.append(f"{timestamp}{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}")
         self._write_file_lines(lines)
 
     def write_history(
@@ -260,8 +283,9 @@ class History:
         episode_url: str, 
         series_id: Optional[str] = None,
         series_title: Optional[str] = None,
+        episode_idx: Optional[str] = None,
         episode_id: Optional[str] = None
-    ) -> List[Tuple[int, str, str, str]]:
+    ) -> List[Tuple[int, str, str, str, str]]:
         """
         Writes an episode to the history with metadata.
 
@@ -269,10 +293,11 @@ class History:
             episode_url (str): the episode URL to write
             series_id (Optional[str]): the series ID (extracted from URL if not provided)
             series_title (Optional[str]): the series title (fetched from API if not provided)
+            episode_idx (Optional[str]): the episode index/number
             episode_id (Optional[str]): the episode ID (extracted from URL if not provided)
 
         Returns:
-            List[Tuple[int, str, str, str]]: the history list
+            List[Tuple[int, str, str, str, str]]: the history list
             
         Raises:
             DataExistError: if the episode already exists in history
@@ -290,7 +315,7 @@ class History:
             episode_id = match.group(2)
         
         # Check for duplicates
-        for _, s_id, _, e_id in self.list:
+        for _, s_id, _, _, e_id in self.list:
             if s_id == series_id and e_id == episode_id:
                 raise DataExistError("Episode already exists in history")
         
@@ -299,11 +324,15 @@ class History:
             # Use a placeholder if title not provided
             series_title = f"Series {series_id}"
         
+        # Default episode_idx to empty string if not provided
+        if not episode_idx:
+            episode_idx = ""
+        
         # Get current timestamp
         timestamp = int(time())
         
         # Add to list
-        entry = (timestamp, series_id, series_title, episode_id)
+        entry = (timestamp, series_id, series_title, episode_idx, episode_id)
         self.list.append(entry)
         
         # Write to file
@@ -319,7 +348,7 @@ class History:
         series_title: Optional[str] = None,
         episode_id: Optional[str] = None,
         fuzzy_threshold: int = 70
-    ) -> List[Tuple[int, str, str, str]]:
+    ) -> List[Tuple[int, str, str, str, str]]:
         """
         Search history by series ID, title, or episode ID.
 
@@ -330,11 +359,11 @@ class History:
             fuzzy_threshold (int): Minimum fuzzy match score (0-100, default: 70)
 
         Returns:
-            List[Tuple[int, str, str, str]]: Matching history entries
+            List[Tuple[int, str, str, str, str]]: Matching history entries
         """
         results = []
         
-        for timestamp, s_id, s_title, e_id in self.list:
+        for timestamp, s_id, s_title, e_idx, e_id in self.list:
             match = True
             
             if series_id and s_id != series_id:
@@ -348,7 +377,7 @@ class History:
                 match = False
             
             if match:
-                results.append((timestamp, s_id, s_title, e_id))
+                results.append((timestamp, s_id, s_title, e_idx, e_id))
         
         return results
 
@@ -357,7 +386,7 @@ class History:
         series_id_or_title: str,
         interactive: bool = False,
         fuzzy_threshold: int = 70
-    ) -> List[Tuple[int, str, str, str]]:
+    ) -> List[Tuple[int, str, str, str, str]]:
         """
         Purge history entries by series ID or title (with fuzzy matching).
 
@@ -367,12 +396,12 @@ class History:
             fuzzy_threshold (int): Minimum fuzzy match score for title matching (0-100, default: 70)
 
         Returns:
-            List[Tuple[int, str, str, str]]: Updated history list
+            List[Tuple[int, str, str, str, str]]: Updated history list
         """
         # Try to find matches
         matches = []
         for entry in self.list:
-            _, s_id, s_title, _ = entry
+            _, s_id, s_title, _, _ = entry
             # Exact match on series ID or fuzzy match on title
             if s_id == series_id_or_title:
                 matches.append(entry)
@@ -387,7 +416,7 @@ class History:
         
         if interactive:
             prn_info(f"Found {len(matches)} entries:")
-            for timestamp, s_id, s_title, e_id in matches:
+            for timestamp, s_id, s_title, e_idx, e_id in matches:
                 date_str = self.format_timestamp(timestamp)
                 prn_info(f"  - {s_title} (Series {s_id}, Episode {e_id}) - {date_str}")
             
@@ -403,7 +432,7 @@ class History:
         prn_done(f"Removed {len(matches)} entries from history")
         return self.list
 
-    def purge_by_date(self, date_input: Union[int, str]) -> List[Tuple[int, str, str, str]]:
+    def purge_by_date(self, date_input: Union[int, str]) -> List[Tuple[int, str, str, str, str]]:
         """
         Purge entries older than specified date.
 
@@ -413,7 +442,7 @@ class History:
                 - Date string in YYYY-MM-DD format (str)
 
         Returns:
-            List[Tuple[int, str, str, str]]: Updated history list
+            List[Tuple[int, str, str, str, str]]: Updated history list
         """
         if isinstance(date_input, int):
             # Days ago
@@ -441,7 +470,7 @@ class History:
         
         return self.list
 
-    def purge_all(self, confirm: bool = True) -> List[Tuple[int, str, str, str]]:
+    def purge_all(self, confirm: bool = True) -> List[Tuple[int, str, str, str, str]]:
         """
         Clear entire history.
 
@@ -449,7 +478,7 @@ class History:
             confirm (bool): Whether confirmation is required (for safety)
 
         Returns:
-            List[Tuple[int, str, str, str]]: Empty list
+            List[Tuple[int, str, str, str, str]]: Empty list
         """
         if confirm:
             prn_info("Clearing all history")
@@ -494,8 +523,8 @@ class History:
                 "date_range": "N/A"
             }
         
-        unique_series = set(s_id for _, s_id, _, _ in self.list)
-        timestamps = [ts for ts, _, _, _ in self.list if ts > 0]
+        unique_series = set(s_id for _, s_id, _, _, _ in self.list)
+        timestamps = [ts for ts, _, _, _, _ in self.list if ts > 0]
         
         if timestamps:
             oldest = min(timestamps)

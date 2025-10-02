@@ -993,11 +993,13 @@ class BiliProcess:
                     series_id = ep_url.group(1) if ep_url else None
                     episode_id = ep_url.group(2) if ep_url else None
                     series_title = data.get("btitle", data.get("series", f"Series {series_id}"))
+                    episode_idx = str(data.get("episode_number", "")) if data.get("episode_number") else ""
                     
                     history.write_history(
                         episode_url, 
                         series_id=series_id,
                         series_title=series_title,
+                        episode_idx=episode_idx,
                         episode_id=episode_id
                     )
                 else:
