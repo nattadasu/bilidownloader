@@ -14,6 +14,7 @@ from bilidownloader.common import (
     DEFAULT_HISTORY,
     DataExistError,
     prn_done,
+    prn_error,
     prn_info,
 )
 
@@ -97,6 +98,7 @@ class History:
         """Convert old URL-only format to TSV format with metadata"""
         from time import sleep
         from alive_progress import alive_bar
+        import survey
         
         new_data = [HEAD]
         
@@ -124,6 +126,9 @@ class History:
             use_ytdlp = False
             prn_info("Fallback to API-based metadata fetching")
         
+        # Track failed entries for retry
+        failed_entries = []
+        
         # Use alive_progress for progress bar
         with alive_bar(total_urls, title="Migrating", bar="smooth") as bar:
             for url in urls:
@@ -138,6 +143,7 @@ class History:
                     series_title = f"Series {series_id}"
                     episode_idx = ""
                     info = None
+                    extraction_failed = False
                     
                     # Try to get info from yt-dlp and HTML
                     if use_ytdlp:
@@ -184,12 +190,24 @@ class History:
                                 "geo restriction", "not available", "video is not available",
                                 "geo-restriction", "georestriction", "unavailable"
                             ]):
-                                prn_info(f"⚠ Unreachable video (geo-restricted/removed): {url}")
+                                prn_error(f"⚠ Unreachable video (geo-restricted/removed): {url}")
                                 series_title = "Unreachable Series"
+                                extraction_failed = True
                             else:
                                 # Other errors - log but use fallback
-                                prn_info(f"⚠ Failed to fetch metadata for: {url}")
+                                prn_error(f"⚠ Failed to fetch metadata for: {url}")
+                                extraction_failed = True
                             sleep(0.5)  # Rate limiting even on error
+                    
+                    # Store failed entry for later review
+                    if extraction_failed:
+                        failed_entries.append({
+                            'url': url,
+                            'series_id': series_id,
+                            'episode_id': episode_id,
+                            'series_title': series_title,
+                            'episode_idx': episode_idx
+                        })
                     
                     # Use timestamp 0 for legacy entries
                     entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
@@ -198,9 +216,118 @@ class History:
                 bar()  # Update progress bar
         
         prn_info("Migration complete!")
+        
+        # Handle failed entries interactively if any
+        if failed_entries:
+            prn_info(f"\n{len(failed_entries)} entries had issues during migration.")
+            try:
+                choice = survey.routines.select(
+                    "How would you like to handle these entries?",
+                    options=[
+                        "Keep as is (use fallback titles)",
+                        "Retry fetching metadata",
+                        "Manually provide series titles"
+                    ]
+                )
+                
+                if choice == "Retry fetching metadata":
+                    prn_info("\nRetrying failed entries...")
+                    self._retry_failed_entries(failed_entries, new_data, extractor, use_ytdlp)
+                elif choice == "Manually provide series titles":
+                    prn_info("\nManually updating series titles...")
+                    self._manually_update_entries(failed_entries, new_data)
+                # If "Keep as is" is selected, do nothing
+            except (survey.widgets.Escape, KeyboardInterrupt):
+                prn_info("Keeping entries as is.")
         return new_data
-
-
+    
+    def _retry_failed_entries(self, failed_entries: List[Dict], new_data: List[str], extractor, use_ytdlp: bool) -> None:
+        """Retry fetching metadata for failed entries"""
+        from time import sleep
+        
+        for idx, entry in enumerate(failed_entries, 1):
+            prn_info(f"\nRetrying entry {idx}/{len(failed_entries)}: {entry['url']}")
+            
+            series_title = entry['series_title']  # Keep fallback
+            episode_idx = entry['episode_idx']
+            
+            if use_ytdlp:
+                try:
+                    info = extractor._get_video_info(entry['url'])
+                    if info and isinstance(info, dict):
+                        # Try to get series title
+                        series_title = info.get("series", None)
+                        if not series_title or series_title == "":
+                            try:
+                                from bilidownloader.api import BiliHtml
+                                html = BiliHtml(cookie_path=extractor.cookie, user_agent="Mozilla/5.0")
+                                resp = html.get(entry['url'])
+                                title_match = rsearch(
+                                    r"<title>(.*)</title>", resp.content.decode("utf-8"), re.IGNORECASE
+                                )
+                                if title_match:
+                                    series_title = rsub(
+                                        r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                                        "",
+                                        title_match.group(1),
+                                    )
+                                    series_title = unescape(series_title).strip()
+                            except Exception:
+                                pass
+                        
+                        episode_num = info.get("episode_number", "")
+                        if episode_num:
+                            episode_idx = str(episode_num)
+                    
+                    prn_done(f"Successfully fetched: {series_title}")
+                    sleep(0.5)
+                except Exception as e:
+                    prn_error(f"Retry failed: {str(e)}")
+                    sleep(0.5)
+            
+            # Update the entry in new_data
+            self._update_entry_in_data(new_data, entry['series_id'], entry['episode_id'], series_title, episode_idx)
+    
+    def _manually_update_entries(self, failed_entries: List[Dict], new_data: List[str]) -> None:
+        """Manually update series titles for failed entries"""
+        import survey
+        
+        for idx, entry in enumerate(failed_entries, 1):
+            prn_info(f"\nEntry {idx}/{len(failed_entries)}")
+            prn_info(f"URL: {entry['url']}")
+            prn_info(f"Series ID: {entry['series_id']}, Episode ID: {entry['episode_id']}")
+            prn_info(f"Current title: {entry['series_title']}")
+            
+            try:
+                new_title = survey.routines.input(
+                    "Enter series title (or press Enter to keep current):",
+                    default=entry['series_title']
+                )
+                
+                if new_title and new_title.strip():
+                    self._update_entry_in_data(
+                        new_data, 
+                        entry['series_id'], 
+                        entry['episode_id'], 
+                        new_title.strip(), 
+                        entry['episode_idx']
+                    )
+                    prn_done(f"Updated to: {new_title.strip()}")
+            except (survey.widgets.Escape, KeyboardInterrupt):
+                prn_info("Skipping remaining entries...")
+                break
+    
+    def _update_entry_in_data(self, new_data: List[str], series_id: str, episode_id: str, 
+                              series_title: str, episode_idx: str) -> None:
+        """Update an entry in the data list"""
+        for i, line in enumerate(new_data):
+            if line.startswith("Timestamp"):  # Skip header
+                continue
+            parts = line.split(SEP)
+            if len(parts) >= 5 and parts[1] == series_id and parts[4] == episode_id:
+                # Update the entry
+                new_data[i] = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
+                break
 
     def _create_empty_file_with_header(self) -> None:
         """Create an empty file with header"""
