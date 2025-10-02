@@ -92,6 +92,7 @@ class History:
     def _convert_old_format_to_tsv(self, urls: List[str]) -> List[str]:
         """Convert old URL-only format to TSV format with metadata"""
         from time import sleep
+        from alive_progress import alive_bar
         
         new_data = [HEAD]
         
@@ -119,43 +120,39 @@ class History:
             use_ytdlp = False
             prn_info("Fallback to API-based metadata fetching")
         
-        # Progress tracking
-        processed = 0
-        
-        for url in urls:
-            url = url.strip()
-            if not url:
-                continue
-            
-            match = pattern.search(url)
-            if match:
-                series_id = match.group(1)
-                episode_id = match.group(2)
-                series_title = f"Series {series_id}"
+        # Use alive_progress for progress bar
+        with alive_bar(total_urls, title="Migrating", bar="smooth") as bar:
+            for url in urls:
+                url = url.strip()
+                if not url:
+                    continue
                 
-                # Try to get info from yt-dlp
-                if use_ytdlp:
-                    try:
-                        info = extractor._get_video_info(url)
-                        if info and isinstance(info, dict):
-                            # Extract series title from yt-dlp metadata
-                            series_title = info.get("series", info.get("title", series_title))
-                            # Clean up the title
-                            if " - " in series_title:
-                                series_title = series_title.split(" - ")[0].strip()
-                        sleep(0.5)  # Rate limiting
-                    except Exception:
-                        # Fall back to placeholder on error
-                        pass
+                match = pattern.search(url)
+                if match:
+                    series_id = match.group(1)
+                    episode_id = match.group(2)
+                    series_title = f"Series {series_id}"
+                    
+                    # Try to get info from yt-dlp
+                    if use_ytdlp:
+                        try:
+                            info = extractor._get_video_info(url)
+                            if info and isinstance(info, dict):
+                                # Extract series title from yt-dlp metadata
+                                series_title = info.get("series", info.get("title", series_title))
+                                # Clean up the title
+                                if " - " in series_title:
+                                    series_title = series_title.split(" - ")[0].strip()
+                            sleep(0.5)  # Rate limiting
+                        except Exception:
+                            # Fall back to placeholder on error
+                            pass
+                    
+                    # Use timestamp 0 for legacy entries
+                    entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_id}"
+                    new_data.append(entry)
                 
-                # Use timestamp 0 for legacy entries
-                entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_id}"
-                new_data.append(entry)
-                
-                processed += 1
-                # Show progress every 5 items or at the end
-                if processed % 5 == 0 or processed == total_urls:
-                    prn_info(f"Progress: {processed}/{total_urls} entries migrated")
+                bar()  # Update progress bar
         
         prn_info("Migration complete!")
         return new_data

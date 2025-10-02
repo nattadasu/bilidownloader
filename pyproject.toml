@@ -16,6 +16,7 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
+	"alive-progress",               # progress bar for history migration
 	"click < 8.2.0",                # Typer dependency, locked 
 	"fake-useragent",               # for random user agent
 	"langcodes",                    # Apply language track title for subtitles
@@ -34,7 +35,6 @@ dependencies = [
 ass = [
 	"ass",            # parsing Advanced SubStation Alpha subtiltes
 	"matplotlib",     #  only used to get all system fonts and allow download ASS
-	"alive-progress"  # shows download progress bar when downloading fonts
 ]
 
 [project.scripts]

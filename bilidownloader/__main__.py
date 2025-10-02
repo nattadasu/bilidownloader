@@ -854,6 +854,13 @@ def watchlist_download(
 @hi_app.command("l", help="Display the history of downloaded episodes", hidden=True)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    sort_by: Annotated[
+        Optional[str],
+        typer.Option(
+            "--sort-by",
+            help="Sort by: date (default), title, series-id, episode-id"
+        ),
+    ] = "date",
 ):
     hi = History(file_path)
 
@@ -863,22 +870,28 @@ def history_list(
 
     prn_info("Here is the list of downloaded episodes:\n")
 
-    # Sort by date (timestamp), newest first
-    items = sorted(hi.list, key=lambda x: x[0], reverse=True)
+    # Sort based on user choice
+    if sort_by == "title":
+        items = sorted(hi.list, key=lambda x: x[2])  # Sort by series title
+    elif sort_by == "series-id":
+        items = sorted(hi.list, key=lambda x: x[1])  # Sort by series ID
+    elif sort_by == "episode-id":
+        items = sorted(hi.list, key=lambda x: x[3])  # Sort by episode ID
+    else:  # date (default)
+        items = sorted(hi.list, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
+    
     table = Table(
         Column("No.", justify="right"),
         "Series Title",
         Column("Series ID", justify="right"),
-        Column("Episode ID", justify="right"),
+        Column("Episode", justify="right"),
         "Downloaded",
         box=box.ROUNDED
     )
     for index, item in enumerate(items):
         timestamp, series_id, series_title, episode_id = item
         date_str = hi.format_timestamp(timestamp, use_rich=True)
-        # Add episode number after series title
-        series_with_ep = f"{series_title} - Ep.{episode_id}"
-        table.add_row(str(index + 1), series_with_ep, series_id, episode_id, date_str)
+        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
     console.print(table)
 
 
@@ -895,6 +908,13 @@ def history_query(
         typer.Argument(help="Search query (series title, series ID, or episode ID)")
     ],
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    sort_by: Annotated[
+        Optional[str],
+        typer.Option(
+            "--sort-by",
+            help="Sort by: date (default), title, series-id, episode-id"
+        ),
+    ] = "date",
 ):
     hi = History(file_path)
 
@@ -917,22 +937,28 @@ def history_query(
 
     prn_info(f"Found {len(results)} matching entries:\n")
 
-    # Sort by date (timestamp), newest first
-    items = sorted(results, key=lambda x: x[0], reverse=True)
+    # Sort based on user choice
+    if sort_by == "title":
+        items = sorted(results, key=lambda x: x[2])  # Sort by series title
+    elif sort_by == "series-id":
+        items = sorted(results, key=lambda x: x[1])  # Sort by series ID
+    elif sort_by == "episode-id":
+        items = sorted(results, key=lambda x: x[3])  # Sort by episode ID
+    else:  # date (default)
+        items = sorted(results, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
+    
     table = Table(
         Column("No.", justify="right"),
         "Series Title",
         Column("Series ID", justify="right"),
-        Column("Episode ID", justify="right"),
+        Column("Episode", justify="right"),
         "Downloaded",
         box=box.ROUNDED
     )
     for index, item in enumerate(items):
         timestamp, series_id, series_title, episode_id = item
         date_str = hi.format_timestamp(timestamp, use_rich=True)
-        # Add episode number after series title
-        series_with_ep = f"{series_title} - Ep.{episode_id}"
-        table.add_row(str(index + 1), series_with_ep, series_id, episode_id, date_str)
+        table.add_row(str(index + 1), series_title, series_id, episode_id, date_str)
     console.print(table)
 
 
