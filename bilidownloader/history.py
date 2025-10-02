@@ -1,7 +1,11 @@
 import re
 from datetime import datetime
+from html import unescape
 from os import path as opath
 from pathlib import Path
+from re import IGNORECASE
+from re import search as rsearch
+from re import sub as rsub
 from time import time
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -135,16 +139,38 @@ class History:
                     episode_idx = ""
                     info = None
                     
-                    # Try to get info from yt-dlp
+                    # Try to get info from yt-dlp and HTML
                     if use_ytdlp:
                         try:
                             info = extractor._get_video_info(url)
                             if info and isinstance(info, dict):
-                                # Extract series title from yt-dlp metadata
-                                series_title = info.get("series", info.get("title", series_title))
-                                # Clean up the title
-                                if " - " in series_title:
-                                    series_title = series_title.split(" - ")[0].strip()
+                                # Try to get series title from various fields
+                                series_title = info.get("series", None)
+                                if not series_title or series_title == "":
+                                    # If series field not available, try to extract from webpage title
+                                    try:
+                                        from bilidownloader.api import BiliHtml
+                                        html = BiliHtml(cookie_path=extractor.cookie, user_agent="Mozilla/5.0")
+                                        resp = html.get(url)
+                                        title_match = rsearch(
+                                            r"<title>(.*)</title>", resp.content.decode("utf-8"), re.IGNORECASE
+                                        )
+                                        if title_match:
+                                            # Remove episode part and site name
+                                            series_title = rsub(
+                                                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                                                "",
+                                                title_match.group(1),
+                                            )
+                                            series_title = unescape(series_title).strip()
+                                    except Exception:
+                                        # Fallback: use episode title if we can't get series name
+                                        episode_title = info.get("title", "")
+                                        if episode_title and " - " in episode_title:
+                                            # Remove episode number prefix (e.g., "E2 - ")
+                                            series_title = rsub(r"^E\d+\s*-\s*", "", episode_title).strip()
+                                        else:
+                                            series_title = f"Series {series_id}"
                                 
                                 # Extract episode number from yt-dlp info
                                 episode_num = info.get("episode_number", "")
