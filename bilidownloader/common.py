@@ -205,10 +205,10 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
     """
     ins_notify.application_name = "BiliDownloader"
     if path:
-        ins_notify.title = f"{title}, E{index} downloaded"
+        ins_notify.title = f"{title}, {index} downloaded"
         ins_notify.message = f"File is saved on {path.resolve()}"
     else:
-        ins_notify.title = f"Downloading {title}, E{index}"
+        ins_notify.title = f"Downloading {title}, {index}"
         ins_notify.message = "We will notify you when it's done"
     try:
         ins_notify.send(block=False)
