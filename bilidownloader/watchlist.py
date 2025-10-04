@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
 
 from bilidownloader.api import BiliApi
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.common import (
     DEFAULT_WATCHLIST,
     DataExistError,
@@ -153,7 +154,10 @@ class Watchlist:
         for entry in data:
             parsed_entry = self._parse_watchlist_entry(entry)
             if parsed_entry:
-                self.list.append(parsed_entry)
+                season_id, title = parsed_entry
+                if season_id in SERIES_ALIASES:
+                    title = SERIES_ALIASES[season_id]
+                self.list.append((season_id, title))
 
         return self.list
 
@@ -283,6 +287,9 @@ class Watchlist:
             raise ValueError("Season ID and title cannot be empty")
 
         season_id_str = str(season_id)
+
+        if season_id_str in SERIES_ALIASES:
+            title = SERIES_ALIASES[season_id_str]
 
         # Check if already exists
         if any(season_id_str == existing_id for existing_id, _ in self.list):

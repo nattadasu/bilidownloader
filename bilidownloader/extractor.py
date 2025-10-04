@@ -44,6 +44,7 @@ from bilidownloader.common import (
 from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
 from bilidownloader.history import History
 from bilidownloader.watchlist import Watchlist
+from bilidownloader.alias import SERIES_ALIASES
 
 ua = UserAgent()
 uagent = ua.chrome
@@ -780,18 +781,23 @@ class BiliProcess:
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
+        ep_url = rsearch(r"play/(\\d+)/(\\d+)", episode_url)
+        series_id = ep_url.group(1) if ep_url else None
         ftitle = rsearch(
             r"<title>(.*)</title>", resp.content.decode("utf-8"), IGNORECASE
         )
         if ftitle:
             title = rsub(
-                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                r"\\s*E(?:\\d+)(?:\\s*\\-\\s*.*)?\\s*\\-\\s*(?:Bstation|BiliBili)$",
                 "",
                 ftitle.group(1),
             )
             title = sanitize_filename(unescape(title))
         else:
             title = ftitle
+
+        if series_id and series_id in SERIES_ALIASES:
+            title = SERIES_ALIASES[series_id]
 
         # look for .bstar-meta__area class to get country of origin
         language: Optional[Literal["ind", "jpn", "chi", "tha"]] = None

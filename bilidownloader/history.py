@@ -10,6 +10,7 @@ from time import time
 from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.common import (
     DEFAULT_HISTORY,
     DataExistError,
@@ -200,6 +201,9 @@ class History:
                                 extraction_failed = True
                             sleep(0.5)  # Rate limiting even on error
                     
+                    if series_id in SERIES_ALIASES:
+                        series_title = SERIES_ALIASES[series_id]
+
                     # Store failed entry for later review
                     if extraction_failed:
                         failed_entries.append({
@@ -286,6 +290,9 @@ class History:
                     prn_error(f"Retry failed: {str(e)}")
                     sleep(0.5)
             
+            if entry["series_id"] in SERIES_ALIASES:
+                series_title = SERIES_ALIASES[entry["series_id"]]
+
             # Update the entry in new_data
             self._update_entry_in_data(new_data, entry['series_id'], entry['episode_id'], series_title, episode_idx)
     
@@ -366,7 +373,10 @@ class History:
         for entry in data:
             parsed_entry = self._parse_history_entry(entry)
             if parsed_entry:
-                self.list.append(parsed_entry)
+                timestamp, series_id, series_title, episode_idx, episode_id = parsed_entry
+                if series_id in SERIES_ALIASES:
+                    series_title = SERIES_ALIASES[series_id]
+                self.list.append((timestamp, series_id, series_title, episode_idx, episode_id))
 
         return self.list
 
