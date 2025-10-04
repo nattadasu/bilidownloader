@@ -139,8 +139,8 @@ class History:
                 
                 regmatch = pattern.search(url)
                 if regmatch:
-                    series_id = match.group(1)
-                    episode_id = match.group(2)
+                    series_id = regmatch.group(1)
+                    episode_id = regmatch.group(2)
                     series_title = f"Series {series_id}"
                     episode_idx = ""
                     info = None
