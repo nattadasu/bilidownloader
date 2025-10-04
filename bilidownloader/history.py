@@ -136,8 +136,8 @@ class History:
                 if not url:
                     continue
                 
-                match = pattern.search(url)
-                if match:
+                regmatch = pattern.search(url)
+                if regmatch:
                     series_id = match.group(1)
                     episode_id = match.group(2)
                     series_title = f"Series {series_id}"
@@ -177,6 +177,7 @@ class History:
                                             series_title = rsub(r"^E\d+\s*-\s*", "", episode_title).strip()
                                         else:
                                             series_title = f"Series {series_id}"
+                                            Exception("not available")
                                 
                                 # Extract episode number from yt-dlp info
                                 episode_num = info.get("episode_number", "")
@@ -190,12 +191,12 @@ class History:
                                 "geo restriction", "not available", "video is not available",
                                 "geo-restriction", "georestriction", "unavailable"
                             ]):
-                                prn_error(f"⚠ Unreachable video (geo-restricted/removed): {url}")
+                                prn_error(f"Unreachable video (geo-restricted/removed): {url}")
                                 series_title = "Unreachable Series"
                                 extraction_failed = True
                             else:
                                 # Other errors - log but use fallback
-                                prn_error(f"⚠ Failed to fetch metadata for: {url}")
+                                prn_error(f"Failed to fetch metadata for: {url}")
                                 extraction_failed = True
                             sleep(0.5)  # Rate limiting even on error
                     
