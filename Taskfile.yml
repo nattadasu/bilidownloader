@@ -55,9 +55,9 @@ tasks:
   lint:
     desc: Run ruff linter
     cmds:
-      - python -m ruff check bilidownloader/
+      - ruff check bilidownloader/
     preconditions:
-      - sh: python -c "import ruff"
+      - sh: which ruff
         msg: "ruff must be installed (pip install ruff)"
 
   format:
