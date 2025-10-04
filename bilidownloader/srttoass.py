@@ -23,6 +23,10 @@ class SRTToASSConverter(PostProcessor):
         "Style: dialogue,Noto Sans,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
         "-1,0,0,0,100,100,0,0,1,4,1.2,2,153,153,64,1"
     )
+    DEFAULT_THAI_STYLE = (
+        "Style: dialogue,Arial,120,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
+        "-1,0,0,0,100,100,0,0,1,4,1.2,2,153,153,64,1"
+    )
 
     def __init__(self, *args, **kwargs):
         """Initialize the SRT to ASS converter.
@@ -62,7 +66,7 @@ class SRTToASSConverter(PostProcessor):
 
         return time_str
 
-    def _convert_srt_to_ass_content(self, srt_content: str) -> str:
+    def _convert_srt_to_ass_content(self, srt_content: str, style: str = DEFAULT_STYLE) -> str:
         """Convert SRT content to ASS format.
 
         Args:
@@ -87,7 +91,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-""".format(style=self.DEFAULT_STYLE)
+""".format(style=style)
 
         # Parse SRT content
         srt_pattern = re.compile(
@@ -143,7 +147,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 srt_content = f.read()
 
             # Convert to ASS format
-            ass_content = self._convert_srt_to_ass_content(srt_content)
+            if ".th." in srt_path.name:
+                ass_content = self._convert_srt_to_ass_content(srt_content, style=self.DEFAULT_THAI_STYLE)
+            else:
+                ass_content = self._convert_srt_to_ass_content(srt_content)
 
             # Write ASS file
             with open(ass_path, "w", encoding="utf-8-sig") as f:
@@ -199,6 +206,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             self.write_debug(f"Converting SRT file: {current_file}")
 
             # Convert SRT to ASS
+            if ".th." in current_file.name:
+                fonts_found.add("Arial")
+            else:
+                fonts_found.add("Noto Sans")
             ass_file = self._convert_srt_file(current_file)
             if ass_file:
                 converted_files.append(ass_file)
@@ -231,9 +242,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                                 break
 
         if converted_files:
-            # Collect fonts from converted ASS files
-            fonts_found = ["Noto Sans"]
-
             # Save fonts list for later use by font manager
             fonts_json_path = Path("fonts.json")
             try:
