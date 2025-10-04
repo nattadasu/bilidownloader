@@ -164,7 +164,7 @@ class History:
                                         if title_match:
                                             # Remove episode part and site name
                                             series_title = rsub(
-                                                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                                                r"\s*(?:(?:E|PV|SP|OVA)(?:\d+)?)(?:\s*-\s*.*)?\s*-\s*(?:Bstation|BiliBili)$",
                                                 "",
                                                 title_match.group(1),
                                             )
@@ -271,7 +271,7 @@ class History:
                                 )
                                 if title_match:
                                     series_title = rsub(
-                                        r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                                        r"\s*(?:(?:E|PV|SP|OVA)(?:\d+)?)(?:\s*-\s*.*)?\s*-\s*(?:Bstation|BiliBili)$",
                                         "",
                                         title_match.group(1),
                                     )
