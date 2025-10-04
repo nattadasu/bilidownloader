@@ -24,7 +24,7 @@ class SRTToASSConverter(PostProcessor):
         "-1,0,0,0,100,100,0,0,1,4,1.2,2,153,153,64,1"
     )
     DEFAULT_THAI_STYLE = (
-        "Style: dialogue,Arial,120,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
+        "Style: dialogue,Arial,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
         "-1,0,0,0,100,100,0,0,1,4,1.2,2,153,153,64,1"
     )
 
