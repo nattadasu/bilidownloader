@@ -44,6 +44,7 @@ from bilidownloader.common import (
 from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
 from bilidownloader.history import History
 from bilidownloader.watchlist import Watchlist
+from bilidownloader.alias import SERIES_ALIASES
 
 ua = UserAgent()
 uagent = ua.chrome
@@ -780,18 +781,23 @@ class BiliProcess:
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
+        ep_url = rsearch(r"play/(\\d+)/(\\d+)", episode_url)
+        series_id = ep_url.group(1) if ep_url else None
         ftitle = rsearch(
             r"<title>(.*)</title>", resp.content.decode("utf-8"), IGNORECASE
         )
         if ftitle:
             title = rsub(
-                r"\s*E(?:\d+)(?:\s*\-\s*.*)?\s*\-\s*(?:Bstation|BiliBili)$",
+                r"\s+(?:E\d+|PV\d*|SP\d*|OVA\d*).*$",
                 "",
                 ftitle.group(1),
             )
             title = sanitize_filename(unescape(title))
         else:
             title = ftitle
+
+        if series_id and series_id in SERIES_ALIASES:
+            title = SERIES_ALIASES[series_id]
 
         # look for .bstar-meta__area class to get country of origin
         language: Optional[Literal["ind", "jpn", "chi", "tha"]] = None
@@ -859,6 +865,8 @@ class BiliProcess:
             {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
         )
 
+        ep_num = "0"
+
         ydl_opts["postprocessors"] = postprocessors
         if self.only_audio:
             ydl_opts["format"] = "ba"
@@ -890,13 +898,21 @@ class BiliProcess:
                 raise ReferenceError(
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
                 )
+            ep_num = f"E{metadata.get('episode_number', 0):02d}" if metadata else ""
+            if not metadata["title"].startswith("E"): # type: ignore
+                ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num # type: ignore
             if self.notification:
                 push_notification(
                     title=str(title),
-                    index=metadata.get("episode_number", "") if metadata else "",
+                    index=ep_num,
                 )
             prn_info(
-                f'Downloading "{title}"{" E" + str(metadata.get("episode_number", 0)) if metadata else " PV" if metadata and metadata["title"].startswith("PV") else ""}'
+                f'Downloading "{title}" {ep_num} at {self.resolution}P using codec {codec.upper()}'
+            )
+            # replace output format
+            ydl.params["outtmpl"]["default"] = "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
+                inp=title,
+                ep=ep_num,
             )
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
@@ -989,7 +1005,19 @@ class BiliProcess:
                 )
                 Path("thumbnail.png").unlink(True)
                 if not forced:
-                    history.write_history(episode_url)
+                    # Extract metadata for history
+                    series_id = ep_url.group(1) if ep_url else None
+                    episode_id = ep_url.group(2) if ep_url else None
+                    series_title = data.get("btitle", data.get("series", f"Series {series_id}"))
+                    episode_idx = str(data.get("episode_number", "")) if data.get("episode_number") else ""
+                    
+                    history.write_history(
+                        episode_url, 
+                        series_id=series_id,
+                        series_title=series_title,
+                        episode_idx=episode_idx,
+                        episode_id=episode_id
+                    )
                 else:
                     prn_info("Forced download, skipping adding to history")
                 clock.echo_format(f"Downloaded {final.name}")

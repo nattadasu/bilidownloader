@@ -33,11 +33,21 @@ from bilidownloader.common import (
     prn_info,
 )
 from bilidownloader.extractor import BiliProcess
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.history import History
 from bilidownloader.metadata import __DESCRIPTION__, __VERSION__
 from bilidownloader.watchlist import Watchlist
 
 console = Console()
+
+
+# Enums
+class HistorySortBy(str, Enum):
+    """Sort options for history list and query commands"""
+    DATE = "date"
+    TITLE = "title"
+    SERIES_ID = "series-id"
+    EPISODE_ID = "episode-id"
 
 app = typer.Typer(
     pretty_exceptions_show_locals=False,
@@ -848,25 +858,119 @@ def watchlist_download(
 
 @hi_app.command(
     "list",
-    help="Display the history of downloaded URLs. Note: URLs may not be human-readable. Alias: ls, l",
+    help="Display the history of downloaded episodes. Alias: ls, l",
 )
-@hi_app.command("ls", help="Display the history of downloaded URLs", hidden=True)
-@hi_app.command("l", help="Display the history of downloaded URLs", hidden=True)
+@hi_app.command("ls", help="Display the history of downloaded episodes", hidden=True)
+@hi_app.command("l", help="Display the history of downloaded episodes", hidden=True)
 def history_list(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    sort_by: Annotated[
+        HistorySortBy,
+        typer.Option(
+            "--sort-by",
+            help="Sort by field"
+        ),
+    ] = HistorySortBy.DATE,
 ):
     hi = History(file_path)
 
-    if len(hi.list) == 0 or hi.list[0] == "":
+    if len(hi.list) == 0:
         prn_error("Your download history is empty!")
         exit(2)
 
-    prn_info("Here is the list of downloaded URLs:\n")
+    prn_info("Here is the list of downloaded episodes:\n")
 
-    items = sorted(hi.list)
-    table = Table(Column("No.", justify="right"), "URL", box=box.ROUNDED)
+    # Sort based on user choice
+    if sort_by == HistorySortBy.TITLE:
+        items = sorted(hi.list, key=lambda x: x[2])  # Sort by series title
+    elif sort_by == HistorySortBy.SERIES_ID:
+        items = sorted(hi.list, key=lambda x: x[1])  # Sort by series ID
+    elif sort_by == HistorySortBy.EPISODE_ID:
+        items = sorted(hi.list, key=lambda x: x[4])  # Sort by episode ID
+    else:  # date (default)
+        items = sorted(hi.list, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
+    
+    table = Table(
+        Column("No.", justify="right"),
+        "Series Title",
+        Column("Series ID", justify="right"),
+        Column("Ep. #", justify="right"),
+        Column("Episode ID", justify="right"),
+        "Downloaded",
+        box=box.ROUNDED
+    )
     for index, item in enumerate(items):
-        table.add_row(str(index + 1), item)
+        timestamp, series_id, series_title, episode_idx, episode_id = item
+        date_str = hi.format_timestamp(timestamp, use_rich=True)
+        table.add_row(str(index + 1), series_title, series_id, episode_idx or "—", episode_id, date_str)
+    console.print(table)
+
+
+@hi_app.command(
+    "query",
+    help="Search history by series title, ID, or episode ID. Alias: q, search, find",
+)
+@hi_app.command("q", help="Search history", hidden=True)
+@hi_app.command("search", help="Search history", hidden=True)
+@hi_app.command("find", help="Search history", hidden=True)
+def history_query(
+    query: Annotated[
+        str,
+        typer.Argument(help="Search query (series title, series ID, or episode ID)")
+    ],
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    sort_by: Annotated[
+        HistorySortBy,
+        typer.Option(
+            "--sort-by",
+            help="Sort by field"
+        ),
+    ] = HistorySortBy.DATE,
+):
+    hi = History(file_path)
+
+    if len(hi.list) == 0:
+        prn_error("Your download history is empty!")
+        exit(2)
+
+    # Try to search by series title first (fuzzy match), then by IDs
+    results = hi.search_history(series_title=query)
+    
+    # If no fuzzy title matches, try exact ID matches
+    if not results:
+        results = hi.search_history(series_id=query)
+    if not results:
+        results = hi.search_history(episode_id=query)
+
+    if not results:
+        prn_error(f"No history entries found matching: {query}")
+        exit(2)
+
+    prn_info(f"Found {len(results)} matching entries:\n")
+
+    # Sort based on user choice
+    if sort_by == HistorySortBy.TITLE:
+        items = sorted(results, key=lambda x: x[2])  # Sort by series title
+    elif sort_by == HistorySortBy.SERIES_ID:
+        items = sorted(results, key=lambda x: x[1])  # Sort by series ID
+    elif sort_by == HistorySortBy.EPISODE_ID:
+        items = sorted(results, key=lambda x: x[4])  # Sort by episode ID
+    else:  # date (default)
+        items = sorted(results, key=lambda x: x[0], reverse=True)  # Sort by timestamp, newest first
+    
+    table = Table(
+        Column("No.", justify="right"),
+        "Series Title",
+        Column("Series ID", justify="right"),
+        Column("Ep. #", justify="right"),
+        Column("Episode ID", justify="right"),
+        "Downloaded",
+        box=box.ROUNDED
+    )
+    for index, item in enumerate(items):
+        timestamp, series_id, series_title, episode_idx, episode_id = item
+        date_str = hi.format_timestamp(timestamp, use_rich=True)
+        table.add_row(str(index + 1), series_title, series_id, episode_idx or "—", episode_id, date_str)
     console.print(table)
 
 
@@ -879,8 +983,42 @@ def history_list(
 def history_clear(
     yes: ASSUMEYES_OPT = False,
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
+    by_series: Annotated[
+        Optional[str],
+        typer.Option(
+            "--by-series",
+            "-s",
+            help="Clear history for a specific series (fuzzy match on title or exact match on ID)",
+        ),
+    ] = None,
+    by_date: Annotated[
+        Optional[str],
+        typer.Option(
+            "--by-date",
+            "-d",
+            help="Clear history older than specified date (YYYY-MM-DD format)",
+        ),
+    ] = None,
 ):
     hi = History(file_path)
+    
+    # Handle by_series option
+    if by_series:
+        prn_info(f"Searching for series matching: {by_series}")
+        hi.purge_by_series(by_series, interactive=False)
+        return
+    
+    # Handle by_date option
+    if by_date:
+        prn_info(f"Purging entries older than: {by_date}")
+        try:
+            hi.purge_by_date(by_date)
+        except ValueError as e:
+            prn_error(str(e))
+            exit(1)
+        return
+    
+    # Default: clear all
     prompt = False
     if not yes:
         prompt = survey.routines.inquire(
@@ -891,7 +1029,7 @@ def history_clear(
         yes = survey.routines.inquire("Are you sure? ", default=False)  # type: ignore
 
     if yes or not prompt:
-        hi._write([])
+        hi.purge_all(confirm=False)
         prn_info("History successfully cleared!")
 
 
@@ -999,7 +1137,12 @@ def schedule(
             time = tmat.group(0) if tmat else ""
             emat = epat.search(item.index_show)
             eps = emat.group(0) if emat else ""
-            ent = [time, item.season_id, item.title, eps]
+            title = (
+                SERIES_ALIASES[item.season_id]
+                if item.season_id in SERIES_ALIASES
+                else item.title
+            )
+            ent = [time, item.season_id, title, eps]
             if show_url:
                 ent.append(
                     f"https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}"

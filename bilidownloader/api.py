@@ -6,6 +6,7 @@ import requests as req
 
 from bilidownloader.api_model import BiliFavoriteResponse, BiliTvResponse, CardItem
 from bilidownloader.common import WEB_API_URL
+from bilidownloader.alias import SERIES_ALIASES
 
 
 class BiliApi:
@@ -105,7 +106,11 @@ class BiliApi:
                 continue
             for card in day.cards:
                 # Use a dictionary to remove duplicates by season_id
-                anime[str(card.season_id)] = card.title
+                season_id_str = str(card.season_id)
+                title = card.title
+                if season_id_str in SERIES_ALIASES:
+                    title = SERIES_ALIASES[season_id_str]
+                anime[season_id_str] = title
 
         # Convert dictionary to a list of tuples and sort by title
         sorted_anime = sorted(anime.items(), key=lambda x: x[1])

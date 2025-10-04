@@ -7,7 +7,7 @@ name = "bilidownloader"
 authors = [
 	{name = "nattadasu", email = "hello@nattadasu.my.id"}
 ]
-version = "2.5.1"
+version = "3.0.0"
 description = "Assist you in ripping episode from BiliIntl"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-or-later" }
@@ -16,6 +16,7 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
+	"alive-progress",               # progress bar for history migration
 	"click < 8.2.0",                # Typer dependency, locked 
 	"fake-useragent",               # for random user agent
 	"langcodes",                    # Apply language track title for subtitles
@@ -25,6 +26,7 @@ dependencies = [
 	"requests >= 2.32.3",           # for http request, required to access Bilibili API and HTML
 	"semver",                       # for version comparison
 	"survey",                       # for interactive prompt in CLI
+	"thefuzz",                      # for fuzzy string matching in history search
 	"typer >= 0.13.1",              # backend for CLI
 	"yt-dlp[default] >= 2025.3.26", # the most important dependency, downloader
 ]
@@ -33,7 +35,6 @@ dependencies = [
 ass = [
 	"ass",            # parsing Advanced SubStation Alpha subtiltes
 	"matplotlib",     #  only used to get all system fonts and allow download ASS
-	"alive-progress"  # shows download progress bar when downloading fonts
 ]
 
 [project.scripts]
