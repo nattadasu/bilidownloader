@@ -865,6 +865,8 @@ class BiliProcess:
             {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
         )
 
+        ep_num = "0"
+
         ydl_opts["postprocessors"] = postprocessors
         if self.only_audio:
             ydl_opts["format"] = "ba"
@@ -896,13 +898,21 @@ class BiliProcess:
                 raise ReferenceError(
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
                 )
+            ep_num = f"E{metadata.get('episode_number', 0):02d}" if metadata else ""
+            if not metadata["title"].startswith("E"): # type: ignore
+                ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num # type: ignore
             if self.notification:
                 push_notification(
                     title=str(title),
-                    index=metadata.get("episode_number", "") if metadata else "",
+                    index=ep_num,
                 )
             prn_info(
-                f'Downloading "{title}"{" E" + str(metadata.get("episode_number", 0)) if metadata else " PV" if metadata and metadata["title"].startswith("PV") else ""}'
+                f'Downloading "{title}" {ep_num} at {self.resolution}P using codec {codec.upper()}'
+            )
+            # replace output format
+            ydl.params["outtmpl"]["default"] = "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
+                inp=title,
+                ep=ep_num,
             )
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
