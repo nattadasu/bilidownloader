@@ -788,7 +788,7 @@ class BiliProcess:
         )
         if ftitle:
             title = rsub(
-                r"\s*(?:(?:E|PV|SP|OVA)(?:\d+)?)(?:\s*-\s*.*)?\s*-\s*(?:Bstation|BiliBili)$",
+                r"\s+(?:E\d+|PV\d*|SP\d*|OVA\d*).*$",
                 "",
                 ftitle.group(1),
             )
