@@ -3,7 +3,6 @@ from datetime import datetime
 from html import unescape
 from os import path as opath
 from pathlib import Path
-from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
 from time import time
