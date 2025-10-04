@@ -882,7 +882,6 @@ class BiliProcess:
             try:
                 if metadata is None:
                     raise NameError()
-                final_path = ydl.prepare_filename(metadata)
                 is_pv = metadata["title"].startswith("PV")  # type: ignore
                 if is_pv and not self.download_pv:
                     raise NameError()
@@ -914,6 +913,7 @@ class BiliProcess:
                 inp=title,
                 ep=ep_num,
             )
+            final_path = ydl.prepare_filename(metadata)
             ydl.params["quiet"] = False
             ydl.params["verbose"] = True
 
