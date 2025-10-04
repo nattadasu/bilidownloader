@@ -33,6 +33,7 @@ from bilidownloader.common import (
     prn_info,
 )
 from bilidownloader.extractor import BiliProcess
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.history import History
 from bilidownloader.metadata import __DESCRIPTION__, __VERSION__
 from bilidownloader.watchlist import Watchlist
@@ -1136,7 +1137,12 @@ def schedule(
             time = tmat.group(0) if tmat else ""
             emat = epat.search(item.index_show)
             eps = emat.group(0) if emat else ""
-            ent = [time, item.season_id, item.title, eps]
+            title = (
+                SERIES_ALIASES[item.season_id]
+                if item.season_id in SERIES_ALIASES
+                else item.title
+            )
+            ent = [time, item.season_id, title, eps]
             if show_url:
                 ent.append(
                     f"https://www.bilibili.tv/play/{item.season_id}/{item.episode_id}"

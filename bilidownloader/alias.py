@@ -25,6 +25,8 @@ SERIES_ALIASES = {
     "2141024": "Clevatess",
     "2141353": "I Was Reincarnated as the 7TH PRINCE 2nd Season",
 
+    "2187357": "I Was Reincarnated as the 7TH PRINCE 2nd Season (Dub Indo)",
+
     "2246170": "One-Punch Man Season 3",
     "2246246": "Unlimited Gacha",
 
