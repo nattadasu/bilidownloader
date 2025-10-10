@@ -52,7 +52,9 @@ def sanitize_filename(filename: str, replacement: str = "_") -> str:
         str: the sanitized filename
     """
     # Define a pattern for invalid characters on both Windows and Linux
-    invalid_characters = r'[\/:*?"<>|]'
+    # Windows: < > : " / \ | ? *
+    # Linux: / (and null character, but that's rare in strings)
+    invalid_characters = r'[\\/:*?"<>|]'
 
     # Replace invalid characters with the specified replacement
     sanitized_filename = re.sub(invalid_characters, replacement, filename)
