@@ -999,6 +999,14 @@ def history_clear(
             help="Clear history older than specified date (YYYY-MM-DD format)",
         ),
     ] = None,
+    by_episode: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            "--by-episode",
+            "-e",
+            help="Clear history for specific episode ID(s). Can be specified multiple times.",
+        ),
+    ] = None,
 ):
     hi = History(file_path)
     
@@ -1018,17 +1026,62 @@ def history_clear(
             exit(1)
         return
     
-    # Default: clear all
-    prompt = False
-    if not yes:
-        prompt = survey.routines.inquire(
-            "Do you want to clear the history? ", default=False
-        )
-
-    if prompt:
-        yes = survey.routines.inquire("Are you sure? ", default=False)  # type: ignore
-
-    if yes or not prompt:
+    # Handle by_episode option
+    if by_episode:
+        prn_info(f"Deleting history entries for episode ID(s): {', '.join(by_episode)}")
+        hi.purge_by_episode_id(by_episode)
+        return
+    
+    # If no options provided and not assumeyes, offer interactive selection
+    if not yes and len(hi.list) > 0:
+        try:
+            action = survey.routines.select(
+                "What would you like to do?",
+                options=[
+                    "Select specific episodes to delete",
+                    "Clear all history",
+                    "Cancel"
+                ]
+            )
+            
+            if action == 0:  # Select specific episodes
+                # Create options for multiselect
+                options = []
+                for timestamp, series_id, series_title, episode_idx, episode_id in hi.list:
+                    date_str = hi.format_timestamp(timestamp)
+                    ep_display = f"Ep. {episode_idx}" if episode_idx else "Ep. —"
+                    options.append(
+                        f"{series_title} ({ep_display}, ID: {episode_id}) - {date_str}"
+                    )
+                
+                selected_indices = survey.routines.basket(
+                    "Select episodes to delete (use Space to select, Enter to confirm):",
+                    options=options
+                )
+                
+                if selected_indices and len(selected_indices) > 0:
+                    # Extract episode IDs from selected indices
+                    episode_ids = [hi.list[i][4] for i in selected_indices]
+                    prn_info(f"Deleting {len(episode_ids)} episode(s)...")
+                    hi.purge_by_episode_id(episode_ids)
+                else:
+                    prn_info("No episodes selected, cancelling.")
+                return
+            elif action == 1:  # Clear all history
+                yes = survey.routines.inquire("Are you sure you want to clear ALL history? ", default=False)
+                if yes:
+                    hi.purge_all(confirm=False)
+                    prn_info("History successfully cleared!")
+                return
+            else:  # Cancel
+                prn_info("Operation cancelled.")
+                return
+        except (survey.widgets.Escape, KeyboardInterrupt):
+            prn_info("Operation cancelled.")
+            return
+    
+    # Default: clear all (when --assumeyes is used)
+    if yes:
         hi.purge_all(confirm=False)
         prn_info("History successfully cleared!")
 
