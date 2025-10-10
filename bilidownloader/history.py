@@ -601,6 +601,37 @@ class History:
         prn_done(f"Removed {len(matches)} entries from history")
         return self.list
 
+    def purge_by_episode_id(
+        self,
+        episode_ids: List[str]
+    ) -> List[Tuple[int, str, str, str, str]]:
+        """
+        Purge history entries by episode ID(s).
+
+        Args:
+            episode_ids (List[str]): List of episode IDs to delete
+
+        Returns:
+            List[Tuple[int, str, str, str, str]]: Updated history list
+        """
+        # Find matches
+        matches = []
+        for entry in self.list:
+            _, _, _, _, e_id = entry
+            if e_id in episode_ids:
+                matches.append(entry)
+
+        if not matches:
+            prn_info("No history entries found for the specified episode ID(s)")
+            return self.list
+
+        # Remove matches
+        self.list = [entry for entry in self.list if entry not in matches]
+        self._write(self.list)
+
+        prn_done(f"Removed {len(matches)} entries from history")
+        return self.list
+
     def purge_by_date(self, date_input: Union[int, str]) -> List[Tuple[int, str, str, str, str]]:
         """
         Purge entries older than specified date.
