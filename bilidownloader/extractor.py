@@ -635,58 +635,58 @@ class BiliProcess:
     def _resize_thumbnail_for_mkv(image_data: bytes) -> bytes:
         """
         Resize thumbnail to MKV maximum cover specifications (600x600).
-        
+
         According to Matroska specifications, cover art should be resized to
         a maximum of 600x600 pixels for optimal compatibility and file size.
-        
+
         Args:
             image_data (bytes): Original image data
-            
+
         Returns:
             bytes: Resized image data as PNG
         """
         try:
             # Open image from bytes
             image = Image.open(BytesIO(image_data))
-            
+
             # Convert to RGB if necessary (handles RGBA, P mode, etc.)
-            if image.mode not in ('RGB', 'RGBA'):
-                if image.mode == 'P':
+            if image.mode not in ("RGB", "RGBA"):
+                if image.mode == "P":
                     # Convert palette mode to RGBA first to preserve transparency
-                    image = image.convert('RGBA')
+                    image = image.convert("RGBA")
                 else:
-                    image = image.convert('RGB')
-            
+                    image = image.convert("RGB")
+
             # Calculate new size maintaining aspect ratio
             original_width, original_height = image.size
             max_size = 600
-            
+
             # Only resize if image is larger than max_size
             if original_height > max_size:
                 new_height = max_size
                 new_width = int((max_size * original_width) / original_height)
-                
+
                 # Use LANCZOS for high-quality downsampling
                 image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+
             # Save to bytes as PNG (lossless and widely supported)
             output = BytesIO()
-            
+
             # If image has transparency (RGBA), keep it; otherwise convert to RGB
-            if image.mode == 'RGBA':
-                image.save(output, format='PNG', optimize=True)
+            if image.mode == "RGBA":
+                image.save(output, format="PNG", optimize=True)
             else:
                 # Convert RGBA to RGB if no transparency is actually used
-                if image.mode == 'RGBA':
+                if image.mode == "RGBA":
                     # Check if alpha channel has any transparency
                     alpha = image.split()[3]
                     if alpha.getextrema()[0] == 255:  # No transparency
-                        image = image.convert('RGB')
-                
-                image.save(output, format='PNG', optimize=True)
-            
+                        image = image.convert("RGB")
+
+                image.save(output, format="PNG", optimize=True)
+
             return output.getvalue()
-            
+
         except Exception as e:
             prn_error(f"Failed to resize thumbnail: {e}")
             # Return original data if resizing fails
@@ -708,7 +708,7 @@ class BiliProcess:
 
         prn_info("Downloading thumbnail and adding it to the video file")
         thumbnail_path = Path("thumbnail.png")
-        
+
         with reqs.get(thumbnail) as resp:
             # Resize thumbnail to MKV specifications before saving
             resized_thumbnail_data = self._resize_thumbnail_for_mkv(resp.content)
@@ -797,7 +797,7 @@ class BiliProcess:
             title = ftitle
 
         if series_id and series_id in SERIES_ALIASES:
-            title = SERIES_ALIASES[series_id]
+            title = sanitize_filename(SERIES_ALIASES[series_id])
 
         # look for .bstar-meta__area class to get country of origin
         language: Optional[Literal["ind", "jpn", "chi", "tha"]] = None
@@ -898,8 +898,8 @@ class BiliProcess:
                     f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
                 )
             ep_num = f"E{metadata.get('episode_number', 0):02d}" if metadata else ""
-            if not metadata["title"].startswith("E"): # type: ignore
-                ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num # type: ignore
+            if not metadata["title"].startswith("E"):  # type: ignore
+                ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num  # type: ignore
             if self.notification:
                 push_notification(
                     title=str(title),
@@ -909,9 +909,11 @@ class BiliProcess:
                 f'Downloading "{title}" {ep_num} at {self.resolution}P using codec {codec.upper()}'
             )
             # replace output format
-            ydl.params["outtmpl"]["default"] = "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
-                inp=title,
-                ep=ep_num,
+            ydl.params["outtmpl"]["default"] = (
+                "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
+                    inp=title,
+                    ep=ep_num,
+                )
             )
             final_path = ydl.prepare_filename(metadata)
             ydl.params["quiet"] = False
@@ -1008,15 +1010,26 @@ class BiliProcess:
                     # Extract metadata for history
                     series_id = ep_url.group(1) if ep_url else None
                     episode_id = ep_url.group(2) if ep_url else None
-                    series_title = data.get("btitle", data.get("series", f"Series {series_id}"))
-                    episode_idx = str(data.get("episode_number", "")) if data.get("episode_number") else ""
-                    
+                    series_title = data.get(
+                        "btitle", data.get("series", f"Series {series_id}")
+                    )
+
+                    # Use alias if available
+                    if series_id and series_id in SERIES_ALIASES:
+                        series_title = SERIES_ALIASES[series_id]
+
+                    episode_idx = (
+                        str(data.get("episode_number", ""))
+                        if data.get("episode_number")
+                        else ""
+                    )
+
                     history.write_history(
-                        episode_url, 
+                        episode_url,
                         series_id=series_id,
                         series_title=series_title,
                         episode_idx=episode_idx,
-                        episode_id=episode_id
+                        episode_id=episode_id,
                     )
                 else:
                     prn_info("Forced download, skipping adding to history")
