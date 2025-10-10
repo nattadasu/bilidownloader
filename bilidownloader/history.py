@@ -578,26 +578,26 @@ class History:
                 ratio = fuzz.partial_ratio(series_id_or_title.lower(), s_title.lower())
                 if ratio >= fuzzy_threshold:
                     matches.append(entry)
-        
+
         if not matches:
             prn_info(f"No history entries found for: {series_id_or_title}")
             return self.list
-        
+
         if interactive:
             prn_info(f"Found {len(matches)} entries:")
             for timestamp, s_id, s_title, e_idx, e_id in matches:
                 date_str = self.format_timestamp(timestamp)
                 prn_info(f"  - {s_title} (Series {s_id}, Episode {e_id}) - {date_str}")
-            
+
             # For now, just show the matches
             # In a full implementation, this would prompt for confirmation
             prn_info("Interactive deletion not fully implemented, showing matches only")
             return self.list
-        
+
         # Remove matches
         self.list = [entry for entry in self.list if entry not in matches]
         self._write(self.list)
-        
+
         prn_done(f"Removed {len(matches)} entries from history")
         return self.list
 
@@ -657,17 +657,17 @@ class History:
                 date_desc = date_input
             except ValueError:
                 raise ValueError(f"Invalid date format: {date_input}. Expected YYYY-MM-DD")
-        
+
         old_count = len(self.list)
         self.list = [entry for entry in self.list if entry[0] >= threshold]
         removed_count = old_count - len(self.list)
-        
+
         if removed_count > 0:
             self._write(self.list)
             prn_done(f"Removed {removed_count} entries older than {date_desc}")
         else:
             prn_info(f"No entries found older than {date_desc}")
-        
+
         return self.list
 
     def purge_all(self, confirm: bool = True) -> List[Tuple[int, str, str, str, str]]:
