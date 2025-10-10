@@ -66,7 +66,9 @@ class SRTToASSConverter(PostProcessor):
 
         return time_str
 
-    def _convert_srt_to_ass_content(self, srt_content: str, style: str = DEFAULT_STYLE) -> str:
+    def _convert_srt_to_ass_content(
+        self, srt_content: str, style: str = DEFAULT_STYLE
+    ) -> str:
         """Convert SRT content to ASS format.
 
         Args:
@@ -148,7 +150,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             # Convert to ASS format
             if ".th." in srt_path.name:
-                ass_content = self._convert_srt_to_ass_content(srt_content, style=self.DEFAULT_THAI_STYLE)
+                ass_content = self._convert_srt_to_ass_content(
+                    srt_content, style=self.DEFAULT_THAI_STYLE
+                )
             else:
                 ass_content = self._convert_srt_to_ass_content(srt_content)
 

@@ -86,18 +86,17 @@ def download_fonts(font_family: str) -> None:
 
         # Get content length but don't trust it completely for CDN responses
         raw_size: Optional[str] = response.headers.get("content-length", None)
-        declared_size: Optional[int] = int(raw_size) if raw_size and raw_size.isdigit() else None
-        
+        declared_size: Optional[int] = (
+            int(raw_size) if raw_size and raw_size.isdigit() else None
+        )
+
         downloaded_bytes: int = 0
         chunk_size: int = 8192  # Larger chunk size for better performance
 
         with (
             open(path, "wb") as file,
             alive_bar(
-                declared_size, 
-                title=f"Downloading {font_family}", 
-                unit="B", 
-                scale="IEC"
+                declared_size, title=f"Downloading {font_family}", unit="B", scale="IEC"
             ) as bar,
         ):
             for data in response.iter_content(chunk_size=chunk_size):
@@ -105,11 +104,13 @@ def download_fonts(font_family: str) -> None:
                     break
                 bytes_written: int = file.write(data)
                 downloaded_bytes += bytes_written
-                
+
                 # Let alive-progress handle overruns if content-length is wrong
                 bar(bytes_written)
 
-        prn_info(f"Font '{font_family}' downloaded successfully to {path} ({downloaded_bytes:,} bytes).")
+        prn_info(
+            f"Font '{font_family}' downloaded successfully to {path} ({downloaded_bytes:,} bytes)."
+        )
 
     except requests.RequestException as e:
         prn_error(f"Failed to download font '{font_family}': {e}")
