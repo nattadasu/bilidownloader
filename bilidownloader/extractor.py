@@ -781,7 +781,7 @@ class BiliProcess:
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
         resp = html.get(episode_url)
 
-        ep_url = rsearch(r"play/(\\d+)/(\\d+)", episode_url)
+        ep_url = rsearch(r"play/(\d+)/(\d+)", episode_url)
         series_id = ep_url.group(1) if ep_url else None
         ftitle = rsearch(
             r"<title>(.*)</title>", resp.content.decode("utf-8"), IGNORECASE
@@ -1117,8 +1117,10 @@ class BiliProcess:
                 if sid != card.season_id:
                     continue
                 print()
+                # Use alias if available
+                display_title = SERIES_ALIASES.get(sid, title)
                 if "-" in card.index_show:
-                    prn_info(f"Downloading {title} as a playlist")
+                    prn_info(f"Downloading {display_title} as a playlist")
                     final.extend(
                         self.process_playlist(
                             f"https://www.bilibili.tv/en/play/{card.season_id}",
@@ -1126,7 +1128,7 @@ class BiliProcess:
                         )
                     )
                 else:
-                    prn_info(f"Downloading {title}, {card.index_show}")
+                    prn_info(f"Downloading {display_title}, {card.index_show}")
                     ep = self.process_episode(
                         self.ep_url(card.season_id, card.episode_id),
                         forced=forced,
