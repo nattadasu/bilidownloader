@@ -1,0 +1,64 @@
+.TH bilidownloader-watchlist-download 1 "November 2025" "bilidownloader 3.0.5" "User Commands"
+.SH NAME
+bilidownloader-watchlist-download - Download all released episodes on watchlist, max 3 days old
+.SH SYNOPSIS
+.B bilidownloader watchlist download
+[OPTIONS]
+.SH DESCRIPTION
+Download all released episodes on watchlist, max 3 days old. Alias: down, dl, d
+.SH OPTIONS
+.SS "Data Management"
+.TP
+\fB--cookie, --cookie-file, -c\fR PATH
+Path to your cookie.txt file.
+.TP
+\fB--watchlist, --watchlist-file, -w\fR PATH
+Path to your watchlist.txt file (default: /home/nattadasu/Bilibili/watchlist.txt).
+.TP
+\fB--history, --history-file, -h\fR PATH
+Path to your history.txt file (default: /home/nattadasu/Bilibili/history.v2.tsv).
+.SS "Filtering & Selection"
+.TP
+\fB--as-playlist\fR
+Download monitored series as a playlist (play/) instead of the default behavior by relying on recently released episodes in the past 3 days. This option will download all episodes available, including the old ones, so use with caution.
+.TP
+\fB--resolution, --reso, -r\fR INTEGER
+Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080 | 2160 (default: 1080).
+.TP
+\fB--srt-only, --plain, -S\fR
+Download subtitles in SRT format only, instead of SSA/SRT. Enabled by default on a base installation.
+.TP
+\fB--is-avc, --avc, -a\fR
+Download the video with AVC as codec instead of HEVC.
+.TP
+\fB--force, -F\fR
+Force download the video even if it was downloaded previously.
+.TP
+\fB--audio-only, -A\fR
+Download audio only. Will override ALL other options: resolution, codec, etc.
+.SS "Binaries"
+.TP
+\fB--ffmpeg-path, --ffmpeg\fR PATH
+Specify the path to the ffmpeg binary or its containing directory (default: /usr/bin/ffmpeg).
+.TP
+\fB--mkvpropedit-path, --mkvpropedit\fR PATH
+Specify the path to the mkvpropedit binary or its containing directory (default: /usr/bin/mkvpropedit).
+.SS "Post-Processing"
+.TP
+\fB--sub-lang, -l\fR [en|id|ms|th|vi|zh-Hans|zh-Hant]
+Set the selected subtitle language to be default (default: en).
+.TP
+\fB--notify, -n\fR
+Send a notification when an episode has been downloaded.
+.TP
+\fB--no-rescale, -N\fR
+Prevent rescaling of SSA subtitles, which is typically done to adjust subtitle size when it appears too large by default. No action will be taken on a base installation.
+.TP
+\fB--no-thumbnail, -X\fR
+Do not download thumbnail from BiliBili then embed it.
+.TP
+\fB--no-convert, -C\fR
+Do not convert SRT subtitles to ASS format.
+.SH "SEE ALSO"
+.BR bilidownloader-watchlist (1),
+.BR bilidownloader (1)

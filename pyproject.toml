@@ -45,3 +45,21 @@ bilidownloader = "bilidownloader.__main__:app"
 
 [tool.setuptools]
 packages = ["bilidownloader"]
+
+[tool.setuptools.data-files]
+"share/man/man1" = [
+    "man/bilidownloader.1",
+    "man/bilidownloader-download.1",
+    "man/bilidownloader-today.1",
+    "man/bilidownloader-released.1",
+    "man/bilidownloader-schedule.1",
+    "man/bilidownloader-history.1",
+    "man/bilidownloader-history-list.1",
+    "man/bilidownloader-history-query.1",
+    "man/bilidownloader-history-clear.1",
+    "man/bilidownloader-watchlist.1",
+    "man/bilidownloader-watchlist-list.1",
+    "man/bilidownloader-watchlist-add.1",
+    "man/bilidownloader-watchlist-delete.1",
+    "man/bilidownloader-watchlist-download.1",
+]

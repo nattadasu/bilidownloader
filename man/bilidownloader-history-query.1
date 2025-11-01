@@ -1,0 +1,22 @@
+.TH bilidownloader-history-query 1 "November 2025" "bilidownloader 3.0.5" "User Commands"
+.SH NAME
+bilidownloader-history-query - Search history by series title, ID, or episode ID
+.SH SYNOPSIS
+.B bilidownloader history query
+[OPTIONS] QUERY
+.SH DESCRIPTION
+Search history by series title, ID, or episode ID. Alias: q, search, find
+.SH ARGUMENTS
+.TP
+\fBQUERY\fR
+Search query (series title, series ID, or episode ID) (required)
+.SH OPTIONS
+.TP
+\fB--sort-by\fR [date|title|series-id|episode-id]
+Sort by field (default: date).
+.TP
+\fB--history, --history-file, -h\fR PATH
+Path to your history.txt file (default: /home/nattadasu/Bilibili/history.v2.tsv).
+.SH "SEE ALSO"
+.BR bilidownloader-history (1),
+.BR bilidownloader (1)

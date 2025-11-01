@@ -1,0 +1,27 @@
+.TH bilidownloader-history-clear 1 "November 2025" "bilidownloader 3.0.5" "User Commands"
+.SH NAME
+bilidownloader-history-clear - Clear history
+.SH SYNOPSIS
+.B bilidownloader history clear
+[OPTIONS]
+.SH DESCRIPTION
+Clear history. Alias: clean, purge, cls, del, rm
+.SH OPTIONS
+.TP
+\fB--by-series, -s\fR TEXT
+Clear history for a specific series (fuzzy match on title or exact match on ID).
+.TP
+\fB--by-date, -d\fR TEXT
+Clear history older than specified date (YYYY-MM-DD format).
+.TP
+\fB--by-episode, -e\fR TEXT
+Clear history for specific episode ID(s). Can be specified multiple times.
+.TP
+\fB--assumeyes, -y\fR
+Automatically answer yes for all questions.
+.TP
+\fB--history, --history-file, -h\fR PATH
+Path to your history.txt file (default: /home/nattadasu/Bilibili/history.v2.tsv).
+.SH "SEE ALSO"
+.BR bilidownloader-history (1),
+.BR bilidownloader (1)
