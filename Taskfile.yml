@@ -1,5 +1,5 @@
+---
 # https://taskfile.dev
-
 version: '3'
 
 vars:
@@ -52,33 +52,33 @@ tasks:
     cmds:
       - python -m build
 
-  lint:
-    desc: Run ruff linter
-    cmds:
-      - ruff check bilidownloader/
-    preconditions:
-      - sh: which ruff
-        msg: "ruff must be installed (pip install ruff)"
-
-  format:
-    desc: Format code with ruff
-    cmds:
-      - python -m ruff format bilidownloader/
-    preconditions:
-      - sh: python -c "import ruff"
-        msg: "ruff must be installed (pip install ruff)"
-
-  lint-fix:
-    desc: Run ruff linter and fix auto-fixable issues
-    cmds:
-      - python -m ruff check --fix bilidownloader/
-    preconditions:
-      - sh: python -c "import ruff"
-        msg: "ruff must be installed (pip install ruff)"
 
   check:
     desc: Run all code quality checks
-    deps: [lint, format]
+    deps: [lint-all, format-all]
+
+  lint-all:
+    desc: Run all linters
+    cmds:
+      - ruff check .
+      - yamllint .
+      - |
+        for f in $(find . -name '*.toml'); do
+          python -c "import tomllib; tomllib.load(open('$f', 'rb'))" || exit 1
+        done
+      - groff -Tascii -mandoc -Wall man/* | col -b > /dev/null
+    preconditions:
+      - sh: which ruff
+        msg: "ruff must be installed (pip install ruff)"
+      - sh: which yamllint
+        msg: "yamllint must be installed (pip install yamllint)"
+
+  format-all:
+    desc: Format all files
+    cmds:
+      - ruff format .
+      - ruff check --fix .
+      - ruff check --select I --fix .
 
   run:
     desc: Run the application
@@ -91,12 +91,7 @@ tasks:
     cmds:
       - "{{.APP_NAME}}_test --help"
 
-  deps-install:
-    desc: Install development dependencies
+  deps:
+    desc: Install or update development dependencies
     cmds:
-      - pip install build ruff pytest
-
-  deps-update:
-    desc: Update dependencies to latest versions
-    cmds:
-      - pip install --upgrade build ruff pytest
+      - pip install --upgrade build ruff pytest yamllint
