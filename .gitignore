@@ -176,3 +176,4 @@ ffmpeg*
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+.ruff_cache/
