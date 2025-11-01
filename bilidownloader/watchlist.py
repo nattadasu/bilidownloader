@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import List, Literal, Optional, Tuple, Union
 
-from bilidownloader.api import BiliApi
 from bilidownloader.alias import SERIES_ALIASES
+from bilidownloader.api import BiliApi
 from bilidownloader.common import (
     DEFAULT_WATCHLIST,
     DataExistError,

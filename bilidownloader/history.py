@@ -9,6 +9,7 @@ from time import time
 from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
+
 from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.common import (
     DEFAULT_HISTORY,
@@ -99,8 +100,9 @@ class History:
     def _convert_old_format_to_tsv(self, urls: List[str]) -> List[str]:
         """Convert old URL-only format to TSV format with metadata"""
         from time import sleep
-        from alive_progress import alive_bar
+
         import survey
+        from alive_progress import alive_bar
 
         new_data = [HEAD]
 
@@ -117,8 +119,8 @@ class History:
 
         try:
             # Try to import extractor for yt-dlp metadata
-            from bilidownloader.extractor import BiliProcess
             from bilidownloader.common import DEFAULT_COOKIES
+            from bilidownloader.extractor import BiliProcess
 
             # Create extractor instance
             extractor = BiliProcess(cookie=DEFAULT_COOKIES)

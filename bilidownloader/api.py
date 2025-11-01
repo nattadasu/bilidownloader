@@ -4,9 +4,9 @@ from typing import List, Literal, Optional, Tuple, Union
 
 import requests as req
 
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api_model import BiliFavoriteResponse, BiliTvResponse, CardItem
 from bilidownloader.common import WEB_API_URL
-from bilidownloader.alias import SERIES_ALIASES
 
 
 class BiliApi:

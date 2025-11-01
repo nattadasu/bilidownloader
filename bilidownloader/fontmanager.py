@@ -7,8 +7,7 @@ downloading, and lookup operations for yt-dlp integration.
 
 from json import loads as jloads
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from typing import TypedDict
+from typing import Dict, List, Optional, Tuple, TypedDict
 
 from bilidownloader.common import BASE_DIR, prn_error, prn_info
 

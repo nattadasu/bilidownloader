@@ -4,6 +4,7 @@ from enum import Enum
 from html import unescape
 from pathlib import Path
 from sys import exit
+from tomllib import loads as tloads
 from typing import List, Optional, Tuple
 
 import requests as req
@@ -15,9 +16,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Column, Table
 from semver import Version
-from tomllib import loads as tloads
 from typing_extensions import Annotated
 
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api import BiliApi, BiliHtml
 from bilidownloader.api_model import CardItem
 from bilidownloader.common import (
@@ -33,7 +34,6 @@ from bilidownloader.common import (
     prn_info,
 )
 from bilidownloader.extractor import BiliProcess
-from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.history import History
 from bilidownloader.metadata import __DESCRIPTION__, __VERSION__
 from bilidownloader.watchlist import Watchlist

@@ -16,6 +16,7 @@ from rich.console import Console
 from rich.table import Column, Table, box
 from yt_dlp import YoutubeDL as YDL
 
+from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api import BiliApi, BiliHtml
 from bilidownloader.common import (
     DEFAULT_COOKIES,
@@ -44,7 +45,6 @@ from bilidownloader.common import (
 from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
 from bilidownloader.history import History
 from bilidownloader.watchlist import Watchlist
-from bilidownloader.alias import SERIES_ALIASES
 
 ua = UserAgent()
 uagent = ua.chrome
