@@ -29,6 +29,74 @@ class SSARescaler(PostProcessor):
 
     SIZE_MODIFIER: float = 0.8
 
+    def _ass_time_to_seconds(self, time_obj: Any) -> float:
+        """Convert ASS time object to seconds.
+
+        Args:
+            time_obj: Time object from the ass library (timedelta)
+
+        Returns:
+            Time in seconds as a float
+        """
+        return time_obj.total_seconds()
+
+    def _seconds_to_ass_time(self, seconds: float) -> Any:
+        """Convert seconds to ASS time object.
+
+        Args:
+            seconds: Time in seconds as a float
+
+        Returns:
+            Time object (timedelta) for the ass library
+        """
+        from datetime import timedelta
+
+        return timedelta(seconds=seconds)
+
+    def _fill_two_frame_gaps_in_document(self, events: List[Any]) -> None:
+        """Fill gaps between subtitle lines if they are exactly 2 frames apart.
+
+        Assumes 24 fps for frame duration calculation.
+        Adjusts the end time of the current line to meet the start time of the next line.
+        Modifies events in-place.
+
+        Args:
+            events: List of event objects from the ass library
+        """
+        if len(events) <= 1:
+            return
+
+        # 2 frames at 24 fps = 2/24 = 0.083333 seconds (8.33 centiseconds)
+        # 2 frames at 23.976 fps = 2/23.976 = 0.083417 seconds (8.34 centiseconds)
+        # Due to ASS format using centisecond precision, these round to 8 centiseconds (0.08s)
+        # Use a tolerance of 0.5 centiseconds to account for rounding
+        two_frames_24fps = 2.0 / 24.0  # 0.083333
+        two_frames_23976fps = 2.0 / 23.976  # 0.083417
+        tolerance = 0.005  # 0.5 centiseconds tolerance for rounding
+
+        for i in range(len(events) - 1):
+            current_event = events[i]
+            next_event = events[i + 1]
+
+            # Convert times to seconds for calculation
+            current_end_seconds = self._ass_time_to_seconds(current_event.end)
+            next_start_seconds = self._ass_time_to_seconds(next_event.start)
+
+            # Calculate the gap
+            gap = next_start_seconds - current_end_seconds
+
+            # Check if gap is approximately 2 frames (at 24 or 23.976 fps)
+            if (
+                abs(gap - two_frames_24fps) <= tolerance
+                or abs(gap - two_frames_23976fps) <= tolerance
+            ):
+                # Fill the gap by extending the end time to the next start time
+                current_event.end = next_event.start
+                self.write_debug(
+                    f"  Filled 2-frame gap: extended line ending at "
+                    f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
+                )
+
     def _add_font_if_new(
         self, font_name: str, all_fonts_found: Set[str], context: str = ""
     ) -> None:
@@ -275,6 +343,10 @@ class SSARescaler(PostProcessor):
 
             # Process and filter styles
             self._process_styles(ass_document, used_styles, all_fonts_found)
+
+            # Fill 2-frame gaps between subtitle lines
+            self.write_debug("Filling 2-frame gaps between subtitle lines...")
+            self._fill_two_frame_gaps_in_document(ass_document.events)
 
             # Write changes back to file
             try:
