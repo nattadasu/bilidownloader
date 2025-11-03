@@ -90,11 +90,12 @@ class SRTToASSConverter(PostProcessor):
 
         # 2 frames at 24 fps = 2/24 = 0.083333 seconds (8.33 centiseconds)
         # 2 frames at 23.976 fps = 2/23.976 = 0.083417 seconds (8.34 centiseconds)
-        # Due to ASS format using centisecond precision, these round to 8 centiseconds (0.08s)
-        # Use a tolerance of 0.5 centiseconds to account for rounding
+        # Due to ASS format using centisecond precision (2 decimal places),
+        # these values are truncated/rounded to 8 centiseconds (0.08s)
+        # Use a tolerance of 0.5 centiseconds to account for precision loss
         two_frames_24fps = 2.0 / 24.0  # 0.083333
         two_frames_23976fps = 2.0 / 23.976  # 0.083417
-        tolerance = 0.005  # 0.5 centiseconds tolerance for rounding
+        tolerance = 0.005  # 0.5 centiseconds tolerance
 
         adjusted_events = []
         for i in range(len(events)):
