@@ -6,17 +6,44 @@ from pathlib import Path
 from time import time
 from typing import Literal, Optional, Union
 
+import platformdirs
 from langcodes import Language as Lang
 from notifypy import Notify
 from pydantic import BaseModel
 from survey import printers
 
 WEB_API_URL = "https://api.bilibili.tv/intl/gateway/web/v2"
-BASE_DIR = Path("~/Bilibili").expanduser().resolve()
-BASE_DIR.mkdir(exist_ok=True)
+BASE_DIR = Path(platformdirs.user_data_dir("bilidownloader"))
+BASE_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_COOKIES = BASE_DIR / "cookies.txt"
 DEFAULT_HISTORY = BASE_DIR / "history.v2.tsv"
 DEFAULT_WATCHLIST = BASE_DIR / "watchlist.txt"
+
+
+def _migrate_config():
+    old_base_dir = Path("~/Bilibili").expanduser().resolve()
+    if old_base_dir.exists():
+        prn_info(f"Migrating config from {old_base_dir} to {BASE_DIR}")
+        for file in ["cookies.txt", "history.v2.tsv", "watchlist.txt"]:
+            old_file = old_base_dir / file
+            if old_file.exists():
+                prn_info(f"Moving {file}...")
+                shutil.move(str(old_file), str(BASE_DIR))
+        old_fonts_dir = old_base_dir / "fonts"
+        if old_fonts_dir.exists():
+            prn_info("Moving fonts directory...")
+            new_fonts_dir = BASE_DIR / "fonts"
+            new_fonts_dir.mkdir(exist_ok=True)
+            for font_file in old_fonts_dir.iterdir():
+                shutil.move(str(font_file), str(new_fonts_dir))
+            if not any(old_fonts_dir.iterdir()):
+                old_fonts_dir.rmdir()
+        if not any(old_base_dir.iterdir()):
+            prn_info("Removing old config directory")
+            old_base_dir.rmdir()
+
+
+_migrate_config()
 
 
 ins_notify = Notify()

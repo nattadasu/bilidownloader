@@ -17,6 +17,7 @@ classifiers = [
 keywords = ["anime"]
 dependencies = [
 	"alive-progress",               # progress bar for history migration
+    "platformdirs",                 # for platform-dependent config path
 	"fake-useragent",               # for random user agent
 	"langcodes",                    # Apply language track title for subtitles
 	"notify-py",                    # for notification
