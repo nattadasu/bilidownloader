@@ -37,7 +37,7 @@ ass = [
 	"matplotlib",     #  only used to get all system fonts and allow download ASS
 ]
 dev = [
-    "yaml-lint",      # lint yaml
+    "yamllint",      # lint yaml
     "ruff",           # type and syntax check
 ]
 
