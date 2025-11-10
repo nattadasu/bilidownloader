@@ -17,6 +17,31 @@ to assist you in ripping episode
 > The creators and maintainers of this tool disclaim any liability for damages
 > or losses resulting from its use.
 
+## Table of Contents
+
+- [BiliDownloader](#bilidownloader)
+  - [Table of Contents](#table-of-contents)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Features](#features)
+  - [Limitations](#limitations)
+  - [Usage](#usage)
+    - [Global Options](#global-options)
+  - [Commands](#commands)
+    - [`download`](#download)
+    - [`today`](#today)
+    - [`released`](#released)
+    - [`schedule`](#schedule)
+    - [`watchlist`](#watchlist)
+    - [`history`](#history)
+  - [Configuration](#configuration)
+    - [Cookie File](#cookie-file)
+    - [Watchlist File](#watchlist-file)
+    - [History File](#history-file)
+  - [Development and Testing](#development-and-testing)
+  - [Versioning](#versioning)
+  - [License](#license)
+
 ## Requirements
 
 Ensure the following libraries/programs are installed before using this tool:
@@ -34,9 +59,16 @@ that Premium is activated.
 ## Installation
 
 > [!NOTE]
+>
 > Currently, we only support installation via `pipx` for better package
 > management. If `pipx` is not installed, you can install it using
 > `pip install pipx` or check if your distribution's package manager provides it.
+
+> [!WARNING]
+>
+> If you're utilizing `pipxu` to manage bilidownloader, keep in mind that due
+> to `uv`'s nature, it can not update the app from bare repository without
+> reinstalling it first.
 
 ```bash
 pipx install git+https://github.com/nattadasu/bilidownloader.git
@@ -51,7 +83,7 @@ pipx install 'bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloa
 ```bash
 # For Termux users, additional steps may be required:
 pkg install x11-repo
-pkg install busybox ffmpeg git mkvtoolnix openssl python python-pip which
+pkg install busybox ffmpeg git mkvtoolnix openssl python python-pip
 pip install pipx
 pip install --extra-index-url "https://termux-user-repository.github.io/pypi/" pydantic
 pipx install --system-site-packages git+https://github.com/nattadasu/bilidownloader.git
@@ -66,20 +98,14 @@ For Termux users, it is not recommended to install the `ass` extra unless you
 are confident in managing the additional unwritten requirements and
 troubleshootings.
 
-## Usage
-
-Run `bilidownloader` from your terminal. The program uses Typer to build its
-CLI, so all commands and options are automatically well-documented. Use the
-`--help` parameter for more details.
-
-### Features
+## Features
 
 * Download episodes
 * Retrieve the latest schedule
 * Monitor and *automatically* download episodes for tracked series (watchlist)
 * Manage your Favorite List directly from the terminal
 
-### Limitations
+## Limitations
 
 * Cannot bypass premium restrictions: a premium account is required to download
   paywalled content
@@ -91,6 +117,179 @@ CLI, so all commands and options are automatically well-documented. Use the
   International version
 * Does not automatically organize episodes into folders: use tools like FileBot
   for this purpose
+
+## Usage
+
+Run `bilidownloader` from your terminal. The program uses Typer to build its
+CLI, so all commands and options are automatically well-documented. Use the
+`--help` parameter for more details.
+
+### Global Options
+
+* `--help`: Show help for commands and subcommands.
+
+## Commands
+
+Many commands have aliases for ease of use (e.g., `dl` for `download`, `ls` for `list`).
+
+### `download`
+
+Download a video or an entire series from a BiliBili URL.
+
+**Alias:** `down`, `dl`, `d`
+
+```bash
+bilidownloader download <URL> [OPTIONS]
+```
+
+**Example:**
+
+```bash
+bilidownloader download "https://www.bilibili.tv/en/play/2090603/12688293" --resolution 1080
+```
+
+### `today`
+
+Shows a list of anime released today, allowing you to select one to download.
+
+**Alias:** `now`
+
+```bash
+bilidownloader today [OPTIONS]
+```
+
+### `released`
+
+Shows a list of anime released in the past three days for you to select
+and download.
+
+**Alias:** `rel`
+
+```bash
+bilidownloader released [OPTIONS]
+```
+
+### `schedule`
+
+Displays the release schedule for the week. You can filter by a specific day.
+
+**Alias:** `calendar`, `cal`, `sch`, `timetable`, `tt`
+
+```bash
+bilidownloader schedule [--day <DAY>]
+```
+
+**Example:**
+
+```bash
+bilidownloader schedule --day monday
+```
+
+### `watchlist`
+
+Manage your watchlist of series.
+
+**Alias:** `wl`
+
+#### `watchlist list`
+
+List all series in your watchlist.
+
+**Alias:** `ls`, `l`
+
+```bash
+bilidownloader watchlist list
+```
+
+#### `watchlist add`
+
+Add a series to your watchlist. You can provide a series URL or ID.
+If none is provided, an interactive prompt will be shown.
+
+**Alias:** `insert`, `ins`
+
+```bash
+bilidownloader watchlist add [SERIES_ID_OR_URL]
+```
+
+#### `watchlist delete`
+
+Remove a series from your watchlist.
+
+**Alias:** `del`, `remove`, `rm`
+
+```bash
+bilidownloader watchlist delete [SERIES_ID_OR_URL]
+```
+
+#### `watchlist download`
+
+Download all newly released episodes from the series in your watchlist.
+
+**Alias:** `down`, `dl`, `d`
+
+```bash
+bilidownloader watchlist download
+```
+
+### `history`
+
+Manage your download history.
+
+**Alias:** `his`, `h`
+
+#### `history list`
+
+List all downloaded episodes.
+
+**Alias:** `ls`, `l`
+
+```bash
+bilidownloader history list [--sort-by <FIELD>]
+```
+
+#### `history query`
+
+Search your download history.
+
+**Alias:** `q`, `search`, `find`
+
+```bash
+bilidownloader history query <QUERY>
+```
+
+#### `history clear`
+
+Clear your download history. You can clear all history, or clear by series,
+date, or episode.
+
+**Alias:** `clean`, `purge`, `cls`, `del`, `rm`
+
+```bash
+bilidownloader history clear [--by-series <SERIES>] [--by-date <DATE>] [--by-episode <EPISODE_ID>]
+```
+
+## Configuration
+
+The tool uses three main files to store your data: `cookie.txt`, `watchlist.txt`,
+and `history.v2.tsv`. By default, these files are located in the appropriate
+user data directory for your operating system. You can override the location
+of these files using the `--cookie`, `--watchlist`, and `--history` options.
+
+### Cookie File
+
+You must provide a `cookie.txt` file from BiliBili to download premium content.
+You can specify the path to your cookie file using the `--cookie` option.
+
+### Watchlist File
+
+Your watchlist is stored in `watchlist.txt`. This file contains the series IDs
+and titles of the shows you are monitoring.
+
+### History File
+
+Your download history is stored in `history.v2.tsv`. This file logs every episode
+you download, preventing duplicate downloads.
 
 ## Development and Testing
 
