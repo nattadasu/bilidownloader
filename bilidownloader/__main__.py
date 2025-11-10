@@ -104,6 +104,14 @@ def raise_mkvmerge(path: Optional[Path]):
         raise FileNotFoundError("mkvmerge binary couldn't be found!")
 
 
+def raise_cookie(path: Optional[Path]):
+    if path is None or not path.exists():
+        raise FileNotFoundError(
+            f"Cookie file not found at {path or DEFAULT_COOKIES}. "
+            "Please create it or specify the path with --cookie."
+        )
+
+
 ass_status = check_package("ass")
 
 
@@ -127,7 +135,6 @@ cookie_option = typer.Option(
     "--cookie-file",
     "-c",
     help=cookies_help,
-    prompt=True,
     show_default=False,
     rich_help_panel="Data Management",
 )
@@ -390,6 +397,7 @@ def download_url(
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
     raise_mkvmerge(mkvmerge_path)
+    raise_cookie(cookie)
 
     matches = re.search(bili_format, url)
     fix_reso: available_res = resolution  # type: ignore
@@ -446,6 +454,7 @@ def _cards_selector(
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
     raise_mkvmerge(mkvmerge_path)
+    raise_cookie(cookie)
 
     choices = [
         f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
@@ -526,6 +535,7 @@ def download_today_releases(
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvmerge(mkvmerge_path)
+    raise_cookie(cookie)
 
     api = BiliApi().get_today_schedule()
     released = [anime for anime in api if anime.is_available]
@@ -587,6 +597,7 @@ def download_all_releases(
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
     raise_mkvmerge(mkvmerge_path)
+    raise_cookie(cookie)
 
     api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
@@ -692,6 +703,7 @@ def watchlist_add(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
 ):
+    raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
     wids = {item[0] for item in wl.list}
 
@@ -763,6 +775,7 @@ def watchlist_delete(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
 ):
+    raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
     index: Optional[List[int]] = None
 
@@ -859,6 +872,7 @@ def watchlist_download(
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
     raise_mkvmerge(mkvmerge_path)
+    raise_cookie(cookie)
 
     fix_reso: available_res = resolution  # type: ignore
     bili = BiliProcess(
