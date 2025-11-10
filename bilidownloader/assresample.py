@@ -52,7 +52,7 @@ class SSARescaler(PostProcessor):
         """
         return timedelta(seconds=seconds)
 
-    def _fill_three_frame_gaps_in_document(self, events: List[Any]) -> None:
+    def _fill_frame_gaps(self, events: List[Any]) -> None:
         """Fill gaps between subtitle lines if they are exactly 3 frames apart.
 
         Assumes 23.976/24 fps for frame duration calculation.
@@ -344,7 +344,7 @@ class SSARescaler(PostProcessor):
 
             # Fill 3-frame gaps between subtitle lines
             self.write_debug("Filling 3-frame gaps between subtitle lines...")
-            self._fill_three_frame_gaps_in_document(ass_document.events)
+            self._fill_frame_gaps(ass_document.events)
 
             # Write changes back to file
             try:

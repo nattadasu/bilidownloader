@@ -71,7 +71,7 @@ class SRTToASSConverter(PostProcessor):
 
         return f"{hours}:{minutes:02d}:{secs:02d}.{centiseconds:02d}"
 
-    def _fill_three_frame_gaps(
+    def _fill_frame_gaps(
         self, events: List[Tuple[str, str, str]]
     ) -> List[Tuple[str, str, str]]:
         """Fill gaps between subtitle lines if they are exactly 3 frames apart.
@@ -214,7 +214,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             events.append((ass_start, ass_end, text))
 
         # Fill 3-frame gaps between subtitle lines
-        events = self._fill_three_frame_gaps(events)
+        events = self._fill_frame_gaps(events)
 
         # Create ASS dialogue lines
         event_lines = [

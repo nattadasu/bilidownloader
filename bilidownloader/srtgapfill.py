@@ -62,7 +62,7 @@ class SRTGapFiller(PostProcessor):
 
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
-    def _fill_three_frame_gaps_srt(self, srt_content: str) -> str:
+    def _fill_frame_gaps(self, srt_content: str) -> str:
         """Fill gaps between subtitle lines if they are exactly 3 frames apart.
 
         Assumes 23.976/24 fps for frame duration calculation.
@@ -152,7 +152,7 @@ class SRTGapFiller(PostProcessor):
                 srt_content = f.read()
 
             # Fill gaps
-            modified_content = self._fill_three_frame_gaps_srt(srt_content)
+            modified_content = self._fill_frame_gaps(srt_content)
 
             # Write back to file
             with open(srt_path, "w", encoding="utf-8-sig") as f:
