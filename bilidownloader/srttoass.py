@@ -37,6 +37,95 @@ class SRTToASSConverter(PostProcessor):
         """
         super().__init__(*args, **kwargs)
 
+    def _ass_time_to_seconds(self, time_str: str) -> float:
+        """Convert ASS time format to seconds.
+
+        Args:
+            time_str: Time string in ASS format (H:MM:SS.CC)
+
+        Returns:
+            Time in seconds as a float
+        """
+        parts = time_str.split(":")
+        hours = int(parts[0])
+        minutes = int(parts[1])
+        seconds_parts = parts[2].split(".")
+        seconds = int(seconds_parts[0])
+        centiseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
+
+        return hours * 3600 + minutes * 60 + seconds + centiseconds / 100.0
+
+    def _seconds_to_ass_time(self, seconds: float) -> str:
+        """Convert seconds to ASS time format.
+
+        Args:
+            seconds: Time in seconds as a float
+
+        Returns:
+            Time string in ASS format (H:MM:SS.CC)
+        """
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        centiseconds = int((seconds % 1) * 100)
+
+        return f"{hours}:{minutes:02d}:{secs:02d}.{centiseconds:02d}"
+
+    def _fill_frame_gaps(
+        self, events: List[Tuple[str, str, str]]
+    ) -> List[Tuple[str, str, str]]:
+        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
+
+        Assumes 23.976/24 fps for frame duration calculation.
+        Adjusts the end time of the current line to meet the start time of the next line.
+
+        Args:
+            events: List of tuples (start_time, end_time, text) in ASS format
+
+        Returns:
+            List of tuples with adjusted end times
+        """
+        if len(events) <= 1:
+            return events
+
+        # 3 frames at 24 fps = 3/24 = 0.125 seconds (12.5 centiseconds)
+        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds (12.5125 centiseconds)
+        # Use a tolerance of 1 centisecond to account for precision loss
+        three_frames_24fps = 3.0 / 24.0  # 0.125
+        three_frames_23976fps = 3.0 / 23.976  # 0.125125
+        tolerance = 0.01  # 1 centisecond tolerance
+
+        adjusted_events = []
+        for i in range(len(events)):
+            start_time, end_time, text = events[i]
+
+            # Check if there's a next event to compare with
+            if i < len(events) - 1:
+                next_start_time = events[i + 1][0]
+
+                # Convert times to seconds for calculation
+                current_end_seconds = self._ass_time_to_seconds(end_time)
+                next_start_seconds = self._ass_time_to_seconds(next_start_time)
+
+                # Calculate the gap
+                gap = next_start_seconds - current_end_seconds
+
+                # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
+                if (
+                    abs(gap - three_frames_24fps) <= tolerance
+                    or abs(gap - three_frames_23976fps) <= tolerance
+                ):
+                    # Fill the gap by extending the end time to the next start time
+                    end_time = next_start_time
+                    self.write_debug(
+                        f"  Filled 3-frame gap: extended line ending at "
+                        f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
+                    )
+
+            adjusted_events.append((start_time, end_time, text))
+
+        return adjusted_events
+
     def _parse_srt_time(self, time_str: str) -> str:
         """Convert SRT time format to ASS time format.
 
@@ -122,11 +211,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             text = re.sub(r"<[^>]+>", "", text)  # Remove any unsupported HTML tags
             text = text.replace("\n", "\\N")  # Convert newlines to ASS format
 
-            # Create ASS dialogue line
-            event_line = f"Dialogue: 0,{ass_start},{ass_end},dialogue,,0,0,0,,{text}"
-            events.append(event_line)
+            events.append((ass_start, ass_end, text))
 
-        return ass_header + "\n".join(events)
+        # Fill 3-frame gaps between subtitle lines
+        events = self._fill_frame_gaps(events)
+
+        # Create ASS dialogue lines
+        event_lines = [
+            f"Dialogue: 0,{start},{end},dialogue,,0,0,0,,{text}"
+            for start, end, text in events
+        ]
+
+        return ass_header + "\n".join(event_lines)
 
     def _convert_srt_file(self, srt_path: Path) -> Optional[Path]:
         """Convert a single SRT file to ASS format.
