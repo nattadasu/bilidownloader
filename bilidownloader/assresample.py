@@ -52,10 +52,10 @@ class SSARescaler(PostProcessor):
         """
         return timedelta(seconds=seconds)
 
-    def _fill_two_frame_gaps_in_document(self, events: List[Any]) -> None:
-        """Fill gaps between subtitle lines if they are exactly 2 frames apart.
+    def _fill_three_frame_gaps_in_document(self, events: List[Any]) -> None:
+        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
 
-        Assumes 24 fps for frame duration calculation.
+        Assumes 23.976/24 fps for frame duration calculation.
         Adjusts the end time of the current line to meet the start time of the next line.
         Modifies events in-place.
 
@@ -65,14 +65,12 @@ class SSARescaler(PostProcessor):
         if len(events) <= 1:
             return
 
-        # 2 frames at 24 fps = 2/24 = 0.083333 seconds (8.33 centiseconds)
-        # 2 frames at 23.976 fps = 2/23.976 = 0.083417 seconds (8.34 centiseconds)
-        # Due to ASS format using centisecond precision (2 decimal places),
-        # these values are truncated/rounded to 8 centiseconds (0.08s)
-        # Use a tolerance of 0.5 centiseconds to account for precision loss
-        two_frames_24fps = 2.0 / 24.0  # 0.083333
-        two_frames_23976fps = 2.0 / 23.976  # 0.083417
-        tolerance = 0.005  # 0.5 centiseconds tolerance
+        # 3 frames at 24 fps = 3/24 = 0.125 seconds (12.5 centiseconds)
+        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds (12.5125 centiseconds)
+        # Use a tolerance of 1 centisecond to account for precision loss
+        three_frames_24fps = 3.0 / 24.0  # 0.125
+        three_frames_23976fps = 3.0 / 23.976  # 0.125125
+        tolerance = 0.01  # 1 centisecond tolerance
 
         for i in range(len(events) - 1):
             current_event = events[i]
@@ -85,15 +83,15 @@ class SSARescaler(PostProcessor):
             # Calculate the gap
             gap = next_start_seconds - current_end_seconds
 
-            # Check if gap is approximately 2 frames (at 24 or 23.976 fps)
+            # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
             if (
-                abs(gap - two_frames_24fps) <= tolerance
-                or abs(gap - two_frames_23976fps) <= tolerance
+                abs(gap - three_frames_24fps) <= tolerance
+                or abs(gap - three_frames_23976fps) <= tolerance
             ):
                 # Fill the gap by extending the end time to the next start time
                 current_event.end = next_event.start
                 self.write_debug(
-                    f"  Filled 2-frame gap: extended line ending at "
+                    f"  Filled 3-frame gap: extended line ending at "
                     f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
                 )
 
@@ -344,9 +342,9 @@ class SSARescaler(PostProcessor):
             # Process and filter styles
             self._process_styles(ass_document, used_styles, all_fonts_found)
 
-            # Fill 2-frame gaps between subtitle lines
-            self.write_debug("Filling 2-frame gaps between subtitle lines...")
-            self._fill_two_frame_gaps_in_document(ass_document.events)
+            # Fill 3-frame gaps between subtitle lines
+            self.write_debug("Filling 3-frame gaps between subtitle lines...")
+            self._fill_three_frame_gaps_in_document(ass_document.events)
 
             # Write changes back to file
             try:

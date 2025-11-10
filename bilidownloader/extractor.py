@@ -949,6 +949,14 @@ class BiliProcess:
                     self.srt = True
                     self.dont_rescale = False
 
+            # Add SRT gap filler for direct SRT subtitles
+            if self.srt and not self.only_audio:
+                try:
+                    from srtgapfill import SRTGapFiller
+                except ImportError:
+                    from bilidownloader.srtgapfill import SRTGapFiller
+                ydl.add_post_processor(SRTGapFiller(), when="before_dl")
+
             ydl.download([episode_url])
 
         metadata["btitle"] = title  # type: ignore

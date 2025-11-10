@@ -71,12 +71,12 @@ class SRTToASSConverter(PostProcessor):
 
         return f"{hours}:{minutes:02d}:{secs:02d}.{centiseconds:02d}"
 
-    def _fill_two_frame_gaps(
+    def _fill_three_frame_gaps(
         self, events: List[Tuple[str, str, str]]
     ) -> List[Tuple[str, str, str]]:
-        """Fill gaps between subtitle lines if they are exactly 2 frames apart.
+        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
 
-        Assumes 24 fps for frame duration calculation.
+        Assumes 23.976/24 fps for frame duration calculation.
         Adjusts the end time of the current line to meet the start time of the next line.
 
         Args:
@@ -88,14 +88,12 @@ class SRTToASSConverter(PostProcessor):
         if len(events) <= 1:
             return events
 
-        # 2 frames at 24 fps = 2/24 = 0.083333 seconds (8.33 centiseconds)
-        # 2 frames at 23.976 fps = 2/23.976 = 0.083417 seconds (8.34 centiseconds)
-        # Due to ASS format using centisecond precision (2 decimal places),
-        # these values are truncated/rounded to 8 centiseconds (0.08s)
-        # Use a tolerance of 0.5 centiseconds to account for precision loss
-        two_frames_24fps = 2.0 / 24.0  # 0.083333
-        two_frames_23976fps = 2.0 / 23.976  # 0.083417
-        tolerance = 0.005  # 0.5 centiseconds tolerance
+        # 3 frames at 24 fps = 3/24 = 0.125 seconds (12.5 centiseconds)
+        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds (12.5125 centiseconds)
+        # Use a tolerance of 1 centisecond to account for precision loss
+        three_frames_24fps = 3.0 / 24.0  # 0.125
+        three_frames_23976fps = 3.0 / 23.976  # 0.125125
+        tolerance = 0.01  # 1 centisecond tolerance
 
         adjusted_events = []
         for i in range(len(events)):
@@ -112,13 +110,17 @@ class SRTToASSConverter(PostProcessor):
                 # Calculate the gap
                 gap = next_start_seconds - current_end_seconds
 
-                # Check if gap is approximately 2 frames (at 24 or 23.976 fps)
+                # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
                 if (
-                    abs(gap - two_frames_24fps) <= tolerance
-                    or abs(gap - two_frames_23976fps) <= tolerance
+                    abs(gap - three_frames_24fps) <= tolerance
+                    or abs(gap - three_frames_23976fps) <= tolerance
                 ):
                     # Fill the gap by extending the end time to the next start time
                     end_time = next_start_time
+                    self.write_debug(
+                        f"  Filled 3-frame gap: extended line ending at "
+                        f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
+                    )
 
             adjusted_events.append((start_time, end_time, text))
 
@@ -211,8 +213,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             events.append((ass_start, ass_end, text))
 
-        # Fill 2-frame gaps between subtitle lines
-        events = self._fill_two_frame_gaps(events)
+        # Fill 3-frame gaps between subtitle lines
+        events = self._fill_three_frame_gaps(events)
 
         # Create ASS dialogue lines
         event_lines = [
