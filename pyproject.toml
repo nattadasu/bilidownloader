@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.scripts]
-bilidownloader = "bilidownloader.__main__:app"
+bilidownloader = "bilidownloader.cli.main:app"
 
 [tool.setuptools]
 packages = ["bilidownloader"]
