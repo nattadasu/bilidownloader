@@ -1,6 +1,7 @@
 """
 Video downloader - handles yt-dlp download operations
 """
+
 from html import unescape
 from pathlib import Path
 from re import IGNORECASE
@@ -52,9 +53,7 @@ class VideoDownloader:
         self.subtitle_lang = subtitle_lang
         self.only_audio = only_audio
 
-    def get_video_info(
-        self, episode_url: str
-    ) -> Union[Any, Dict[str, Any], None]:
+    def get_video_info(self, episode_url: str) -> Union[Any, Dict[str, Any], None]:
         """Get video information from yt-dlp"""
         ydl_opts = {
             "cookiefile": str(self.cookie),

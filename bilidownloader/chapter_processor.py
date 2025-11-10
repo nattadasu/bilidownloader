@@ -1,6 +1,7 @@
 """
 Chapter processing - handles chapter formatting and embedding
 """
+
 import subprocess as sp
 from pathlib import Path
 from typing import List, Tuple
@@ -10,7 +11,12 @@ from rich.table import Column, Table, box
 
 from bilidownloader.filesystem import find_command
 from bilidownloader.ui import prn_done, prn_error, prn_info
-from bilidownloader.utils import Chapter, format_human_time, format_mkvmerge_time, int_to_abc
+from bilidownloader.utils import (
+    Chapter,
+    format_human_time,
+    format_mkvmerge_time,
+    int_to_abc,
+)
 
 
 class ChapterProcessor:

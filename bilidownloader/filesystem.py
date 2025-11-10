@@ -25,8 +25,11 @@ def _migrate_config():
     if old_base_dir.exists():
         files_to_migrate = ["cookies.txt", "history.v2.tsv", "watchlist.txt"]
         fonts_dir_to_migrate = old_base_dir / "fonts"
-        
-        should_migrate = any((old_base_dir / file).exists() for file in files_to_migrate) or fonts_dir_to_migrate.exists()
+
+        should_migrate = (
+            any((old_base_dir / file).exists() for file in files_to_migrate)
+            or fonts_dir_to_migrate.exists()
+        )
 
         if should_migrate:
             prn_info(f"Migrating config from {old_base_dir} to {BASE_DIR}")
@@ -43,7 +46,7 @@ def _migrate_config():
                     shutil.move(str(font_file), str(new_fonts_dir))
                 if not any(fonts_dir_to_migrate.iterdir()):
                     fonts_dir_to_migrate.rmdir()
-        
+
         if not any(old_base_dir.iterdir()):
             prn_info("Removing old config directory")
             old_base_dir.rmdir()

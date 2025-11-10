@@ -115,14 +115,14 @@ class BiliProcess:
         clock = BenchClock()
         tries = 0
         history = History(self.history)
-        
+
         # Normalize URL
         ep_url = rsearch(r"play/(\d+)/(\d+)", episode_url)
         if ep_url:
             episode_url = self.ep_url(ep_url.group(1), ep_url.group(2))
         else:
             raise ValueError("Invalid episode URL")
-        
+
         while True:
             if tries > 2:
                 prn_error(
@@ -132,37 +132,39 @@ class BiliProcess:
             try:
                 if not forced:
                     history.check_history(episode_url)
-                
+
                 # Download video
                 loc, data, language = self.downloader.download_episode(episode_url)
-                
+
                 # Process chapters
                 chapters = self.downloader.get_episode_chapters(data)
                 final = self.chapter_processor.embed_chapters(chapters, loc)
-                
+
                 # Prepare metadata arguments
                 aud_args = self.metadata_editor.add_audio_language(final, language)
-                
+
                 font_args: List[str] = []
                 if not self.srt or not self.dont_convert:
                     font_json = Path("fonts.json")
                     if font_json.exists():
                         font_json, font_args = loop_font_lookup(font_json, font_args)
                         font_json.unlink(True)
-                
-                sub_args = self.metadata_editor.set_default_subtitle(data, final, self.subtitle_lang)  # type: ignore
-                
+
+                sub_args = self.metadata_editor.set_default_subtitle(
+                    data, final, self.subtitle_lang
+                )  # type: ignore
+
                 if not self.dont_thumbnail and not self.only_audio:
                     attachment_args = self.metadata_editor.insert_thumbnail(data)
                 else:
                     attachment_args = []
-                
+
                 # Execute metadata editing
                 final = self.metadata_editor.execute_mkvpropedit(
                     final, aud_args, sub_args, font_args, attachment_args
                 )
                 Path("thumbnail.png").unlink(True)
-                
+
                 # Update history
                 if not forced:
                     series_id = ep_url.group(1) if ep_url else None
@@ -170,16 +172,16 @@ class BiliProcess:
                     series_title = data.get(
                         "btitle", data.get("series", f"Series {series_id}")
                     )
-                    
+
                     if series_id and series_id in SERIES_ALIASES:
                         series_title = SERIES_ALIASES[series_id]
-                    
+
                     episode_idx = (
                         str(data.get("episode_number", ""))
                         if data.get("episode_number")
                         else ""
                     )
-                    
+
                     history.write_history(
                         episode_url,
                         series_id=series_id,
@@ -189,14 +191,14 @@ class BiliProcess:
                     )
                 else:
                     prn_info("Forced download, skipping adding to history")
-                
+
                 clock.echo_format(f"Downloaded {final.name}")
                 if self.notification:
                     push_notification(
                         data["btitle"], data.get("episode_number", ""), final
                     )
                 return final
-            
+
             except (ReferenceError, NameError) as err:
                 prn_error(str(err))
                 break
@@ -225,7 +227,7 @@ class BiliProcess:
             data = None
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
-        
+
         final: List[Optional[Path]] = []
         total = len(data["entries"])
         for entry in data["entries"]:
@@ -237,7 +239,7 @@ class BiliProcess:
                 )
             )
             print()
-        
+
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)
         clock.echo_format(f"Downloaded {pluralize(flen, 'episode')} from playlist")
@@ -249,12 +251,12 @@ class BiliProcess:
         wl = Watchlist(self.watchlist)
         api = BiliApi()
         clock = BenchClock()
-        
+
         if forced:
             prn_info("Forced switch is enabled, ignoring history")
         else:
             prn_info("Downloading watchlist")
-        
+
         for card in api.get_all_available_shows():
             for sid, title in wl.list:
                 if sid != card.season_id:
@@ -277,7 +279,7 @@ class BiliProcess:
                     )
                     if ep is not None:
                         final.append(ep)
-        
+
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)
         clock.echo_format(

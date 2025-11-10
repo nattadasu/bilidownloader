@@ -373,6 +373,7 @@ ASPLAYLIST_OPT = Annotated[
 @dataclass
 class BinaryPaths:
     """Binary paths dependency"""
+
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH
     mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH
@@ -381,6 +382,7 @@ class BinaryPaths:
 @dataclass
 class FileConfig:
     """File configuration dependency"""
+
     cookie: COOKIE_OPT = DEFAULT_COOKIES
     history_file: HISTORY_OPT = DEFAULT_HISTORY
 
@@ -388,6 +390,7 @@ class FileConfig:
 @dataclass
 class DownloadOptions:
     """Download options dependency"""
+
     resolution: RESO_OPT = 1080
     srtonly: SRT_OPT = not ass_status
     is_avc: AVC_OPT = False
@@ -398,6 +401,7 @@ class DownloadOptions:
 @dataclass
 class PostProcessingOptions:
     """Post-processing options dependency"""
+
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en
     notification: NOTIFY_OPT = False
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False
@@ -853,7 +857,7 @@ def watchlist_download(
         for sid, title in wl.list:
             url = f"https://www.bilibili.tv/en/play/{sid}"
             prn_info(f"Downloading {title} ({url})")
-            bili.process_playlist(url, forced)
+            bili.process_playlist(url, dl_opts.forced)
 
 
 @hi_app.command(
