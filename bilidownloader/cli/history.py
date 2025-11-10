@@ -1,11 +1,21 @@
+from sys import exit
 from typing import Annotated, List, Optional
 
+import typer
 from rich import box
 from rich.console import Console
 from rich.table import Column, Table
-from typer_di import TyperDI
 
 from bilidownloader.cli.application import hi_app
+from bilidownloader.cli.options import (
+    ASSUMEYES_OPT,
+    DEFAULT_HISTORY,
+    HISTORY_OPT,
+    HistorySortBy,
+)
+from bilidownloader.history import History
+from bilidownloader.ui import prn_error, prn_info
+
 console = Console()
 
 
@@ -201,6 +211,7 @@ def history_clear(
     if not yes and len(hi.list) > 0:
         try:
             import survey
+
             action = survey.routines.select(
                 "What would you like to do?",
                 options=[

@@ -236,12 +236,14 @@ class VideoDownloader:
             if not self.srt and not self.only_audio and not self.dont_rescale:
                 if check_package("ass"):
                     from bilidownloader.subtitles.assresample import SSARescaler
+
                     ydl.add_post_processor(SSARescaler(), when="before_dl")
 
             # Add SRT to ASS converter if needed
             if not self.srt and not self.only_audio and not self.dont_convert:
                 if check_package("ass"):
                     from bilidownloader.subtitles.srttoass import SRTToASSConverter
+
                     ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
                 else:
                     prn_error(
@@ -259,6 +261,7 @@ class VideoDownloader:
             # Add SRT gap filler for direct SRT subtitles
             if self.srt and not self.only_audio:
                 from bilidownloader.subtitles.srtgapfill import SRTGapFiller
+
                 ydl.add_post_processor(SRTGapFiller(), when="before_dl")
 
             ydl.download([episode_url])

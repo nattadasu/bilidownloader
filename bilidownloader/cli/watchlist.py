@@ -1,18 +1,22 @@
 import re
 from html import unescape
-from pathlib import Path
 from sys import exit
 from typing import Annotated, List, Optional, Tuple
 
 import survey
+import typer
 from rich import box
 from rich.console import Console
 from rich.table import Column, Table
-from typer_di import Depends, TyperDI
+from typer_di import Depends
 
 from bilidownloader.api import BiliApi, BiliHtml
-from bilidownloader.cli.callbacks import raise_cookie
-from bilidownloader.cli.download import download_url
+from bilidownloader.cli.callbacks import (
+    raise_cookie,
+    raise_ffmpeg,
+    raise_mkvmerge,
+    raise_mkvpropedit,
+)
 from bilidownloader.cli.options import (
     ASPLAYLIST_OPT,
     ASSUMEYES_OPT,
@@ -31,6 +35,7 @@ from bilidownloader.ui import prn_error, prn_info
 from bilidownloader.watchlist import Watchlist
 
 from bilidownloader.cli.application import wl_app
+
 console = Console()
 
 
@@ -270,7 +275,6 @@ def watchlist_download(
     raise_mkvpropedit(bins.mkvpropedit_path)
     raise_mkvmerge(bins.mkvmerge_path)
 
-    fix_reso = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
         file_config=files,
         download_options=dl_opts,

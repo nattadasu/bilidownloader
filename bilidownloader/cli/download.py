@@ -1,7 +1,5 @@
 import re
-from pathlib import Path
 
-import survey
 from typer_di import Depends
 
 from bilidownloader.cli.callbacks import (
@@ -11,22 +9,16 @@ from bilidownloader.cli.callbacks import (
     raise_mkvpropedit,
 )
 from bilidownloader.cli.options import (
-    ASPLAYLIST_OPT,
-    ASSUMEYES_OPT,
     BinaryPaths,
     DownloadOptions,
     FileConfig,
-    OPTCOOKIE_OPT,
     PostProcessingOptions,
     URL_ARG,
-    WATCHLIST_OPT,
     bili_format,
 )
-from bilidownloader.constants import DEFAULT_WATCHLIST, available_res
 from bilidownloader.orchestrator import BiliProcess
 from bilidownloader.history import History
-from bilidownloader.ui import prn_done, prn_info
-from bilidownloader.watchlist import Watchlist
+from bilidownloader.ui import prn_info
 
 from bilidownloader.cli.application import app
 
@@ -36,9 +28,15 @@ from bilidownloader.cli.application import app
     short_help="Download via direct URL. Alias: down, dl, d",
     no_args_is_help=True,
 )
-@app.command(name="down", short_help="Download via direct URL", hidden=True, no_args_is_help=True)
-@app.command(name="dl", short_help="Download via direct URL", hidden=True, no_args_is_help=True)
-@app.command(name="d", short_help="Download via direct URL", hidden=True, no_args_is_help=True)
+@app.command(
+    name="down", short_help="Download via direct URL", hidden=True, no_args_is_help=True
+)
+@app.command(
+    name="dl", short_help="Download via direct URL", hidden=True, no_args_is_help=True
+)
+@app.command(
+    name="d", short_help="Download via direct URL", hidden=True, no_args_is_help=True
+)
 def download_url(
     url: URL_ARG,
     files: FileConfig = Depends(FileConfig),
@@ -54,7 +52,6 @@ def download_url(
     raise_cookie(files.cookie)
 
     matches = re.search(bili_format, url)
-    fix_reso: available_res = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
         file_config=files,
         download_options=dl_opts,

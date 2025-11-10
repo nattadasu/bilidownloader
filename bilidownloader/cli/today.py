@@ -41,7 +41,10 @@ def _cards_selector(
     raise_mkvmerge(bins.mkvmerge_path)
     raise_cookie(files.cookie)
 
-    choices = [f"{anime.title} ({anime.index_show.removesuffix(' updated')})" for anime in cards]
+    choices = [
+        f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
+        for anime in cards
+    ]
     if len(choices) == 0:
         raise LookupError("There is no releases aired yet.")
     query = survey.routines.select("Select a title to download: ", options=choices)
@@ -51,7 +54,9 @@ def _cards_selector(
     as_playlist = survey.routines.inquire("Download as playlist? ", default=False)
     url = f"https://www.bilibili.tv/en/play/{anime.season_id}"
     url = url + f"/{anime.episode_id}" if not as_playlist else url
-    prn_info(f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})")
+    prn_info(
+        f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})"
+    )
     download_url(
         url=url,
         files=files,

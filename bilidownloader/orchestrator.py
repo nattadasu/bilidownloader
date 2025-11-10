@@ -7,11 +7,8 @@ from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api import BiliApi
 from bilidownloader.chapter_processor import ChapterProcessor
 from bilidownloader.constants import (
-    DEFAULT_COOKIES,
-    DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
     REINSTALL_ARGS,
-    available_res,
 )
 from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
 from bilidownloader.history import History
@@ -23,14 +20,16 @@ from bilidownloader.utils import (
     check_package,
     pluralize,
 )
-from bilidownloader.utils import (
-    SubtitleLanguage as SubLang,
-)
 from bilidownloader.video_downloader import VideoDownloader
 from bilidownloader.watchlist import Watchlist
 
 
-from bilidownloader.cli.options import BinaryPaths, DownloadOptions, FileConfig, PostProcessingOptions
+from bilidownloader.cli.options import (
+    BinaryPaths,
+    DownloadOptions,
+    FileConfig,
+    PostProcessingOptions,
+)
 
 
 class BiliProcess:
