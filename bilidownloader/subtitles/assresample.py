@@ -14,7 +14,9 @@ from typing import Any, Callable, Dict, List, Set, Tuple, Union
 
 from ass import Document as AssDocument
 from ass import parse_string as ass_loads
-from yt_dlp.postprocessor import PostProcessor
+from yt_dlp.postprocessor import PostProcessor  # type: ignore
+
+from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
 class SSARescaler(PostProcessor):
@@ -29,6 +31,10 @@ class SSARescaler(PostProcessor):
     """
 
     SIZE_MODIFIER: float = 0.8
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gap_filler = GenericGapFiller(tolerance=0.01) # ASS uses centiseconds, so 0.01s tolerance is appropriate
 
     def _ass_time_to_seconds(self, time_obj: Any) -> float:
         """Convert ASS time object to seconds.
@@ -344,7 +350,23 @@ class SSARescaler(PostProcessor):
 
             # Fill 3-frame gaps between subtitle lines
             self.write_debug("Filling 3-frame gaps between subtitle lines...")
-            self._fill_frame_gaps(ass_document.events)
+            # Prepare events for generic gap filler
+            generic_events = []
+            for event in ass_document.events:
+                start_s = self._ass_time_to_seconds(event.start)
+                end_s = self._ass_time_to_seconds(event.end)
+                generic_events.append((start_s, end_s, event))
+
+            adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
+
+            # Update original ASS events with adjusted end times
+            for i, (start_s, new_end_s, original_event) in enumerate(adjusted_generic_events):
+                if original_event.end != self._seconds_to_ass_time(new_end_s):
+                    self.write_debug(
+                        f"  Filled 3-frame gap: extended line ending at "
+                        f"{self._ass_time_to_seconds(original_event.end):.3f}s to {new_end_s:.3f}s"
+                    )
+                    original_event.end = self._seconds_to_ass_time(new_end_s)
 
             # Write changes back to file
             try:

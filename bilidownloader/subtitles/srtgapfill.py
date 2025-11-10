@@ -10,6 +10,8 @@ from typing import Dict, List, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.subtitles.gap_filler import GenericGapFiller
+
 
 class SRTGapFiller(PostProcessor):
     """A yt-dlp post-processor for filling 3-frame gaps in SRT subtitles.
@@ -26,6 +28,7 @@ class SRTGapFiller(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
+        self.gap_filler = GenericGapFiller(tolerance=0.001) # SRT uses milliseconds, so 0.001s tolerance is appropriate
 
     def _srt_time_to_seconds(self, time_str: str) -> float:
         """Convert SRT time format to seconds.
@@ -84,52 +87,37 @@ class SRTGapFiller(PostProcessor):
 
         events = []
         for match in srt_pattern.finditer(srt_content):
-            number, start_time, end_time, text = match.groups()
-            events.append((int(number), start_time, end_time, text.strip()))
+            number, start_time_str, end_time_str, text = match.groups()
+            start_s = self._srt_time_to_seconds(start_time_str)
+            end_s = self._srt_time_to_seconds(end_time_str)
+            events.append((int(number), start_s, end_s, text.strip()))
 
         if len(events) <= 1:
             return srt_content
 
-        # 3 frames at 24 fps = 3/24 = 0.125 seconds
-        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds
-        # Use a tolerance of 1 millisecond to account for precision
-        three_frames_24fps = 3.0 / 24.0  # 0.125
-        three_frames_23976fps = 3.0 / 23.976  # 0.125125
-        tolerance = 0.001  # 1 millisecond tolerance
+        # Prepare events for generic gap filler
+        generic_events = []
+        for number, start_s, end_s, text in events:
+            generic_events.append((start_s, end_s, (number, text)))
 
-        adjusted_events = []
-        for i in range(len(events)):
-            number, start_time, end_time, text = events[i]
-
-            # Check if there's a next event to compare with
-            if i < len(events) - 1:
-                next_start_time = events[i + 1][1]
-
-                # Convert times to seconds for calculation
-                current_end_seconds = self._srt_time_to_seconds(end_time)
-                next_start_seconds = self._srt_time_to_seconds(next_start_time)
-
-                # Calculate the gap
-                gap = next_start_seconds - current_end_seconds
-
-                # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
-                if (
-                    abs(gap - three_frames_24fps) <= tolerance
-                    or abs(gap - three_frames_23976fps) <= tolerance
-                ):
-                    # Fill the gap by extending the end time to the next start time
-                    end_time = next_start_time
-                    self.write_debug(
-                        f"  Filled 3-frame gap: extended line ending at "
-                        f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
-                    )
-
-            adjusted_events.append((number, start_time, end_time, text))
+        adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
 
         # Rebuild SRT content
         srt_lines = []
-        for number, start_time, end_time, text in adjusted_events:
-            srt_lines.append(f"{number}\n{start_time} --> {end_time}\n{text}\n")
+        for i, (start_s, new_end_s, original_data) in enumerate(adjusted_generic_events):
+            number, text = original_data
+            original_end_s = events[i][2] # Get original end time for logging comparison
+
+            if new_end_s != original_end_s:
+                 self.write_debug(
+                    f"  Filled 3-frame gap: extended line ending at "
+                    f"{original_end_s:.3f}s to {new_end_s:.3f}s"
+                )
+            srt_lines.append(
+                f"{number}\n"
+                f"{self._seconds_to_srt_time(start_s)} --> {self._seconds_to_srt_time(new_end_s)}\n"
+                f"{text}\n"
+            )
 
         return "\n".join(srt_lines)
 

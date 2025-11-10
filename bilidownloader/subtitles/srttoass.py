@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.subtitles.gap_filler import GenericGapFiller
+
 
 class SRTToASSConverter(PostProcessor):
     """A yt-dlp post-processor for converting SRT subtitles to ASS format.
@@ -36,6 +38,7 @@ class SRTToASSConverter(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
+        self.gap_filler = GenericGapFiller(tolerance=0.01) # ASS uses centiseconds, so 0.01s tolerance is appropriate
 
     def _ass_time_to_seconds(self, time_str: str) -> float:
         """Convert ASS time format to seconds.
@@ -88,41 +91,25 @@ class SRTToASSConverter(PostProcessor):
         if len(events) <= 1:
             return events
 
-        # 3 frames at 24 fps = 3/24 = 0.125 seconds (12.5 centiseconds)
-        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds (12.5125 centiseconds)
-        # Use a tolerance of 1 centisecond to account for precision loss
-        three_frames_24fps = 3.0 / 24.0  # 0.125
-        three_frames_23976fps = 3.0 / 23.976  # 0.125125
-        tolerance = 0.01  # 1 centisecond tolerance
+        # Prepare events for generic gap filler
+        generic_events = []
+        for start_time_str, end_time_str, text in events:
+            start_s = self._ass_time_to_seconds(start_time_str)
+            end_s = self._ass_time_to_seconds(end_time_str)
+            generic_events.append((start_s, end_s, text))
 
+        adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
+
+        # Convert back to original format
         adjusted_events = []
-        for i in range(len(events)):
-            start_time, end_time, text = events[i]
-
-            # Check if there's a next event to compare with
-            if i < len(events) - 1:
-                next_start_time = events[i + 1][0]
-
-                # Convert times to seconds for calculation
-                current_end_seconds = self._ass_time_to_seconds(end_time)
-                next_start_seconds = self._ass_time_to_seconds(next_start_time)
-
-                # Calculate the gap
-                gap = next_start_seconds - current_end_seconds
-
-                # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
-                if (
-                    abs(gap - three_frames_24fps) <= tolerance
-                    or abs(gap - three_frames_23976fps) <= tolerance
-                ):
-                    # Fill the gap by extending the end time to the next start time
-                    end_time = next_start_time
-                    self.write_debug(
-                        f"  Filled 3-frame gap: extended line ending at "
-                        f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
-                    )
-
-            adjusted_events.append((start_time, end_time, text))
+        for i, (start_s, new_end_s, text) in enumerate(adjusted_generic_events):
+            original_end_s = self._ass_time_to_seconds(events[i][1]) # Get original end time for logging comparison
+            if new_end_s != original_end_s:
+                self.write_debug(
+                    f"  Filled 3-frame gap: extended line ending at "
+                    f"{original_end_s:.3f}s to {new_end_s:.3f}s"
+                )
+            adjusted_events.append((self._seconds_to_ass_time(start_s), self._seconds_to_ass_time(new_end_s), text))
 
         return adjusted_events
 
