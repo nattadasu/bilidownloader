@@ -1,5 +1,6 @@
 import re
 from copy import deepcopy
+from dataclasses import dataclass
 from enum import Enum
 from html import unescape
 from pathlib import Path
@@ -16,6 +17,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Column, Table
 from semver import Version
+from typer_di import Depends, TyperDI
 from typing_extensions import Annotated
 
 from bilidownloader.alias import SERIES_ALIASES
@@ -51,13 +53,13 @@ class HistorySortBy(str, Enum):
     EPISODE_ID = "episode-id"
 
 
-app = typer.Typer(
+app = TyperDI(
     pretty_exceptions_show_locals=False,
     no_args_is_help=True,
     help=f"{__DESCRIPTION__} (Version: {__VERSION__})",
 )
-hi_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
-wl_app = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
+hi_app = TyperDI(pretty_exceptions_show_locals=False, no_args_is_help=True)
+wl_app = TyperDI(pretty_exceptions_show_locals=False, no_args_is_help=True)
 app.add_typer(hi_app, name="history", help="View and manage history. Alias: his, h")
 app.add_typer(hi_app, name="his", help="View and manage history", hidden=True)
 app.add_typer(hi_app, name="h", help="View and manage history", hidden=True)
@@ -135,7 +137,7 @@ cookie_option = typer.Option(
     "--cookie-file",
     "-c",
     help=cookies_help,
-    show_default=False,
+    show_default=True,
     rich_help_panel="Data Management",
 )
 optcookie = deepcopy(cookie_option)
@@ -362,6 +364,52 @@ ASPLAYLIST_OPT = Annotated[
 # END OF ARGS AND FLAGS DEFINITIONS #
 #####################################
 
+
+###################################
+# DEPENDENCY INJECTION CLASSES    #
+###################################
+
+
+@dataclass
+class BinaryPaths:
+    """Binary paths dependency"""
+    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH
+    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH
+    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH
+
+
+@dataclass
+class FileConfig:
+    """File configuration dependency"""
+    cookie: COOKIE_OPT = DEFAULT_COOKIES
+    history_file: HISTORY_OPT = DEFAULT_HISTORY
+
+
+@dataclass
+class DownloadOptions:
+    """Download options dependency"""
+    resolution: RESO_OPT = 1080
+    srtonly: SRT_OPT = not ass_status
+    is_avc: AVC_OPT = False
+    forced: FORCED_OPT = False
+    download_pv: PV_OPT = False
+
+
+@dataclass
+class PostProcessingOptions:
+    """Post-processing options dependency"""
+    sub_lang: SUBLANG_OPT = SubtitleLanguage.en
+    notification: NOTIFY_OPT = False
+    no_rescale: DO_NOT_RESCALE_SSA_OPT = False
+    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False
+    no_convert: DO_NOT_CONVERT_SRT_OPT = False
+    audio_only: AUDIO_OPT = False
+
+
+###################################
+# END OF DEPENDENCY INJECTION     #
+###################################
+
 down_shelp = "Download via direct URL"
 
 
@@ -375,86 +423,62 @@ down_shelp = "Download via direct URL"
 @app.command(name="d", short_help=down_shelp, hidden=True, no_args_is_help=True)
 def download_url(
     url: URL_ARG,
-    cookie: COOKIE_OPT = DEFAULT_COOKIES,
-    history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    resolution: RESO_OPT = 1080,
-    srtonly: SRT_OPT = not ass_status,
-    is_avc: AVC_OPT = False,
-    download_pv: PV_OPT = False,
-    forced: FORCED_OPT = False,
-    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
-    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
-    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
-    notification: NOTIFY_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
-    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
-    audio_only: AUDIO_OPT = False,
+    files: FileConfig = Depends(FileConfig),
+    bins: BinaryPaths = Depends(BinaryPaths),
+    dl_opts: DownloadOptions = Depends(DownloadOptions),
+    pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
 ):
     """Download via direct URL, let the app decide what type of the URL"""
 
-    raise_ffmpeg(ffmpeg_path)
-    raise_mkvpropedit(mkvpropedit_path)
-    raise_mkvmerge(mkvmerge_path)
-    raise_cookie(cookie)
+    raise_ffmpeg(bins.ffmpeg_path)
+    raise_mkvpropedit(bins.mkvpropedit_path)
+    raise_mkvmerge(bins.mkvmerge_path)
+    raise_cookie(files.cookie)
 
     matches = re.search(bili_format, url)
-    fix_reso: available_res = resolution  # type: ignore
+    fix_reso: available_res = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
-        cookie,
-        history_file,
+        files.cookie,
+        files.history_file,
         resolution=fix_reso,
-        is_avc=is_avc,
-        download_pv=download_pv,
-        ffmpeg_path=ffmpeg_path,
-        mkvpropedit_path=mkvpropedit_path,
-        mkvmerge_path=mkvmerge_path,
-        notification=notification,
-        srt=srtonly,
-        dont_thumbnail=no_thumbnail,
-        dont_rescale=no_rescale,
-        dont_convert=no_convert,
-        subtitle_lang=sub_lang,  # type: ignore
-        only_audio=audio_only,
+        is_avc=dl_opts.is_avc,
+        download_pv=dl_opts.download_pv,
+        ffmpeg_path=bins.ffmpeg_path,
+        mkvpropedit_path=bins.mkvpropedit_path,
+        mkvmerge_path=bins.mkvmerge_path,
+        notification=pp_opts.notification,
+        srt=dl_opts.srtonly,
+        dont_thumbnail=pp_opts.no_thumbnail,
+        dont_rescale=pp_opts.no_rescale,
+        dont_convert=pp_opts.no_convert,
+        subtitle_lang=pp_opts.sub_lang,  # type: ignore
+        only_audio=pp_opts.audio_only,
     )
     if matches:
-        if not forced:
-            History(history_file).check_history(url)
+        if not dl_opts.forced:
+            History(files.history_file).check_history(url)
         if matches.group("episode_id"):
             prn_info("URL is an episode")
-            bili.process_episode(url, forced)
+            bili.process_episode(url, dl_opts.forced)
         else:
             prn_info("URL is a playlist")
-            bili.process_playlist(url, forced)
+            bili.process_playlist(url, dl_opts.forced)
     else:
         raise ValueError("Link is not a valid Bilibili.tv URL")
 
 
 def _cards_selector(
     cards: List[CardItem],
-    cookie: Path,
-    watchlist_file: Path = DEFAULT_WATCHLIST,
-    history_file: Path = DEFAULT_HISTORY,
-    forced: bool = False,
-    resolution: int = 1080,
-    is_avc: bool = False,
-    download_pv: bool = False,
-    ffmpeg_path: Optional[Path] = FFMPEG_PATH,
-    mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
-    mkvmerge_path: Optional[Path] = MKVMERGE_PATH,
-    notification: bool = False,
-    srtonly: bool = False,
-    no_rescale: bool = False,
-    sub_lang: Optional[str] = None,
-    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
-    no_convert: bool = False,
-    audio_only: AUDIO_OPT = False,
+    watchlist_file: Path,
+    files: FileConfig,
+    bins: BinaryPaths,
+    dl_opts: DownloadOptions,
+    pp_opts: PostProcessingOptions,
 ):
-    raise_ffmpeg(ffmpeg_path)
-    raise_mkvpropedit(mkvpropedit_path)
-    raise_mkvmerge(mkvmerge_path)
-    raise_cookie(cookie)
+    raise_ffmpeg(bins.ffmpeg_path)
+    raise_mkvpropedit(bins.mkvpropedit_path)
+    raise_mkvmerge(bins.mkvmerge_path)
+    raise_cookie(files.cookie)
 
     choices = [
         f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
@@ -474,22 +498,10 @@ def _cards_selector(
     )
     download_url(
         url=url,
-        cookie=cookie,
-        history_file=history_file,
-        forced=forced,
-        resolution=resolution,
-        is_avc=is_avc,
-        download_pv=download_pv,
-        ffmpeg_path=ffmpeg_path,
-        mkvpropedit_path=mkvpropedit_path,
-        mkvmerge_path=mkvmerge_path,
-        notification=notification,
-        srtonly=srtonly,
-        no_rescale=no_rescale,
-        sub_lang=sub_lang,  # type: ignore
-        no_thumbnail=no_thumbnail,
-        no_convert=no_convert,
-        audio_only=audio_only,
+        files=files,
+        bins=bins,
+        dl_opts=dl_opts,
+        pp_opts=pp_opts,
     )
 
     wl = Watchlist(watchlist_file)
@@ -515,50 +527,26 @@ def _cards_selector(
     no_args_is_help=True,
 )
 def download_today_releases(
-    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-    history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    resolution: RESO_OPT = 1080,
-    srtonly: SRT_OPT = not ass_status,
-    is_avc: AVC_OPT = False,
-    download_pv: PV_OPT = False,
-    forced: FORCED_OPT = False,
-    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
-    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
-    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
-    notification: NOTIFY_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
-    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
-    audio_only: AUDIO_OPT = False,
+    files: FileConfig = Depends(FileConfig),
+    bins: BinaryPaths = Depends(BinaryPaths),
+    dl_opts: DownloadOptions = Depends(DownloadOptions),
+    pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
 ):
-    raise_ffmpeg(ffmpeg_path)
-    raise_mkvmerge(mkvmerge_path)
-    raise_cookie(cookie)
+    raise_ffmpeg(bins.ffmpeg_path)
+    raise_mkvmerge(bins.mkvmerge_path)
+    raise_cookie(files.cookie)
 
     api = BiliApi().get_today_schedule()
     released = [anime for anime in api if anime.is_available]
     try:
         _cards_selector(
             released,
-            cookie=cookie,
             watchlist_file=watchlist_file,
-            history_file=history_file,
-            forced=forced,
-            resolution=resolution,
-            is_avc=is_avc,
-            download_pv=download_pv,
-            ffmpeg_path=ffmpeg_path,
-            mkvpropedit_path=mkvpropedit_path,
-            mkvmerge_path=mkvmerge_path,
-            notification=notification,
-            srtonly=srtonly,
-            no_rescale=no_rescale,
-            sub_lang=sub_lang,
-            no_thumbnail=no_thumbnail,
-            no_convert=no_convert,
-            audio_only=audio_only,
+            files=files,
+            bins=bins,
+            dl_opts=dl_opts,
+            pp_opts=pp_opts,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -576,28 +564,16 @@ def download_today_releases(
     no_args_is_help=True,
 )
 def download_all_releases(
-    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-    history_file: HISTORY_OPT = DEFAULT_HISTORY,
-    resolution: RESO_OPT = 1080,
-    srtonly: SRT_OPT = not ass_status,
-    is_avc: AVC_OPT = False,
-    download_pv: PV_OPT = False,
-    forced: FORCED_OPT = False,
-    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
-    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
-    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
-    notification: NOTIFY_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
-    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
-    audio_only: AUDIO_OPT = False,
+    files: FileConfig = Depends(FileConfig),
+    bins: BinaryPaths = Depends(BinaryPaths),
+    dl_opts: DownloadOptions = Depends(DownloadOptions),
+    pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
 ):
-    raise_ffmpeg(ffmpeg_path)
-    raise_mkvpropedit(mkvpropedit_path)
-    raise_mkvmerge(mkvmerge_path)
-    raise_cookie(cookie)
+    raise_ffmpeg(bins.ffmpeg_path)
+    raise_mkvpropedit(bins.mkvpropedit_path)
+    raise_mkvmerge(bins.mkvmerge_path)
+    raise_cookie(files.cookie)
 
     api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
@@ -605,23 +581,11 @@ def download_all_releases(
     try:
         _cards_selector(
             released,
-            cookie=cookie,
             watchlist_file=watchlist_file,
-            history_file=history_file,
-            forced=forced,
-            resolution=resolution,
-            is_avc=is_avc,
-            download_pv=download_pv,
-            ffmpeg_path=ffmpeg_path,
-            mkvpropedit_path=mkvpropedit_path,
-            mkvmerge_path=mkvmerge_path,
-            notification=notification,
-            srtonly=srtonly,
-            no_rescale=no_rescale,
-            sub_lang=sub_lang,
-            no_thumbnail=no_thumbnail,
-            no_convert=no_convert,
-            audio_only=audio_only,
+            files=files,
+            bins=bins,
+            dl_opts=dl_opts,
+            pp_opts=pp_opts,
         )
     except survey.widgets.Escape:
         exit(1)
@@ -851,50 +815,39 @@ wl_down_shelp = "Download all episodes from watchlist"
     hidden=True,
 )
 def watchlist_download(
-    cookie: COOKIE_OPT = DEFAULT_COOKIES,
     watchlist_file: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-    history_file: HISTORY_OPT = DEFAULT_HISTORY,
     as_playlist: ASPLAYLIST_OPT = False,
-    resolution: RESO_OPT = 1080,
-    srtonly: SRT_OPT = not ass_status,
-    is_avc: AVC_OPT = False,
-    forced: FORCED_OPT = False,
-    ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
-    mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
-    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
-    sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
-    notification: NOTIFY_OPT = False,
-    no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
-    no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False,
-    no_convert: DO_NOT_CONVERT_SRT_OPT = False,
-    audio_only: AUDIO_OPT = False,
+    files: FileConfig = Depends(FileConfig),
+    bins: BinaryPaths = Depends(BinaryPaths),
+    dl_opts: DownloadOptions = Depends(DownloadOptions),
+    pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
 ):
-    raise_ffmpeg(ffmpeg_path)
-    raise_mkvpropedit(mkvpropedit_path)
-    raise_mkvmerge(mkvmerge_path)
-    raise_cookie(cookie)
+    raise_ffmpeg(bins.ffmpeg_path)
+    raise_mkvpropedit(bins.mkvpropedit_path)
+    raise_mkvmerge(bins.mkvmerge_path)
+    raise_cookie(files.cookie)
 
-    fix_reso: available_res = resolution  # type: ignore
+    fix_reso: available_res = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
-        cookie=cookie,
-        history=history_file,
+        cookie=files.cookie,
+        history=files.history_file,
         watchlist=watchlist_file,
         resolution=fix_reso,
-        is_avc=is_avc,
+        is_avc=dl_opts.is_avc,
         download_pv=False,
-        ffmpeg_path=ffmpeg_path,
-        mkvpropedit_path=mkvpropedit_path,
-        mkvmerge_path=mkvmerge_path,
-        notification=notification,
-        srt=srtonly,
-        dont_rescale=no_rescale,
-        dont_convert=no_convert,
-        subtitle_lang=sub_lang,  # type: ignore
-        dont_thumbnail=no_thumbnail,
-        only_audio=audio_only,
+        ffmpeg_path=bins.ffmpeg_path,
+        mkvpropedit_path=bins.mkvpropedit_path,
+        mkvmerge_path=bins.mkvmerge_path,
+        notification=pp_opts.notification,
+        srt=dl_opts.srtonly,
+        dont_rescale=pp_opts.no_rescale,
+        dont_convert=pp_opts.no_convert,
+        subtitle_lang=pp_opts.sub_lang,  # type: ignore
+        dont_thumbnail=pp_opts.no_thumbnail,
+        only_audio=pp_opts.audio_only,
     )
     if not as_playlist:
-        bili.process_watchlist(forced=forced)
+        bili.process_watchlist(forced=dl_opts.forced)
     else:
         wl = Watchlist(watchlist_file)
         for sid, title in wl.list:
