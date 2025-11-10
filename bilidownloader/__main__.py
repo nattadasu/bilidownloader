@@ -86,6 +86,7 @@ def resolution_autocomplete():
 
 FFMPEG_PATH = find_command("ffmpeg")
 MKVPROPEX_PATH = find_command("mkvpropedit")
+MKVMERGE_PATH = find_command("mkvmerge")
 
 
 def raise_ffmpeg(path: Optional[Path]):
@@ -96,6 +97,11 @@ def raise_ffmpeg(path: Optional[Path]):
 def raise_mkvpropedit(path: Optional[Path]):
     if path is None:
         raise FileNotFoundError("mkvpropedit binary couldn't be found!")
+
+
+def raise_mkvmerge(path: Optional[Path]):
+    if path is None:
+        raise FileNotFoundError("mkvmerge binary couldn't be found!")
 
 
 ass_status = check_package("ass")
@@ -290,6 +296,16 @@ MKVPROPEX_OPT = Annotated[
     ),
 ]
 """Path to mkvpropedit binary"""
+MKVMERGE_OPT = Annotated[
+    Optional[Path],
+    typer.Option(
+        "--mkvmerge-path",
+        "--mkvmerge",
+        help="Specify the path to the mkvmerge binary or its containing directory",
+        rich_help_panel="Binaries",
+    ),
+]
+"""Path to mkvmerge binary"""
 SHOWURL_OPT = Annotated[
     bool,
     typer.Option(
@@ -361,6 +377,7 @@ def download_url(
     forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
@@ -372,6 +389,7 @@ def download_url(
 
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
+    raise_mkvmerge(mkvmerge_path)
 
     matches = re.search(bili_format, url)
     fix_reso: available_res = resolution  # type: ignore
@@ -383,6 +401,7 @@ def download_url(
         download_pv=download_pv,
         ffmpeg_path=ffmpeg_path,
         mkvpropedit_path=mkvpropedit_path,
+        mkvmerge_path=mkvmerge_path,
         notification=notification,
         srt=srtonly,
         dont_thumbnail=no_thumbnail,
@@ -415,6 +434,7 @@ def _cards_selector(
     download_pv: bool = False,
     ffmpeg_path: Optional[Path] = FFMPEG_PATH,
     mkvpropedit_path: Optional[Path] = MKVPROPEX_PATH,
+    mkvmerge_path: Optional[Path] = MKVMERGE_PATH,
     notification: bool = False,
     srtonly: bool = False,
     no_rescale: bool = False,
@@ -425,6 +445,7 @@ def _cards_selector(
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
+    raise_mkvmerge(mkvmerge_path)
 
     choices = [
         f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
@@ -452,6 +473,7 @@ def _cards_selector(
         download_pv=download_pv,
         ffmpeg_path=ffmpeg_path,
         mkvpropedit_path=mkvpropedit_path,
+        mkvmerge_path=mkvmerge_path,
         notification=notification,
         srtonly=srtonly,
         no_rescale=no_rescale,
@@ -494,6 +516,7 @@ def download_today_releases(
     forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
@@ -502,6 +525,7 @@ def download_today_releases(
     audio_only: AUDIO_OPT = False,
 ):
     raise_ffmpeg(ffmpeg_path)
+    raise_mkvmerge(mkvmerge_path)
 
     api = BiliApi().get_today_schedule()
     released = [anime for anime in api if anime.is_available]
@@ -517,6 +541,7 @@ def download_today_releases(
             download_pv=download_pv,
             ffmpeg_path=ffmpeg_path,
             mkvpropedit_path=mkvpropedit_path,
+            mkvmerge_path=mkvmerge_path,
             notification=notification,
             srtonly=srtonly,
             no_rescale=no_rescale,
@@ -551,6 +576,7 @@ def download_all_releases(
     forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
@@ -560,6 +586,7 @@ def download_all_releases(
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
+    raise_mkvmerge(mkvmerge_path)
 
     api = BiliApi().get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
@@ -576,6 +603,7 @@ def download_all_releases(
             download_pv=download_pv,
             ffmpeg_path=ffmpeg_path,
             mkvpropedit_path=mkvpropedit_path,
+            mkvmerge_path=mkvmerge_path,
             notification=notification,
             srtonly=srtonly,
             no_rescale=no_rescale,
@@ -820,6 +848,7 @@ def watchlist_download(
     forced: FORCED_OPT = False,
     ffmpeg_path: FFMPEG_OPT = FFMPEG_PATH,
     mkvpropedit_path: MKVPROPEX_OPT = MKVPROPEX_PATH,
+    mkvmerge_path: MKVMERGE_OPT = MKVMERGE_PATH,
     sub_lang: SUBLANG_OPT = SubtitleLanguage.en,
     notification: NOTIFY_OPT = False,
     no_rescale: DO_NOT_RESCALE_SSA_OPT = False,
@@ -829,6 +858,7 @@ def watchlist_download(
 ):
     raise_ffmpeg(ffmpeg_path)
     raise_mkvpropedit(mkvpropedit_path)
+    raise_mkvmerge(mkvmerge_path)
 
     fix_reso: available_res = resolution  # type: ignore
     bili = BiliProcess(
@@ -840,6 +870,7 @@ def watchlist_download(
         download_pv=False,
         ffmpeg_path=ffmpeg_path,
         mkvpropedit_path=mkvpropedit_path,
+        mkvmerge_path=mkvmerge_path,
         notification=notification,
         srt=srtonly,
         dont_rescale=no_rescale,

@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 from enum import Enum
 from importlib.util import find_spec
 from pathlib import Path
@@ -97,21 +98,8 @@ def find_command(executable: str) -> Optional[Path]:
     Returns:
         Optional[Path]: the path to the executable, or None if not found
     """
-    system = psys()
-    command = "where" if system == "Windows" else "which"
-
-    try:
-        # Run the command and capture the output
-        result = run([command, executable], check=True, stdout=PIPE, stderr=PIPE)
-        # Decode the output to get the path
-        exe_path = result.stdout.decode().strip()
-
-        if os.path.isfile(exe_path):
-            return Path(exe_path)
-        else:
-            return None
-    except CalledProcessError:
-        return None
+    path = shutil.which(executable)
+    return Path(path) if path else None
 
 
 def check_package(pkg_name: str) -> bool:

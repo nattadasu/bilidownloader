@@ -77,6 +77,7 @@ class BiliProcess:
         download_pv: bool = False,
         ffmpeg_path: Optional[Path] = None,
         mkvpropedit_path: Optional[Path] = None,
+        mkvmerge_path: Optional[Path] = None,
         notification: bool = False,
         srt: bool = False,
         dont_thumbnail: bool = False,
@@ -96,6 +97,7 @@ class BiliProcess:
             download_pv (bool, optional): Download PV. Defaults to False.
             ffmpeg_path (Optional[Path], optional): Path to ffmpeg. Defaults to None.
             mkvpropedit_path (Optional[Path], optional): Path to mkvpropedit. Defaults to None.
+            mkvmerge_path (Optional[Path], optional): Path to mkvmerge. Defaults to None.
             notification (bool, optional): Enable notification. Defaults to False.
             srt (bool, optional): Use SRT subtitles. Defaults to False.
             dont_thumbnail (bool, optional): Disable thumbnail download. Defaults to False.
@@ -112,6 +114,7 @@ class BiliProcess:
         self.download_pv = download_pv
         self.ffmpeg_path = ffmpeg_path
         self.mkvpropedit_path = mkvpropedit_path
+        self.mkvmerge_path = mkvmerge_path
         self.notification = notification
         self.srt = srt
         self.dont_thumbnail = dont_thumbnail
@@ -571,7 +574,7 @@ class BiliProcess:
 
         prn_info(f"Setting default subtitle to '{flang}' for {video_path.name}")
         # get the subtitle track number from the video file using mkvmerge as json
-        mkvmerge = find_command("mkvmerge")
+        mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
         if not mkvmerge:
             return fail(
                 "mkvmerge is not found in the system, try to install it first or check the path"
@@ -875,6 +878,8 @@ class BiliProcess:
             del ydl_opts["writesubtitles"]
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
+        if self.mkvmerge_path:
+            ydl_opts["mkvmerge_path"] = str(self.mkvmerge_path)
         with YDL(ydl_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
