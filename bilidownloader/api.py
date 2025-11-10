@@ -6,7 +6,7 @@ import requests as req
 
 from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api_model import BiliFavoriteResponse, BiliTvResponse, CardItem
-from bilidownloader.common import WEB_API_URL
+from bilidownloader.constants import WEB_API_URL
 
 
 class BiliApi:

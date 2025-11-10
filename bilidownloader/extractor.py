@@ -18,52 +18,36 @@ from yt_dlp import YoutubeDL as YDL
 
 from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api import BiliApi, BiliHtml
-from bilidownloader.common import (
+from bilidownloader.constants import (
     DEFAULT_COOKIES,
     DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
     REINSTALL_ARGS,
+    available_res,
+)
+from bilidownloader.filesystem import find_command
+from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
+from bilidownloader.history import History
+from bilidownloader.ui import prn_done, prn_error, prn_info, push_notification
+from bilidownloader.utils import (
     BenchClock,
     Chapter,
     DataExistError,
-    available_res,
     check_package,
-    find_command,
     format_human_time,
     format_mkvmerge_time,
+    int_to_abc,
     langcode_to_str,
     pluralize,
-    prn_done,
-    prn_error,
-    prn_info,
-    push_notification,
     sanitize_filename,
 )
-from bilidownloader.common import (
+from bilidownloader.utils import (
     SubtitleLanguage as SubLang,
 )
-from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
-from bilidownloader.history import History
 from bilidownloader.watchlist import Watchlist
 
 ua = UserAgent()
 uagent = ua.chrome
-
-
-def int_to_abc(number: int) -> str:
-    """
-    Convert integer to capital alphabet
-
-    Args:
-        number (int): Number to convert
-
-    Returns:
-        str: Alphabet
-    """
-    # if over 26, use base26 in A-Z:
-    if number > 26:
-        return int_to_abc((number - 1) // 26) + chr((number - 1) % 26 + ord("A"))
-    return chr(number + ord("A") - 1)
 
 
 class BiliProcess:

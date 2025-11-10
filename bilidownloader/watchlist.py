@@ -3,13 +3,9 @@ from typing import List, Literal, Optional, Tuple, Union
 
 from bilidownloader.alias import SERIES_ALIASES
 from bilidownloader.api import BiliApi
-from bilidownloader.common import (
-    DEFAULT_WATCHLIST,
-    DataExistError,
-    prn_done,
-    prn_error,
-    prn_info,
-)
+from bilidownloader.constants import DEFAULT_WATCHLIST
+from bilidownloader.ui import prn_done, prn_error, prn_info
+from bilidownloader.utils import DataExistError
 
 # Constants
 HEAD = "ID\tTitle"

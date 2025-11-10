@@ -10,14 +10,9 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.common import (
-    DEFAULT_HISTORY,
-    DataExistError,
-    prn_done,
-    prn_error,
-    prn_info,
-)
+from bilidownloader.constants import DEFAULT_HISTORY
+from bilidownloader.ui import prn_done, prn_info
+from bilidownloader.utils import DataExistError
 
 # Constants for TSV format
 HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"

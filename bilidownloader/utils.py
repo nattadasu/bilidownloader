@@ -1,52 +1,13 @@
 import re
-import shutil
 from enum import Enum
 from importlib.util import find_spec
-from pathlib import Path
 from time import time
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
-import platformdirs
 from langcodes import Language as Lang
-from notifypy import Notify
 from pydantic import BaseModel
-from survey import printers
 
-WEB_API_URL = "https://api.bilibili.tv/intl/gateway/web/v2"
-BASE_DIR = Path(platformdirs.user_data_dir("bilidownloader"))
-BASE_DIR.mkdir(parents=True, exist_ok=True)
-DEFAULT_COOKIES = BASE_DIR / "cookies.txt"
-DEFAULT_HISTORY = BASE_DIR / "history.v2.tsv"
-DEFAULT_WATCHLIST = BASE_DIR / "watchlist.txt"
-
-
-def _migrate_config():
-    old_base_dir = Path("~/Bilibili").expanduser().resolve()
-    if old_base_dir.exists():
-        prn_info(f"Migrating config from {old_base_dir} to {BASE_DIR}")
-        for file in ["cookies.txt", "history.v2.tsv", "watchlist.txt"]:
-            old_file = old_base_dir / file
-            if old_file.exists():
-                prn_info(f"Moving {file}...")
-                shutil.move(str(old_file), str(BASE_DIR))
-        old_fonts_dir = old_base_dir / "fonts"
-        if old_fonts_dir.exists():
-            prn_info("Moving fonts directory...")
-            new_fonts_dir = BASE_DIR / "fonts"
-            new_fonts_dir.mkdir(exist_ok=True)
-            for font_file in old_fonts_dir.iterdir():
-                shutil.move(str(font_file), str(new_fonts_dir))
-            if not any(old_fonts_dir.iterdir()):
-                old_fonts_dir.rmdir()
-        if not any(old_base_dir.iterdir()):
-            prn_info("Removing old config directory")
-            old_base_dir.rmdir()
-
-
-_migrate_config()
-
-
-ins_notify = Notify()
+from bilidownloader.ui import prn_done
 
 
 class DataExistError(Exception):
@@ -90,18 +51,6 @@ def sanitize_filename(filename: str, replacement: str = "_") -> str:
     return sanitized_filename
 
 
-available_res = Union[
-    Literal[144],
-    Literal[240],
-    Literal[360],
-    Literal[480],
-    Literal[720],
-    Literal[1080],
-    Literal[2160],
-]
-"""Available resolutions on Bstation, 4K was skipped"""
-
-
 class SubtitleLanguage(str, Enum):
     en = "en"
     id = "id"
@@ -110,20 +59,6 @@ class SubtitleLanguage(str, Enum):
     vi = "vi"
     zh_Hans = "zh-Hans"
     zh_Hant = "zh-Hant"
-
-
-def find_command(executable: str) -> Optional[Path]:
-    """
-    Find the path to an executable in the system.
-
-    Args:
-        executable (str): the name of the executable to find
-
-    Returns:
-        Optional[Path]: the path to the executable, or None if not found
-    """
-    path = shutil.which(executable)
-    return Path(path) if path else None
 
 
 def check_package(pkg_name: str) -> bool:
@@ -137,97 +72,6 @@ def check_package(pkg_name: str) -> bool:
         bool: True if the package is installed, False otherwise
     """
     return find_spec(pkg_name) is not None
-
-
-def prn_info(message: str) -> None:
-    """
-    Prints an informational message to the console.
-
-    Args:
-        message (str): the informational message
-
-    Returns:
-        None
-
-    Note:
-        If the program is running headless, the message will be printed
-        using the built-in print function as a fallback. The default behavior
-        may raises fatal error if the program is running on a headless
-        environment.
-    """
-    try:
-        printers.info(message)
-    except Exception as _:
-        print(f"!> {message}")
-
-
-def prn_done(message: str) -> None:
-    """
-    Prints a success message to the console.
-
-    Args:
-        message (str): the success message
-
-    Returns:
-        None
-
-    Note:
-        If the program is running headless, the message will be printed
-        using the built-in print function as a fallback. The default behavior
-        may raises fatal error if the program is running on a headless
-    """
-    try:
-        printers.done(message)
-    except Exception as _:
-        print(f"O> {message}")
-
-
-def prn_error(message: str) -> None:
-    """
-    Prints an error message to the console.
-
-    Args:
-        message (str): the error message
-
-    Returns:
-        None
-
-    Note:
-        If the program is running headless, the message will be printed
-        using the built-in print function as a fallback. The default behavior
-        may raises fatal error if the program is running on a headless
-        environment.
-    """
-    try:
-        printers.fail(message)
-    except Exception as _:
-        print(f"X> {message}")
-
-
-def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
-    """
-    Send native notification for Windows, Linux, and macOS, exclusively used
-    for episode download.
-
-    Args:
-        title (str): the title of the episode
-        index (str): the episode index
-        path (Optional[Path], optional): the path to the downloaded file
-
-    Returns:
-        None
-    """
-    ins_notify.application_name = "BiliDownloader"
-    if path:
-        ins_notify.title = f"{title}, {index} downloaded"
-        ins_notify.message = f"File is saved on {path.resolve()}"
-    else:
-        ins_notify.title = f"Downloading {title}, {index}"
-        ins_notify.message = "We will notify you when it's done"
-    try:
-        ins_notify.send(block=False)
-    except Exception as _:
-        ...
 
 
 def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> str:
@@ -373,4 +217,17 @@ def langcode_to_str(langcode: str) -> str:
     return f"{english} ({native})"
 
 
-REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git"'
+def int_to_abc(number: int) -> str:
+    """
+    Convert integer to capital alphabet
+
+    Args:
+        number (int): Number to convert
+
+    Returns:
+        str: Alphabet
+    """
+    # if over 26, use base26 in A-Z:
+    if number > 26:
+        return int_to_abc((number - 1) // 26) + chr((number - 1) % 26 + ord("A"))
+    return chr(number + ord("A") - 1)
