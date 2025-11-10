@@ -39,6 +39,7 @@ class VideoDownloader:
         dont_convert: bool = False,
         subtitle_lang: str = "en",
         only_audio: bool = False,
+        output_dir: Optional[Path] = None,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -52,6 +53,7 @@ class VideoDownloader:
         self.dont_convert = dont_convert
         self.subtitle_lang = subtitle_lang
         self.only_audio = only_audio
+        self.output_dir = output_dir or Path.cwd()
 
     def get_video_info(self, episode_url: str) -> Union[Any, Dict[str, Any], None]:
         """Get video information from yt-dlp"""
@@ -141,8 +143,11 @@ class VideoDownloader:
             "merge_output_format": "mkv",
             "final_ext": "mkv",
             "outtmpl": {
-                "default": "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, %(vcodec)s].%(ext)s".format(
-                    inp=title
+                "default": str(
+                    self.output_dir
+                    / "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, %(vcodec)s].%(ext)s".format(
+                        inp=title
+                    )
                 )
             },
             "postprocessors": [],

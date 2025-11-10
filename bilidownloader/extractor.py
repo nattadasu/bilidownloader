@@ -51,6 +51,7 @@ class BiliProcess:
         dont_convert: bool = False,
         subtitle_lang: SubLang = SubLang.en,
         only_audio: bool = False,
+        output_dir: Optional[Path] = None,
     ) -> None:
         """Initialize BiliProcess with component-based architecture"""
         self.watchlist = watchlist
@@ -91,6 +92,7 @@ class BiliProcess:
             dont_convert=dont_convert,
             subtitle_lang=subtitle_lang.value,
             only_audio=only_audio,
+            output_dir=output_dir,
         )
         self.chapter_processor = ChapterProcessor(
             mkvpropedit_path=mkvpropedit_path,

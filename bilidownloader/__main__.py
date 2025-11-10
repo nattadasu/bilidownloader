@@ -385,6 +385,17 @@ class FileConfig:
 
     cookie: COOKIE_OPT = DEFAULT_COOKIES
     history_file: HISTORY_OPT = DEFAULT_HISTORY
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output-dir",
+            "--output",
+            "-o",
+            help="Directory to save downloaded videos",
+            rich_help_panel="Data Management",
+            resolve_path=True,
+        ),
+    ] = Path.cwd()
 
 
 @dataclass
@@ -457,6 +468,7 @@ def download_url(
         dont_convert=pp_opts.no_convert,
         subtitle_lang=pp_opts.sub_lang,  # type: ignore
         only_audio=pp_opts.audio_only,
+        output_dir=files.output_dir,
     )
     if matches:
         if not dl_opts.forced:
@@ -849,6 +861,7 @@ def watchlist_download(
         subtitle_lang=pp_opts.sub_lang,  # type: ignore
         dont_thumbnail=pp_opts.no_thumbnail,
         only_audio=pp_opts.audio_only,
+        output_dir=files.output_dir,
     )
     if not as_playlist:
         bili.process_watchlist(forced=dl_opts.forced)
