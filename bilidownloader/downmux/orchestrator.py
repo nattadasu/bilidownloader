@@ -3,33 +3,32 @@ from pathlib import Path
 from re import search as rsearch
 from typing import List, Optional, Union
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.api import BiliApi
-from bilidownloader.chapter_processor import ChapterProcessor
-from bilidownloader.constants import (
-    DEFAULT_WATCHLIST,
-    REINSTALL_ARGS,
-)
-from bilidownloader.fontmanager import initialize_fonts, loop_font_lookup
-from bilidownloader.history import History
-from bilidownloader.metadata_editor import MetadataEditor
-from bilidownloader.ui import prn_error, prn_info, push_notification
-from bilidownloader.utils import (
-    BenchClock,
-    DataExistError,
-    check_package,
-    pluralize,
-)
-from bilidownloader.video_downloader import VideoDownloader
-from bilidownloader.watchlist import Watchlist
-
-
+from bilidownloader.apis.api import BiliApi
 from bilidownloader.cli.options import (
     BinaryPaths,
     DownloadOptions,
     FileConfig,
     PostProcessingOptions,
 )
+from bilidownloader.commons.alias import SERIES_ALIASES
+from bilidownloader.commons.constants import (
+    DEFAULT_WATCHLIST,
+    REINSTALL_ARGS,
+)
+from bilidownloader.commons.ui import prn_error, prn_info, push_notification
+from bilidownloader.commons.utils import (
+    BenchClock,
+    DataExistError,
+    SubtitleLanguage,
+    check_package,
+    pluralize,
+)
+from bilidownloader.downmux.chapter_processor import ChapterProcessor
+from bilidownloader.downmux.fontmanager import initialize_fonts, loop_font_lookup
+from bilidownloader.downmux.metadata_editor import MetadataEditor
+from bilidownloader.downmux.ytdlp import VideoDownloader
+from bilidownloader.history.history import History
+from bilidownloader.watchlist.watchlist import Watchlist
 
 
 class BiliProcess:
@@ -51,7 +50,7 @@ class BiliProcess:
         self.srt = download_options.srtonly
         self.dont_thumbnail = post_processing_options.no_thumbnail
         self.dont_convert = post_processing_options.no_convert
-        self.subtitle_lang = post_processing_options.sub_lang.value
+        self.subtitle_lang = post_processing_options.sub_lang
         self.only_audio = post_processing_options.audio_only
 
         if not self.srt and self.srt == check_package("ass"):
@@ -80,10 +79,16 @@ class BiliProcess:
             srt=download_options.srtonly,
             dont_rescale=post_processing_options.no_rescale,
             dont_convert=post_processing_options.no_convert,
-            subtitle_lang=post_processing_options.sub_lang.value,
+            subtitle_lang=post_processing_options.sub_lang or SubtitleLanguage.en,
             only_audio=post_processing_options.audio_only,
             output_dir=file_config.output_dir,
         )
+        if binary_paths.ffmpeg_path is None:
+            raise ValueError("ffmpeg path is not set properly")
+        if binary_paths.mkvpropedit_path is None:
+            raise ValueError("mkvpropedit path is not set properly")
+        if binary_paths.mkvmerge_path is None:
+            raise ValueError("mkvmerge path is not set properly")
         self.chapter_processor = ChapterProcessor(
             mkvpropedit_path=binary_paths.mkvpropedit_path,
             ffmpeg_path=binary_paths.ffmpeg_path,

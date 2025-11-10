@@ -2,8 +2,8 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-from bilidownloader.constants import BASE_DIR
-from bilidownloader.ui import prn_info
+from bilidownloader.commons.constants import BASE_DIR
+from bilidownloader.commons.ui import prn_info
 
 
 def find_command(executable: str) -> Optional[Path]:

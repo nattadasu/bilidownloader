@@ -1,6 +1,6 @@
 from typer_di import TyperDI
 
-from bilidownloader.metadata import __DESCRIPTION__, __VERSION__
+from bilidownloader.commons.metadata import __DESCRIPTION__, __VERSION__
 
 app = TyperDI(
     pretty_exceptions_show_locals=False,

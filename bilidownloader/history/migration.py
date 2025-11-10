@@ -9,8 +9,14 @@ from re import sub as rsub
 from time import sleep
 from typing import Dict, List
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.ui import prn_done, prn_error, prn_info
+from bilidownloader.cli.options import (
+    BinaryPaths,
+    DownloadOptions,
+    FileConfig,
+    PostProcessingOptions,
+)
+from bilidownloader.commons.alias import SERIES_ALIASES
+from bilidownloader.commons.ui import prn_done, prn_error, prn_info
 
 # Constants for TSV format
 HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"
@@ -71,10 +77,14 @@ class HistoryMigrator:
         prn_info("Fetching metadata from yt-dlp (this may take a while)...")
 
         try:
-            from bilidownloader.constants import DEFAULT_COOKIES
-            from bilidownloader.orchestrator import BiliProcess
+            from bilidownloader.downmux.orchestrator import BiliProcess
 
-            extractor = BiliProcess(cookie=DEFAULT_COOKIES)
+            extractor = BiliProcess(
+                file_config=FileConfig(),
+                download_options=DownloadOptions(),
+                post_processing_options=PostProcessingOptions(),
+                binary_paths=BinaryPaths(),
+            )
             use_ytdlp = True
         except Exception:
             use_ytdlp = False
@@ -144,7 +154,7 @@ class HistoryMigrator:
         series_title = info.get("series", None)
         if not series_title or series_title == "":
             try:
-                from bilidownloader.api import BiliHtml
+                from bilidownloader.apis.api import BiliHtml
 
                 html = BiliHtml(cookie_path=extractor.cookie, user_agent="Mozilla/5.0")
                 resp = html.get(url)
@@ -166,6 +176,8 @@ class HistoryMigrator:
                     series_title = rsub(r"^E\d+\s*-\s*", "", episode_title).strip()
                 else:
                     series_title = info.get("series", "Series Unknown")
+        if not series_title or series_title == "":
+            series_title = "Series Unknown"
         return series_title
 
     def _handle_extraction_error(

@@ -2,6 +2,7 @@ import re
 
 from typer_di import Depends
 
+from bilidownloader.cli.application import app
 from bilidownloader.cli.callbacks import (
     raise_cookie,
     raise_ffmpeg,
@@ -9,18 +10,16 @@ from bilidownloader.cli.callbacks import (
     raise_mkvpropedit,
 )
 from bilidownloader.cli.options import (
+    URL_ARG,
     BinaryPaths,
     DownloadOptions,
     FileConfig,
     PostProcessingOptions,
-    URL_ARG,
     bili_format,
 )
-from bilidownloader.orchestrator import BiliProcess
-from bilidownloader.history import History
-from bilidownloader.ui import prn_info
-
-from bilidownloader.cli.application import app
+from bilidownloader.commons.ui import prn_info
+from bilidownloader.downmux.orchestrator import BiliProcess
+from bilidownloader.history.history import History
 
 
 @app.command(

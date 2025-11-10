@@ -12,11 +12,16 @@ from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 from fake_useragent import UserAgent
 from yt_dlp import YoutubeDL as YDL
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.api import BiliHtml
-from bilidownloader.constants import REINSTALL_ARGS
-from bilidownloader.ui import prn_error, prn_info, push_notification
-from bilidownloader.utils import Chapter, check_package, sanitize_filename
+from bilidownloader.apis.api import BiliHtml
+from bilidownloader.commons.alias import SERIES_ALIASES
+from bilidownloader.commons.constants import REINSTALL_ARGS
+from bilidownloader.commons.ui import prn_error, prn_info, push_notification
+from bilidownloader.commons.utils import (
+    Chapter,
+    SubtitleLanguage,
+    check_package,
+    sanitize_filename,
+)
 
 ua = UserAgent()
 uagent = ua.chrome
@@ -37,7 +42,7 @@ class VideoDownloader:
         srt: bool = False,
         dont_rescale: bool = False,
         dont_convert: bool = False,
-        subtitle_lang: str = "en",
+        subtitle_lang: SubtitleLanguage = SubtitleLanguage.en,
         only_audio: bool = False,
         output_dir: Optional[Path] = None,
     ):
@@ -222,7 +227,7 @@ class VideoDownloader:
             prn_info(
                 f'Downloading "{title}" {ep_num} at {self.resolution}P using codec {codec.upper()}'
             )
-            ydl.params["outtmpl"]["default"] = (
+            ydl.params["outtmpl"]["default"] = (  # type: ignore
                 "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
                     inp=title,
                     ep=ep_num,

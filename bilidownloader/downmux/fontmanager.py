@@ -9,8 +9,8 @@ from json import loads as jloads
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, TypedDict
 
-from bilidownloader.constants import BASE_DIR
-from bilidownloader.ui import prn_error, prn_info
+from bilidownloader.commons.constants import BASE_DIR
+from bilidownloader.commons.ui import prn_error, prn_info
 
 
 class FontInfo(TypedDict):

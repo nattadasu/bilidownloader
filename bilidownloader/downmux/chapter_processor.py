@@ -9,9 +9,9 @@ from typing import List, Tuple
 from rich.console import Console
 from rich.table import Column, Table, box
 
-from bilidownloader.filesystem import find_command
-from bilidownloader.ui import prn_done, prn_error, prn_info
-from bilidownloader.utils import (
+from bilidownloader.commons.filesystem import find_command
+from bilidownloader.commons.ui import prn_done, prn_error, prn_info
+from bilidownloader.commons.utils import (
     Chapter,
     format_human_time,
     format_mkvmerge_time,

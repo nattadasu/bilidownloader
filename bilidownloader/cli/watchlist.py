@@ -10,7 +10,8 @@ from rich.console import Console
 from rich.table import Column, Table
 from typer_di import Depends
 
-from bilidownloader.api import BiliApi, BiliHtml
+from bilidownloader.apis.api import BiliApi, BiliHtml
+from bilidownloader.cli.application import wl_app
 from bilidownloader.cli.callbacks import (
     raise_cookie,
     raise_ffmpeg,
@@ -20,21 +21,19 @@ from bilidownloader.cli.callbacks import (
 from bilidownloader.cli.options import (
     ASPLAYLIST_OPT,
     ASSUMEYES_OPT,
+    OPTCOOKIE_OPT,
+    SHOWURL_OPT,
+    WATCHLIST_OPT,
     BinaryPaths,
     DownloadOptions,
     FileConfig,
-    OPTCOOKIE_OPT,
     PostProcessingOptions,
-    SHOWURL_OPT,
-    WATCHLIST_OPT,
     bili_format,
 )
-from bilidownloader.constants import DEFAULT_WATCHLIST
-from bilidownloader.orchestrator import BiliProcess
-from bilidownloader.ui import prn_error, prn_info
-from bilidownloader.watchlist import Watchlist
-
-from bilidownloader.cli.application import wl_app
+from bilidownloader.commons.constants import DEFAULT_WATCHLIST
+from bilidownloader.commons.ui import prn_error, prn_info
+from bilidownloader.downmux.orchestrator import BiliProcess
+from bilidownloader.watchlist.watchlist import Watchlist
 
 console = Console()
 
@@ -153,7 +152,7 @@ def watchlist_add(
         sid = filt[i][0]
         title = filt[i][1]
         if cookies and not assume_yes:
-            confirm = survey.routines.inquire(  # type: ignore
+            confirm: bool = survey.routines.inquire(  # type: ignore
                 f"Do you want to add {title} ({sid}) to watchlist? ", default=False
             )
         elif cookies and assume_yes:
@@ -226,7 +225,7 @@ def watchlist_delete(
 
     for sid in ids:
         if cookies and not assume_yes:
-            confirm = survey.routines.inquire(  # type: ignore
+            confirm: bool = survey.routines.inquire(  # type: ignore
                 f"Do you want to delete {sid} from watchlist? ", default=False
             )
         elif cookies and assume_yes:

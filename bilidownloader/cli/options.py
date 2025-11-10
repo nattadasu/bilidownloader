@@ -11,9 +11,9 @@ from bilidownloader.cli.callbacks import (
     resolution_autocomplete,
     resolution_callback,
 )
-from bilidownloader.constants import DEFAULT_COOKIES, DEFAULT_HISTORY
-from bilidownloader.filesystem import find_command
-from bilidownloader.utils import SubtitleLanguage, check_package
+from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_HISTORY
+from bilidownloader.commons.filesystem import find_command
+from bilidownloader.commons.utils import SubtitleLanguage, check_package
 
 bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
 resos = [144, 240, 360, 480, 720, 1080, 2160]

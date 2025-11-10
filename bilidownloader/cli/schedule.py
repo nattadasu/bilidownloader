@@ -8,11 +8,10 @@ from rich import print as rprint
 from rich.console import Console
 from rich.table import Column, Table
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.api import BiliApi
-from bilidownloader.cli.options import SHOWURL_OPT
-
+from bilidownloader.apis.api import BiliApi
 from bilidownloader.cli.application import app
+from bilidownloader.cli.options import SHOWURL_OPT
+from bilidownloader.commons.alias import SERIES_ALIASES
 
 console = Console()
 

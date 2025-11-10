@@ -5,8 +5,8 @@ import bilidownloader.cli.download  # noqa
 import bilidownloader.cli.schedule  # noqa
 import bilidownloader.cli.today  # noqa
 from bilidownloader.cli.application import app, hi_app, wl_app
-from bilidownloader.metadata import __VERSION__
-from bilidownloader.updater import check_for_updates
+from bilidownloader.commons.metadata import __VERSION__
+from bilidownloader.commons.updater import check_for_updates
 
 console = Console()
 

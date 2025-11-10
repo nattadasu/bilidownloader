@@ -5,19 +5,19 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
 
-from bilidownloader.constants import DEFAULT_HISTORY
-from bilidownloader.history_migrator import HistoryMigrator
-from bilidownloader.history_repository import HistoryRepository
-from bilidownloader.ui import prn_done, prn_info
-from bilidownloader.utils import DataExistError
+from bilidownloader.commons.constants import DEFAULT_HISTORY
+from bilidownloader.commons.ui import prn_done, prn_info
+from bilidownloader.commons.utils import DataExistError
+from bilidownloader.history.migration import HistoryMigrator
+from bilidownloader.history.repository import HistoryRepository
 
 
 class History:
     """Main interface for history management"""
 
     def __init__(self, path: Path = DEFAULT_HISTORY):
-        self.repository = HistoryRepository(path)
-        self.repository.ensure_file_exists()
+        self.repo = HistoryRepository(path)
+        self.repo.ensure_file_exists()
 
         # Check for old history.txt file and migrate if needed
         old_path = path.parent / "history.txt"
@@ -25,12 +25,12 @@ class History:
             prn_info(
                 f"Found old history file at {old_path}, will migrate to new format"
             )
-            self.repository.path = old_path
-            migrator = HistoryMigrator(self.repository)
+            self.repo.path = old_path
+            migrator = HistoryMigrator(self.repo)
             migrator.migrate_if_needed()
-            self.repository.path = path
+            self.repo.path = path
         else:
-            migrator = HistoryMigrator(self.repository)
+            migrator = HistoryMigrator(self.repo)
             migrator.migrate_if_needed()
 
         self.read_history()
@@ -38,21 +38,21 @@ class History:
     @property
     def path(self) -> Path:
         """Get the path to the history file"""
-        return self.repository.path
+        return self.repo.path
 
     @path.setter
     def path(self, value: Path) -> None:
         """Set the path to the history file"""
-        self.repository.path = value
+        self.repo.path = value
 
     @property
     def list(self) -> List[Tuple[int, str, str, str, str]]:
         """Get the history list"""
-        return self.repository.list
+        return self.repo.list
 
     def read_history(self) -> List[Tuple[int, str, str, str, str]]:
         """Read the history from the file"""
-        return self.repository.read()
+        return self.repo.read()
 
     def check_history(self, episode_url: str) -> List[Tuple[int, str, str, str, str]]:
         """
@@ -76,7 +76,7 @@ class History:
         series_id = match.group(1)
         episode_id = match.group(2)
 
-        if self.repository.check_exists(series_id, episode_id):
+        if self.repo.check_exists(series_id, episode_id):
             raise DataExistError("Episode was ripped previously")
 
         return self.list
@@ -116,7 +116,10 @@ class History:
         if not episode_id:
             episode_id = match.group(2)
 
-        if self.repository.check_exists(series_id, episode_id):
+        if not series_id or not episode_id:
+            raise ValueError("Series ID and Episode ID must be provided or extractable")
+
+        if self.repo.check_exists(series_id, episode_id):
             raise DataExistError("Episode already exists in history")
 
         if not series_title:
@@ -125,7 +128,7 @@ class History:
         if not episode_idx:
             episode_idx = ""
 
-        self.repository.add_entry(series_id, series_title, episode_id, episode_idx)
+        self.repo.add_entry(series_id, series_title, episode_id, episode_idx)
         return self.list
 
     def search_history(
@@ -206,7 +209,7 @@ class History:
             prn_info("Interactive deletion not fully implemented, showing matches only")
             return self.list
 
-        removed_count = self.repository.remove_entries(matches)
+        removed_count = self.repo.remove_entries(matches)
         prn_done(f"Removed {removed_count} entries from history")
         return self.list
 
@@ -232,7 +235,7 @@ class History:
             prn_info("No history entries found for the specified episode ID(s)")
             return self.list
 
-        removed_count = self.repository.remove_entries(matches)
+        removed_count = self.repo.remove_entries(matches)
         prn_done(f"Removed {removed_count} entries from history")
         return self.list
 
@@ -266,7 +269,7 @@ class History:
                 )
 
         to_remove = [entry for entry in self.list if entry[0] < threshold]
-        removed_count = self.repository.remove_entries(to_remove)
+        removed_count = self.repo.remove_entries(to_remove)
 
         if removed_count > 0:
             prn_done(f"Removed {removed_count} entries older than {date_desc}")
@@ -288,8 +291,8 @@ class History:
         if confirm:
             prn_info("Clearing all history")
 
-        self.repository.list = []
-        self.repository._create_empty_file_with_header()
+        self.repo.list = []
+        self.repo._create_empty_file_with_header()
 
         if confirm:
             prn_done("History cleared successfully")

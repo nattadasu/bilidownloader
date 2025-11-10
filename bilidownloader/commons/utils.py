@@ -7,7 +7,7 @@ from typing import Optional, Union
 from langcodes import Language as Lang
 from pydantic import BaseModel
 
-from bilidownloader.ui import prn_done
+from bilidownloader.commons.ui import prn_done
 
 
 class DataExistError(Exception):

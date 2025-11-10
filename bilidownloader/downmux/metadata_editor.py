@@ -11,9 +11,9 @@ from typing import Any, Dict, List, Literal, Optional
 import requests as reqs
 from PIL import Image
 
-from bilidownloader.filesystem import find_command
-from bilidownloader.ui import prn_done, prn_error, prn_info
-from bilidownloader.utils import langcode_to_str
+from bilidownloader.commons.filesystem import find_command
+from bilidownloader.commons.ui import prn_done, prn_error, prn_info
+from bilidownloader.commons.utils import SubtitleLanguage, langcode_to_str
 
 
 class MetadataEditor:
@@ -58,9 +58,10 @@ class MetadataEditor:
         self,
         raw_data: Dict[str, Any],
         video_path: Path,
-        language: Literal["en", "id", "ms", "th", "vi", "zh-Hans", "zh-Hant"] = "en",
+        language: Optional[SubtitleLanguage] = None,
     ) -> List[str]:
         """Set the default subtitle for the video file"""
+        language = language or SubtitleLanguage.en
         lcodex = {
             "en": "eng",
             "id": "ind",
@@ -70,7 +71,7 @@ class MetadataEditor:
             "zh-Hans": "chi",
             "zh-Hant": "chi",
         }
-        flang = lcodex.get(language, "eng")
+        flang = lcodex.get(language.value, "eng")
 
         def fail(msg: str) -> List[str]:
             prn_error(msg)

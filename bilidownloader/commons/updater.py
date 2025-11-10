@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
 import json
+from datetime import datetime, timedelta
 from pathlib import Path
+from tomllib import loads as tloads
 from typing import Optional, Tuple
 
 import platformdirs
@@ -9,9 +10,8 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from semver import Version
-from tomllib import loads as tloads
 
-from bilidownloader.metadata import __VERSION__
+from bilidownloader.commons.metadata import __VERSION__
 
 VERSION_CACHE_FILE = (
     Path(platformdirs.user_cache_dir("bilidownloader")) / "version_cache.json"

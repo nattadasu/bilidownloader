@@ -3,7 +3,7 @@ from typing import Optional
 
 import typer
 
-from bilidownloader.constants import DEFAULT_COOKIES
+from bilidownloader.commons.constants import DEFAULT_COOKIES
 
 
 def resolution_callback(user_input: int) -> int:

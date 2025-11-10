@@ -38,7 +38,7 @@ ass = [
 	"matplotlib",     #  only used to get all system fonts and allow download ASS
 ]
 dev = [
-    "yamllint",      # lint yaml
+    "yamllint",       # lint yaml
     "ruff",           # type and syntax check
 ]
 
@@ -46,7 +46,16 @@ dev = [
 bilidownloader = "bilidownloader.cli.main:app"
 
 [tool.setuptools]
-packages = ["bilidownloader", "bilidownloader.cli", "bilidownloader.subtitles"]
+packages = [
+    "bilidownloader",
+    "bilidownloader.apis",
+    "bilidownloader.cli",
+    "bilidownloader.commons",
+    "bilidownloader.downmux",
+    "bilidownloader.history",
+    "bilidownloader.subtitles",
+    "bilidownloader.watchlist",
+]
 
 [tool.setuptools.data-files]
 "share/man/man1" = [

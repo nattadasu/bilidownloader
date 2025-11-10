@@ -13,8 +13,8 @@ from bilidownloader.cli.options import (
     HISTORY_OPT,
     HistorySortBy,
 )
-from bilidownloader.history import History
-from bilidownloader.ui import prn_error, prn_info
+from bilidownloader.commons.ui import prn_error, prn_info
+from bilidownloader.history.history import History
 
 console = Console()
 
@@ -237,7 +237,7 @@ def history_clear(
                         f"{series_title} ({ep_display}, ID: {episode_id}) - {date_str}"
                     )
 
-                selected_indices = survey.routines.basket(
+                selected_indices: list[int] = survey.routines.basket(  # type: ignore
                     "Select episodes to delete (use Space to select, Enter to confirm):",
                     options=options,
                 )
@@ -251,10 +251,10 @@ def history_clear(
                     prn_info("No episodes selected, cancelling.")
                 return
             elif action == 1:  # Clear all history
-                yes = survey.routines.inquire(
+                prompt_yes: bool = survey.routines.inquire(  # type: ignore
                     "Are you sure you want to clear ALL history? ", default=False
                 )
-                if yes:
+                if prompt_yes:
                     hi.purge_all(confirm=False)
                     prn_info("History successfully cleared!")
                 return

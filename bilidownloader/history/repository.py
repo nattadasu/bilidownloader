@@ -7,9 +7,9 @@ from pathlib import Path
 from time import time
 from typing import List, Optional, Tuple
 
-from bilidownloader.alias import SERIES_ALIASES
-from bilidownloader.constants import DEFAULT_HISTORY
-from bilidownloader.ui import prn_done
+from bilidownloader.commons.alias import SERIES_ALIASES
+from bilidownloader.commons.constants import DEFAULT_HISTORY
+from bilidownloader.commons.ui import prn_done
 
 # Constants for TSV format
 HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"

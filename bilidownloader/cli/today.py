@@ -5,8 +5,9 @@ from typing import List
 import survey
 from typer_di import Depends
 
-from bilidownloader.api import BiliApi
-from bilidownloader.api_model import CardItem
+from bilidownloader.apis.api import BiliApi
+from bilidownloader.apis.models import CardItem
+from bilidownloader.cli.application import app
 from bilidownloader.cli.callbacks import (
     raise_cookie,
     raise_ffmpeg,
@@ -15,17 +16,15 @@ from bilidownloader.cli.callbacks import (
 )
 from bilidownloader.cli.download import download_url
 from bilidownloader.cli.options import (
+    WATCHLIST_OPT,
     BinaryPaths,
     DownloadOptions,
     FileConfig,
     PostProcessingOptions,
-    WATCHLIST_OPT,
 )
-from bilidownloader.constants import DEFAULT_WATCHLIST
-from bilidownloader.ui import prn_done, prn_info
-from bilidownloader.watchlist import Watchlist
-
-from bilidownloader.cli.application import app
+from bilidownloader.commons.constants import DEFAULT_WATCHLIST
+from bilidownloader.commons.ui import prn_done, prn_info
+from bilidownloader.watchlist.watchlist import Watchlist
 
 
 def _cards_selector(
