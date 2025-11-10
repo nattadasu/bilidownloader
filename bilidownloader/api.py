@@ -19,6 +19,11 @@ class BiliApi:
             "platform": "web",
         }
         self.cookie = cookie_path
+        self.session = req.Session()
+        if self.cookie:
+            jar = MozCookie(self.cookie)
+            jar.load()
+            self.session.cookies.update(jar)
 
     def get_anime_timeline(self) -> BiliTvResponse:
         """Get API response from Bilibili and convert to Data Object
@@ -27,7 +32,7 @@ class BiliApi:
             BiliTvResponse: Response in Model Object
         """
         uri = f"{self.api_url}/anime/timeline"
-        resp = req.get(uri, params=self.unified_params)
+        resp = self.session.get(uri, params=self.unified_params)
         resp.raise_for_status()
         return BiliTvResponse(**resp.json())
 
@@ -51,11 +56,7 @@ class BiliApi:
             "type": 2,
         }
         uri = f"{self.api_url}/fav/{action}"
-        sess = req.Session()
-        jar = MozCookie(self.cookie)
-        jar.load()
-        sess.cookies.update(jar)
-        resp = sess.post(uri, json=post_body, params=self.unified_params)
+        resp = self.session.post(uri, json=post_body, params=self.unified_params)
         resp.raise_for_status()
         return BiliFavoriteResponse(**resp.json())
 
@@ -129,6 +130,12 @@ class BiliHtml:
             user_agent
             or "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
         )
+        self.session = req.Session()
+        self.session.headers["User-Agent"] = self.user_agent
+        if self.cookie:
+            jar = MozCookie(self.cookie)
+            jar.load()
+            self.session.cookies.update(jar)
 
     def get(self, url: str) -> req.Response:
         """
@@ -141,12 +148,6 @@ class BiliHtml:
             req.Response: Response object
         """
 
-        sess = req.Session()
-        if self.cookie:
-            jar = MozCookie(self.cookie)
-            jar.load()
-            sess.cookies.update(jar)
-
-        resp = sess.get(url, headers={"User-Agent": self.user_agent})
+        resp = self.session.get(url)
         resp.raise_for_status()
         return resp
