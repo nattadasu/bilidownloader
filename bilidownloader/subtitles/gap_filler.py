@@ -1,5 +1,5 @@
-from typing import List, Tuple, Any
-from datetime import timedelta
+from typing import Any, List, Tuple
+
 
 class GenericGapFiller:
     """
@@ -23,7 +23,9 @@ class GenericGapFiller:
         """
         self.TOLERANCE = tolerance
 
-    def fill_frame_gaps(self, events: List[Tuple[float, float, Any]]) -> List[Tuple[float, float, Any]]:
+    def fill_frame_gaps(
+        self, events: List[Tuple[float, float, Any]]
+    ) -> List[Tuple[float, float, Any]]:
         """
         Fill gaps between subtitle lines if they are approximately 3 frames apart.
 
@@ -36,7 +38,7 @@ class GenericGapFiller:
             A new list of tuples with adjusted end times for events where gaps were filled.
         """
         if len(events) <= 1:
-            return list(events) # Return a copy to ensure immutability if needed
+            return list(events)  # Return a copy to ensure immutability if needed
 
         adjusted_events = []
         for i in range(len(events)):

@@ -34,7 +34,9 @@ class SSARescaler(PostProcessor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(tolerance=0.01) # ASS uses centiseconds, so 0.01s tolerance is appropriate
+        self.gap_filler = GenericGapFiller(
+            tolerance=0.01
+        )  # ASS uses centiseconds, so 0.01s tolerance is appropriate
 
     def _ass_time_to_seconds(self, time_obj: Any) -> float:
         """Convert ASS time object to seconds.
@@ -360,7 +362,9 @@ class SSARescaler(PostProcessor):
             adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
 
             # Update original ASS events with adjusted end times
-            for i, (start_s, new_end_s, original_event) in enumerate(adjusted_generic_events):
+            for i, (start_s, new_end_s, original_event) in enumerate(
+                adjusted_generic_events
+            ):
                 if original_event.end != self._seconds_to_ass_time(new_end_s):
                     self.write_debug(
                         f"  Filled 3-frame gap: extended line ending at "

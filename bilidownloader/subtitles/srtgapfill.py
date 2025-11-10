@@ -28,7 +28,9 @@ class SRTGapFiller(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(tolerance=0.001) # SRT uses milliseconds, so 0.001s tolerance is appropriate
+        self.gap_filler = GenericGapFiller(
+            tolerance=0.001
+        )  # SRT uses milliseconds, so 0.001s tolerance is appropriate
 
     def _srt_time_to_seconds(self, time_str: str) -> float:
         """Convert SRT time format to seconds.
@@ -104,12 +106,16 @@ class SRTGapFiller(PostProcessor):
 
         # Rebuild SRT content
         srt_lines = []
-        for i, (start_s, new_end_s, original_data) in enumerate(adjusted_generic_events):
+        for i, (start_s, new_end_s, original_data) in enumerate(
+            adjusted_generic_events
+        ):
             number, text = original_data
-            original_end_s = events[i][2] # Get original end time for logging comparison
+            original_end_s = events[i][
+                2
+            ]  # Get original end time for logging comparison
 
             if new_end_s != original_end_s:
-                 self.write_debug(
+                self.write_debug(
                     f"  Filled 3-frame gap: extended line ending at "
                     f"{original_end_s:.3f}s to {new_end_s:.3f}s"
                 )

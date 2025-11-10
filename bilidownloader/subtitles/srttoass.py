@@ -38,7 +38,9 @@ class SRTToASSConverter(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(tolerance=0.01) # ASS uses centiseconds, so 0.01s tolerance is appropriate
+        self.gap_filler = GenericGapFiller(
+            tolerance=0.01
+        )  # ASS uses centiseconds, so 0.01s tolerance is appropriate
 
     def _ass_time_to_seconds(self, time_str: str) -> float:
         """Convert ASS time format to seconds.
@@ -103,13 +105,21 @@ class SRTToASSConverter(PostProcessor):
         # Convert back to original format
         adjusted_events = []
         for i, (start_s, new_end_s, text) in enumerate(adjusted_generic_events):
-            original_end_s = self._ass_time_to_seconds(events[i][1]) # Get original end time for logging comparison
+            original_end_s = self._ass_time_to_seconds(
+                events[i][1]
+            )  # Get original end time for logging comparison
             if new_end_s != original_end_s:
                 self.write_debug(
                     f"  Filled 3-frame gap: extended line ending at "
                     f"{original_end_s:.3f}s to {new_end_s:.3f}s"
                 )
-            adjusted_events.append((self._seconds_to_ass_time(start_s), self._seconds_to_ass_time(new_end_s), text))
+            adjusted_events.append(
+                (
+                    self._seconds_to_ass_time(start_s),
+                    self._seconds_to_ass_time(new_end_s),
+                    text,
+                )
+            )
 
         return adjusted_events
 
