@@ -46,7 +46,7 @@ dev = [
 bilidownloader = "bilidownloader.cli.main:app"
 
 [tool.setuptools]
-packages = ["bilidownloader"]
+packages = ["bilidownloader", "bilidownloader.cli", "bilidownloader.subtitles"]
 
 [tool.setuptools.data-files]
 "share/man/man1" = [
