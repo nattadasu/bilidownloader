@@ -23,7 +23,7 @@ from bilidownloader.cli.options import (
     bili_format,
 )
 from bilidownloader.constants import DEFAULT_WATCHLIST, available_res
-from bilidownloader.extractor import BiliProcess
+from bilidownloader.orchestrator import BiliProcess
 from bilidownloader.history import History
 from bilidownloader.ui import prn_done, prn_info
 from bilidownloader.watchlist import Watchlist
@@ -56,22 +56,10 @@ def download_url(
     matches = re.search(bili_format, url)
     fix_reso: available_res = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
-        files.cookie,
-        files.history_file,
-        resolution=fix_reso,
-        is_avc=dl_opts.is_avc,
-        download_pv=dl_opts.download_pv,
-        ffmpeg_path=bins.ffmpeg_path,
-        mkvpropedit_path=bins.mkvpropedit_path,
-        mkvmerge_path=bins.mkvmerge_path,
-        notification=pp_opts.notification,
-        srt=dl_opts.srtonly,
-        dont_thumbnail=pp_opts.no_thumbnail,
-        dont_rescale=pp_opts.no_rescale,
-        dont_convert=pp_opts.no_convert,
-        subtitle_lang=pp_opts.sub_lang,  # type: ignore
-        only_audio=pp_opts.audio_only,
-        output_dir=files.output_dir,
+        file_config=files,
+        download_options=dl_opts,
+        post_processing_options=pp_opts,
+        binary_paths=bins,
     )
     if matches:
         if not dl_opts.forced:

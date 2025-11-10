@@ -72,7 +72,7 @@ class HistoryMigrator:
 
         try:
             from bilidownloader.constants import DEFAULT_COOKIES
-            from bilidownloader.extractor import BiliProcess
+            from bilidownloader.orchestrator import BiliProcess
 
             extractor = BiliProcess(cookie=DEFAULT_COOKIES)
             use_ytdlp = True

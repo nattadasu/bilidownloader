@@ -26,7 +26,7 @@ from bilidownloader.cli.options import (
     bili_format,
 )
 from bilidownloader.constants import DEFAULT_WATCHLIST
-from bilidownloader.extractor import BiliProcess
+from bilidownloader.orchestrator import BiliProcess
 from bilidownloader.ui import prn_error, prn_info
 from bilidownloader.watchlist import Watchlist
 
@@ -272,23 +272,11 @@ def watchlist_download(
 
     fix_reso = dl_opts.resolution  # type: ignore
     bili = BiliProcess(
-        cookie=files.cookie,
-        history=files.history_file,
+        file_config=files,
+        download_options=dl_opts,
+        post_processing_options=pp_opts,
+        binary_paths=bins,
         watchlist=watchlist_file,
-        resolution=fix_reso,
-        is_avc=dl_opts.is_avc,
-        download_pv=False,
-        ffmpeg_path=bins.ffmpeg_path,
-        mkvpropedit_path=bins.mkvpropedit_path,
-        mkvmerge_path=bins.mkvmerge_path,
-        notification=pp_opts.notification,
-        srt=dl_opts.srtonly,
-        dont_rescale=pp_opts.no_rescale,
-        dont_convert=pp_opts.no_convert,
-        subtitle_lang=pp_opts.sub_lang,  # type: ignore
-        dont_thumbnail=pp_opts.no_thumbnail,
-        only_audio=pp_opts.audio_only,
-        output_dir=files.output_dir,
     )
     if not as_playlist:
         bili.process_watchlist(forced=dl_opts.forced)

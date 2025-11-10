@@ -30,41 +30,32 @@ from bilidownloader.video_downloader import VideoDownloader
 from bilidownloader.watchlist import Watchlist
 
 
+from bilidownloader.cli.options import BinaryPaths, DownloadOptions, FileConfig, PostProcessingOptions
+
+
 class BiliProcess:
     """Orchestrates video download and processing workflow"""
 
     def __init__(
         self,
-        cookie: Path = DEFAULT_COOKIES,
-        history: Path = DEFAULT_HISTORY,
+        file_config: FileConfig,
+        download_options: DownloadOptions,
+        post_processing_options: PostProcessingOptions,
+        binary_paths: BinaryPaths,
         watchlist: Path = DEFAULT_WATCHLIST,
-        resolution: available_res = 1080,  # type: ignore
-        is_avc: bool = False,
-        download_pv: bool = False,
-        ffmpeg_path: Optional[Path] = None,
-        mkvpropedit_path: Optional[Path] = None,
-        mkvmerge_path: Optional[Path] = None,
-        notification: bool = False,
-        srt: bool = False,
-        dont_thumbnail: bool = False,
-        dont_rescale: bool = False,
-        dont_convert: bool = False,
-        subtitle_lang: SubLang = SubLang.en,
-        only_audio: bool = False,
-        output_dir: Optional[Path] = None,
     ) -> None:
         """Initialize BiliProcess with component-based architecture"""
         self.watchlist = watchlist
-        self.history = history
-        self.cookie = cookie
-        self.notification = notification
-        self.srt = srt
-        self.dont_thumbnail = dont_thumbnail
-        self.dont_convert = dont_convert
-        self.subtitle_lang = subtitle_lang.value
-        self.only_audio = only_audio
+        self.history = file_config.history_file
+        self.cookie = file_config.cookie
+        self.notification = post_processing_options.notification
+        self.srt = download_options.srtonly
+        self.dont_thumbnail = post_processing_options.no_thumbnail
+        self.dont_convert = post_processing_options.no_convert
+        self.subtitle_lang = post_processing_options.sub_lang.value
+        self.only_audio = post_processing_options.audio_only
 
-        if not srt and srt == check_package("ass"):
+        if not self.srt and self.srt == check_package("ass"):
             prn_error(
                 (
                     "`ass` package is not found inside the environment, "
@@ -80,27 +71,27 @@ class BiliProcess:
 
         # Initialize component classes
         self.downloader = VideoDownloader(
-            cookie=cookie,
-            resolution=resolution,
-            is_avc=is_avc,
-            download_pv=download_pv,
-            ffmpeg_path=ffmpeg_path,
-            mkvmerge_path=mkvmerge_path,
-            notification=notification,
-            srt=srt,
-            dont_rescale=dont_rescale,
-            dont_convert=dont_convert,
-            subtitle_lang=subtitle_lang.value,
-            only_audio=only_audio,
-            output_dir=output_dir,
+            cookie=file_config.cookie,
+            resolution=download_options.resolution,
+            is_avc=download_options.is_avc,
+            download_pv=download_options.download_pv,
+            ffmpeg_path=binary_paths.ffmpeg_path,
+            mkvmerge_path=binary_paths.mkvmerge_path,
+            notification=post_processing_options.notification,
+            srt=download_options.srtonly,
+            dont_rescale=post_processing_options.no_rescale,
+            dont_convert=post_processing_options.no_convert,
+            subtitle_lang=post_processing_options.sub_lang.value,
+            only_audio=post_processing_options.audio_only,
+            output_dir=file_config.output_dir,
         )
         self.chapter_processor = ChapterProcessor(
-            mkvpropedit_path=mkvpropedit_path,
-            ffmpeg_path=ffmpeg_path,
+            mkvpropedit_path=binary_paths.mkvpropedit_path,
+            ffmpeg_path=binary_paths.ffmpeg_path,
         )
         self.metadata_editor = MetadataEditor(
-            mkvpropedit_path=mkvpropedit_path,
-            mkvmerge_path=mkvmerge_path,
+            mkvpropedit_path=binary_paths.mkvpropedit_path,
+            mkvmerge_path=binary_paths.mkvmerge_path,
         )
 
     @staticmethod
