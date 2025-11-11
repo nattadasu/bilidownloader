@@ -215,7 +215,7 @@ class HistoryMigrator:
         prn_info(f"\n{len(failed_entries)} entries had issues during migration.")
         try:
             choice = survey.routines.select(
-                "How would you like to handle these entries?",
+                "How would you like to handle these entries? ",
                 options=[
                     "Keep as is (use fallback titles)",
                     "Retry fetching metadata",
