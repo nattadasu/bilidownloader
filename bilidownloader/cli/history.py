@@ -3,7 +3,9 @@ from typing import Annotated, List, Optional
 
 import typer
 from rich import box
+from rich.columns import Columns
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Column, Table
 
 from bilidownloader.cli.application import hi_app
@@ -269,3 +271,86 @@ def history_clear(
     if yes:
         hi.purge_all(confirm=False)
         prn_info("History successfully cleared!")
+
+
+@hi_app.command(
+    "stats", help="Show download history statistics. Alias: statistics, info"
+)
+@hi_app.command("statistics", help="Show download history statistics", hidden=True)
+@hi_app.command("info", help="Show download history statistics", hidden=True)
+def history_statistics(
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
+):
+    hi = History(file_path)
+
+    if len(hi.list) == 0:
+        prn_error("Your download history is empty!")
+        exit(2)
+
+    stats = hi.get_statistics()
+    term_width = console.width
+
+    # Create overview panel
+    overview_text = f"""[bold cyan]Total Episodes:[/bold cyan] {stats["total_episodes"]}
+[bold cyan]Unique Series:[/bold cyan] {stats["unique_series"]}
+[bold cyan]Avg per Series:[/bold cyan] {stats["average_per_series"]}"""
+
+    overview_panel = Panel(
+        overview_text,
+        title="[bold]Overview[/bold]",
+        border_style="cyan",
+        expand=False,
+    )
+
+    # Create activity panel
+    activity_text = f"""[bold cyan]First Download:[/bold cyan] {stats["first_download"]}
+[bold cyan]Last Download:[/bold cyan] {stats["last_download"]}
+[bold cyan]Last 7 days:[/bold cyan] {stats["downloads_last_7_days"]}
+[bold cyan]Last 30 days:[/bold cyan] {stats["downloads_last_30_days"]}
+[bold cyan]Most Active Day:[/bold cyan] {stats["most_active_day"]}
+[dim]({stats["most_active_day_count"]} episodes)[/dim]"""
+
+    activity_panel = Panel(
+        activity_text,
+        title="[bold]Activity[/bold]",
+        border_style="cyan",
+        expand=False,
+    )
+
+    # Create top series panel
+    if stats["top_series"]:
+        top_series_text = ""
+        for i, (title, count) in enumerate(stats["top_series"], 1):
+            top_series_text += f"{i}. {title}\n   [dim]{count} episode(s)[/dim]\n"
+        top_series_text = top_series_text.rstrip("\n")
+    else:
+        top_series_text = "[dim]No data available[/dim]"
+
+    top_series_panel = Panel(
+        top_series_text,
+        title="[bold]Top Series[/bold]",
+        border_style="cyan",
+        expand=False,
+    )
+
+    # Layout based on terminal width
+    if term_width >= 120:
+        # Three-column layout for wide terminals
+        console.print(
+            Columns(
+                [overview_panel, activity_panel, top_series_panel],
+                equal=False,
+                expand=False,
+            )
+        )
+    elif term_width >= 80:
+        # Two-column layout with top series below
+        console.print(
+            Columns([overview_panel, activity_panel], equal=False, expand=False)
+        )
+        console.print(top_series_panel)
+    else:
+        # Single-column layout
+        console.print(overview_panel)
+        console.print(activity_panel)
+        console.print(top_series_panel)

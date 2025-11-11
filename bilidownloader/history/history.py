@@ -318,29 +318,100 @@ class History:
         dt = datetime.fromtimestamp(timestamp)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    def get_statistics(self) -> Dict[str, Union[int, str]]:
+    def get_statistics(
+        self,
+    ) -> Dict[str, Union[int, str, float, List[Tuple[str, int]]]]:
         """Get statistics about the history.
 
         Returns:
-            Dict: Statistics including total episodes, series count, date range
+            Dict: Statistics including total episodes, series count, date range, most downloaded series, and more
         """
         if not self.list:
-            return {"total_episodes": 0, "unique_series": 0, "date_range": "N/A"}
+            return {
+                "total_episodes": 0,
+                "unique_series": 0,
+                "date_range": "N/A",
+                "first_download": "N/A",
+                "last_download": "N/A",
+                "average_per_series": 0.0,
+                "top_series": [],
+                "downloads_last_7_days": 0,
+                "downloads_last_30_days": 0,
+                "most_active_day": "N/A",
+                "most_active_day_count": 0,
+            }
 
         unique_series = set(s_id for _, s_id, _, _, _ in self.list)
         timestamps = [ts for ts, _, _, _, _ in self.list if ts > 0]
 
+        # Series download counts
+        series_counts: Dict[str, Tuple[str, int]] = {}
+        for _, series_id, series_title, _, _ in self.list:
+            if series_id not in series_counts:
+                series_counts[series_id] = (series_title, 0)
+            title, count = series_counts[series_id]
+            series_counts[series_id] = (title, count + 1)
+
+        # Top 5 most downloaded series
+        top_series = sorted(
+            [(title, count) for title, count in series_counts.values()],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:5]
+
+        # Count downloads by day
+        day_counts: Dict[str, int] = {}
+        for ts in timestamps:
+            day = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+            day_counts[day] = day_counts.get(day, 0) + 1
+
+        most_active_day = "N/A"
+        most_active_day_count = 0
+        if day_counts:
+            most_active_day, most_active_day_count = max(
+                day_counts.items(), key=lambda x: x[1]
+            )
+
+        # Date calculations
         if timestamps:
             oldest = min(timestamps)
             newest = max(timestamps)
             date_range = (
                 f"{self.format_timestamp(oldest)} to {self.format_timestamp(newest)}"
             )
+            first_download = self.format_timestamp(oldest)
+            last_download = self.format_timestamp(newest)
+
+            # Calculate recent downloads
+            now = datetime.now().timestamp()
+            seven_days_ago = now - (7 * 24 * 60 * 60)
+            thirty_days_ago = now - (30 * 24 * 60 * 60)
+
+            downloads_last_7_days = sum(1 for ts in timestamps if ts >= seven_days_ago)
+            downloads_last_30_days = sum(
+                1 for ts in timestamps if ts >= thirty_days_ago
+            )
         else:
             date_range = "N/A"
+            first_download = "N/A"
+            last_download = "N/A"
+            downloads_last_7_days = 0
+            downloads_last_30_days = 0
+
+        average_per_series = (
+            len(self.list) / len(unique_series) if unique_series else 0.0
+        )
 
         return {
             "total_episodes": len(self.list),
             "unique_series": len(unique_series),
             "date_range": date_range,
+            "first_download": first_download,
+            "last_download": last_download,
+            "average_per_series": round(average_per_series, 2),
+            "top_series": top_series,
+            "downloads_last_7_days": downloads_last_7_days,
+            "downloads_last_30_days": downloads_last_30_days,
+            "most_active_day": most_active_day,
+            "most_active_day_count": most_active_day_count,
         }
