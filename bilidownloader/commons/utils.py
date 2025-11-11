@@ -194,11 +194,6 @@ class BenchClock:
             return ", ".join(finals[:-1]) + " and " + finals[-1]
         return finals[0]
 
-    @property
-    def format_mkvmerge(self) -> str:
-        """Format the time taken to a mkvmerge-compatible format."""
-        return format_mkvmerge_time(self.stop())
-
     def echo_format(self, ctx: str = "") -> None:
         """Print the formatted time taken."""
         if ctx:
