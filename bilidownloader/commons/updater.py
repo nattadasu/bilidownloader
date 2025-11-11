@@ -84,13 +84,59 @@ def check_for_updates() -> bool:
     return latest_version != current_version
 
 
+def _is_pipxu_install() -> bool:
+    """Check if the package was installed via pipxu."""
+    import sys
+
+    venv_path = Path(sys.prefix)
+    return "pipxu" in str(venv_path)
+
+
+def _has_ass_dependencies() -> bool:
+    """Check if ASS optional dependencies are installed."""
+    from importlib.util import find_spec
+
+    return find_spec("ass") is not None and find_spec("matplotlib") is not None
+
+
+def _get_git_repo_url() -> Optional[str]:
+    """Get the git repository URL from package metadata."""
+    from importlib.metadata import distribution
+
+    try:
+        dist = distribution("bilidownloader")
+        # Check for direct_url.json (pip >= 20.0)
+        if dist.read_text("direct_url.json"):
+            direct_url_data = json.loads(dist.read_text("direct_url.json"))
+            if "url" in direct_url_data and "vcs_info" in direct_url_data:
+                return direct_url_data["url"]
+    except Exception:
+        pass
+    return None
+
+
+def _get_update_command(is_pipxu: bool = False) -> str:
+    """Get the appropriate update command based on installation method."""
+    if not is_pipxu:
+        return "pipx upgrade bilidownloader"
+    git_repo = _get_git_repo_url()
+    if git_repo:
+        extras = "[ass]" if _has_ass_dependencies() else ""
+        return (
+            f"pipxu uninstall bilidownloader && "
+            f"pipxu install 'bilidownloader{extras} @ git+{git_repo}'"
+        )
+
+
 def _display_update_warning(latest_version: Version, current_version: Version):
     """Displays an update warning to the console."""
+    is_pipxu = _is_pipxu_install()
+    update_cmd = _get_update_command(is_pipxu)
     warn = (
         f"[bold]BiliDownloader[/] has a new version: [blue]{latest_version}[/] "
         f"(Current: [red]{current_version}[/]).\n"
         "Updating is recommended to get the latest features and bug fixes.\n\n"
-        "To update, execute [black]`[/][bold]pipx upgrade bilidownloader[black]`[/]"
+        f"To update, execute [dim]`[/][bold]{update_cmd}[dim]`[/]"
     )
     panel = Panel(
         warn,
