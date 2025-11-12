@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from yt_dlp.postprocessor import PostProcessor
 
 from bilidownloader.commons.ui import prn_info
+from bilidownloader.commons.utils import langcode_to_str
 from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
@@ -285,10 +286,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if not file_paths:
             self.write_debug("No subtitle files found in metadata")
             return [], info
-
-        # Check if there are any SRT files to process and collect language names
-        from bilidownloader.commons.utils import langcode_to_str
-        import re
 
         lang_names = []
         has_srt_files = False

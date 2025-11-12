@@ -3,6 +3,7 @@ Chapter processing - handles chapter formatting and embedding
 """
 
 import subprocess as sp
+from io import StringIO
 from pathlib import Path
 from typing import List, Tuple
 
@@ -10,7 +11,7 @@ from rich.console import Console
 from rich.table import Column, Table, box
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import prn_dbg, prn_done, prn_error, prn_info
 from bilidownloader.commons.utils import (
     Chapter,
     format_human_time,
@@ -75,7 +76,7 @@ class ChapterProcessor:
 
     def embed_chapters(self, chapters: List[Chapter], video_path: Path) -> Path:
         """Create chapter metadata and merge it into the video file"""
-        prn_info(f"Creating chapters for {video_path.name}")
+        prn_info("Creating chapters")
 
         metadata_path = video_path.with_suffix(".txt")
         mkvpropedit = (
@@ -111,7 +112,7 @@ class ChapterProcessor:
         total_duration = float(result.stdout.strip())
 
         # Remove existing chapters and metadata from the video
-        prn_info(f"Removing existing metadata from {video_path.name}, if any")
+        prn_dbg(f"Removing existing metadata from {video_path.name}, if any")
         sp.run(
             [
                 mkvpropedit,
@@ -212,7 +213,7 @@ class ChapterProcessor:
                     )
         except IndexError:
             prn_error("This video does not have any chapters")
-            prn_info(f"Removing {metadata_path.name}")
+            prn_dbg(f"Removing {metadata_path.name}")
             metadata_path.unlink(True)
             return video_path
 
@@ -229,7 +230,7 @@ class ChapterProcessor:
                 format_human_time(dur),
             )
 
-        prn_info(f"Chapters to write: {len(formatted_chapters)}")
+        prn_dbg(f"Chapters to write: {len(formatted_chapters)}")
         deform = self._deformat_chapter(formatted_chapters)
         if len([ch for ch in deform if "Part" in ch.title]) == 1:
             for i, ch in enumerate(deform):
@@ -253,7 +254,12 @@ class ChapterProcessor:
             for title, start, end, dur, hdur in fdform:
                 table.add_row(title, start, end, str(int(dur)) + f"s ({hdur})")
 
-            Console().print(table)
+            # Render table to string and add 6 space left indent
+            table_str = StringIO()
+            temp_console = Console(file=table_str, highlight=False, force_terminal=True)
+            temp_console.print(table)
+            for line in table_str.getvalue().splitlines():
+                Console(highlight=False).print(f"       {line}")
         except Exception:
             for title, start, end, _, hdur in fdform:
                 prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")
@@ -272,7 +278,7 @@ class ChapterProcessor:
         )
         prn_done("Chapters have been added to the video file")
 
-        prn_info(f"Removing {metadata_path.name}")
+        prn_dbg(f"Removing {metadata_path.name}")
         metadata_path.unlink(True)
 
         return Path(video_path)

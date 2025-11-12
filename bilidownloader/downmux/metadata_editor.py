@@ -12,7 +12,7 @@ import requests as reqs
 from PIL import Image
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import prn_dbg, prn_done, prn_error, prn_info
 from bilidownloader.commons.utils import SubtitleLanguage, langcode_to_str
 
 
@@ -33,7 +33,7 @@ class MetadataEditor:
         language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]],
     ) -> List[str]:
         """Add audio language to the video file"""
-        prn_info(
+        prn_dbg(
             f"Adding audio language '{language}' to {video_path.name} using mkvpropedit"
         )
         code = {
@@ -86,7 +86,7 @@ class MetadataEditor:
                 "Failed to get subtitle index from yt-dlp. Does the video have subtitles?"
             )
 
-        prn_info(f"Setting default subtitle to '{flang}' for {video_path.name}")
+        prn_dbg(f"Setting default subtitle to '{flang}' for {video_path.name}")
         mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
         if not mkvmerge:
             return fail(
@@ -194,7 +194,7 @@ class MetadataEditor:
         if not thumbnail:
             return []
 
-        prn_info("Downloading thumbnail and adding it to the video file")
+        prn_dbg("Downloading thumbnail and adding it to the video file")
         thumbnail_path = Path("thumbnail.png")
 
         with reqs.get(thumbnail) as resp:
@@ -225,7 +225,8 @@ class MetadataEditor:
         if not audio_args and not sub_args:
             return video_path
 
-        prn_info(f"Executing mkvpropedit on {video_path.name}")
+        prn_info("Adding metadata")
+        prn_dbg(f"Executing mkvpropedit on {video_path.name}")
         sp.run(
             [
                 mkvpropedit,
@@ -239,6 +240,6 @@ class MetadataEditor:
             ],
             check=True,
         )
-        prn_done(f"Metadata has been added to {video_path.name}")
+        prn_done("Metadata added")
 
         return video_path
