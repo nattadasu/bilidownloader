@@ -8,6 +8,7 @@ from rich import print as rprint
 from rich.table import Table, box
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import langcode_to_str
 
 
@@ -35,16 +36,16 @@ class SubtitleReporter(PostProcessor):
 
 
         # Create a table for subtitles matching chapter marker style
+        prn_info("Available subtitles on this release")
         table = Table(
             show_header=True,
-            header_style="bold magenta",
-            title="📝 Found Subtitles",
+            header_style="bold",
             box=box.ROUNDED,
         )
 
-        table.add_column("Code", style="yellow", no_wrap=True)
-        table.add_column("Name", style="green")
-        table.add_column("Format", style="blue")
+        table.add_column("Code", justify="right", style="yellow", no_wrap=True)
+        table.add_column("Name")
+        table.add_column("Format", style="purple")
 
 
         for lang_code in sorted_langs:
