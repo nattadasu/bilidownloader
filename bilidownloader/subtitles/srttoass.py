@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.commons.ui import prn_info
 from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
@@ -279,13 +280,37 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         Returns:
             Tuple of (files_to_delete, updated_info)
         """
-        self.to_screen("Converting SRT subtitles to ASS format")
-
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
         if not file_paths:
             self.write_debug("No subtitle files found in metadata")
             return [], info
+
+        # Check if there are any SRT files to process and collect language names
+        from bilidownloader.commons.utils import langcode_to_str
+        import re
+
+        lang_names = []
+        has_srt_files = False
+        for current_path in file_paths.values():
+            current_file = Path(current_path)
+            if not current_file.suffix.lower() == ".srt":
+                continue
+            has_srt_files = True
+            lang_match = re.search(
+                r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", current_file.name
+            )
+            if lang_match:
+                lang_code = lang_match.group(1)
+                lang_names.append(langcode_to_str(lang_code))
+
+        if not has_srt_files:
+            self.write_debug("No SRT files to convert")
+            return [], info
+
+        # Show conversion message before processing
+        if lang_names:
+            prn_info(f"Converting SRT to ASS for: {', '.join(lang_names)}")
 
         converted_files = []
         fonts_found = set()
@@ -326,17 +351,20 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Also update any other subtitle-related fields in info
         if "requested_subtitles" in info:
             for lang, sub_info in info["requested_subtitles"].items():
-                if sub_info and "filepath" in sub_info:
-                    filepath = sub_info["filepath"]
-                    if filepath.endswith(".srt"):
-                        # Check if we converted this file
-                        for converted_file in converted_files:
-                            if converted_file.stem == Path(filepath).stem:
-                                sub_info["filepath"] = str(converted_file)
-                                self.write_debug(
-                                    f"Updated requested_subtitles: {filepath} -> {converted_file}"
-                                )
-                                break
+                if not (sub_info and "filepath" in sub_info):
+                    continue
+                filepath = sub_info["filepath"]
+                if not filepath.endswith(".srt"):
+                    # Check if we converted this file
+                    continue
+                for converted_file in converted_files:
+                    if converted_file.stem != Path(filepath).stem:
+                        continue
+                    sub_info["filepath"] = str(converted_file)
+                    self.write_debug(
+                        f"Updated requested_subtitles: {filepath} -> {converted_file}"
+                    )
+                    break
 
         if converted_files:
             # Save fonts list for later use by font manager
@@ -351,12 +379,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         fonts_found = list(set(fonts_found) | set(existing_fonts))
                 with open(fonts_json_path, "w", encoding="utf-8") as f:
                     json.dump(sorted(list(fonts_found)), f, indent=2)
-                self.to_screen(f"Font list saved to {fonts_json_path}")
+                self.write_debug(f"Font list saved to {fonts_json_path}")
             except Exception as e:
                 self.report_error(f"Failed to save fonts.json: {e}")
-
-            self.to_screen(
-                f"Successfully converted {len(converted_files)} SRT files to ASS format"
-            )
 
         return [], info

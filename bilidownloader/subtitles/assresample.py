@@ -16,6 +16,7 @@ from ass import Document as AssDocument
 from ass import parse_string as ass_loads
 from yt_dlp.postprocessor import PostProcessor  # type: ignore
 
+from bilidownloader.commons.ui import prn_info
 from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
@@ -284,20 +285,28 @@ class SSARescaler(PostProcessor):
             """Return the standard post-processor response."""
             return [], info
 
-        self.to_screen("Rescaling subtitle values and collecting fonts")
-
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
         if not file_paths:
             self.report_error("No subtitle filepaths found in the metadata")
             return return_dump()
 
+        # Check if there are any ASS files to process
+        has_ass_files = any(
+            sub_file.endswith(".ass") for sub_file in file_paths.values()
+        )
+        if not has_ass_files:
+            self.write_debug("No ASS files to process")
+            return return_dump()
+
+        prn_info("Patching ASS")
+
         # This set will collect unique font names across all processed files
         all_fonts_found: Set[str] = set()
 
         for _, sub_file in file_paths.items():
             if not sub_file.endswith(".ass"):
-                self.report_warning(f"Skipping non-ASS file: {sub_file}")
+                self.write_debug(f"Skipping non-ASS file: {sub_file}")
                 continue
             self.write_debug(f"Processing file: {sub_file}")
 
@@ -376,7 +385,7 @@ class SSARescaler(PostProcessor):
             try:
                 with open(sub_file, "w", encoding="utf-8-sig") as file:
                     ass_document.dump_file(file)
-                self.to_screen(f"  Successfully processed and rescaled: {sub_file}")
+                self.write_debug(f"  Successfully processed and rescaled: {sub_file}")
             except Exception as e:
                 self.report_error(f"Failed to write changes to {sub_file}: {e}")
 
@@ -492,6 +501,6 @@ class SSARescaler(PostProcessor):
                 with open("fonts.json", "w", encoding="utf-8") as file:
                     # Convert set to a sorted list for consistent JSON output
                     file.write(dumps(sorted(list(all_fonts_found)), indent=2))
-                self.to_screen("Font list saved to fonts.json")
+                self.write_debug("Font list saved to fonts.json")
             except Exception as e:
                 self.report_error(f"Failed to write fonts.json: {e}")
