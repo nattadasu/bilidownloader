@@ -239,6 +239,12 @@ class VideoDownloader:
             ydl.params["quiet"] = not self.verbose
             ydl.params["verbose"] = self.verbose
 
+            # Add subtitle reporter to display found subtitles
+            if not self.only_audio:
+                from bilidownloader.subtitles.subtitle_reporter import SubtitleReporter
+
+                ydl.add_post_processor(SubtitleReporter(), when="before_dl")
+
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
                 if check_package("ass"):
