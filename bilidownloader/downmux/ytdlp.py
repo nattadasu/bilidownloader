@@ -152,8 +152,8 @@ class VideoDownloader:
             "outtmpl": {
                 "default": str(
                     self.output_dir
-                    / "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, %(vcodec)s].%(ext)s".format(
-                        inp=title
+                    / "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, {codec}].%(ext)s".format(
+                        inp=title, codec="AVC" if self.is_avc else "HEVC"
                     )
                 )
             },
@@ -227,7 +227,7 @@ class VideoDownloader:
                     index=ep_num,
                 )
             prn_info(
-                f'Downloading "{title}" {ep_num} at {self.resolution}P using codec {codec.upper()}'
+                f'Downloading "{title}" {ep_num} ({self.resolution}p, {"AVC" if self.is_avc else "HEVC"})'
             )
             ydl.params["outtmpl"]["default"] = (  # type: ignore
                 "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
