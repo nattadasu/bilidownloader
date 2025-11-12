@@ -15,7 +15,12 @@ from bilidownloader.commons.constants import (
     DEFAULT_WATCHLIST,
     REINSTALL_ARGS,
 )
-from bilidownloader.commons.ui import prn_error, prn_info, push_notification
+from bilidownloader.commons.ui import (
+    prn_error,
+    prn_info,
+    push_notification,
+    set_verbose,
+)
 from bilidownloader.commons.utils import (
     BenchClock,
     DataExistError,
@@ -52,6 +57,9 @@ class BiliProcess:
         self.dont_convert = post_processing_options.no_convert
         self.subtitle_lang = post_processing_options.sub_lang
         self.only_audio = post_processing_options.audio_only
+
+        # Set verbose mode for debug messages
+        set_verbose(download_options.verbose)
 
         if not self.srt and self.srt == check_package("ass"):
             prn_error(

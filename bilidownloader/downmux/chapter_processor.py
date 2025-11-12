@@ -5,13 +5,13 @@ Chapter processing - handles chapter formatting and embedding
 import subprocess as sp
 from io import StringIO
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from rich.console import Console
 from rich.table import Column, Table, box
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import prn_dbg, prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import _verbose, prn_dbg, prn_done, prn_error, prn_info
 from bilidownloader.commons.utils import (
     Chapter,
     format_human_time,
@@ -23,7 +23,11 @@ from bilidownloader.commons.utils import (
 class ChapterProcessor:
     """Handles chapter processing and embedding into video files"""
 
-    def __init__(self, mkvpropedit_path: Path = None, ffmpeg_path: Path = None):
+    def __init__(
+        self,
+        mkvpropedit_path: Optional[Path] = None,
+        ffmpeg_path: Optional[Path] = None,
+    ):
         self.mkvpropedit_path = mkvpropedit_path
         self.ffmpeg_path = ffmpeg_path
 
@@ -131,7 +135,7 @@ class ChapterProcessor:
                 "all:",
                 "--chapters",
                 "",
-                "--quiet",
+                *["--quiet" if not _verbose else "--verbose"],
             ],
             check=True,
         )
@@ -272,7 +276,7 @@ class ChapterProcessor:
                 str(video_path),
                 "--chapters",
                 str(metadata_path),
-                "--quiet",
+                *["--quiet" if not _verbose else "--verbose"],
             ],
             check=True,
         )

@@ -12,7 +12,7 @@ import requests as reqs
 from PIL import Image
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import prn_dbg, prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import _verbose, prn_dbg, prn_done, prn_error, prn_info
 from bilidownloader.commons.utils import SubtitleLanguage, langcode_to_str
 
 
@@ -146,6 +146,7 @@ class MetadataEditor:
                 "--set",
                 f"name={langcode_to_str(set_track[1])}",
                 *unset_,
+                *["--verbose" if _verbose else "--quiet"],
             ]
         else:
             return fail("Failed to set subtitle track as default")
@@ -235,7 +236,7 @@ class MetadataEditor:
                 *sub_args,
                 *font_args,
                 *attachment_args,
-                "--quiet",
+                *["--verbose" if _verbose else "--quiet"],
                 "--add-track-statistics-tags",
             ],
             check=True,
