@@ -27,6 +27,13 @@ class SubtitleReporter(PostProcessor):
         if not subtitles:
             return [], info
 
+        # Sort languages for consistent display
+        sorted_langs = sorted(subtitles.keys())
+
+        if len(sorted_langs) == 0:
+            return [], info
+
+
         # Create a table for subtitles matching chapter marker style
         table = Table(
             show_header=True,
@@ -39,8 +46,6 @@ class SubtitleReporter(PostProcessor):
         table.add_column("Name", style="green")
         table.add_column("Format", style="blue")
 
-        # Sort languages for consistent display
-        sorted_langs = sorted(subtitles.keys())
 
         for lang_code in sorted_langs:
             lang_name = langcode_to_str(lang_code)
