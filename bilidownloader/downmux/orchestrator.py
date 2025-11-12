@@ -82,6 +82,7 @@ class BiliProcess:
             subtitle_lang=post_processing_options.sub_lang or SubtitleLanguage.en,
             only_audio=post_processing_options.audio_only,
             output_dir=file_config.output_dir,
+            verbose=download_options.verbose,
         )
         if binary_paths.ffmpeg_path is None:
             raise ValueError("ffmpeg path is not set properly")

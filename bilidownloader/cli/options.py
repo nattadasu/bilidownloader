@@ -267,6 +267,16 @@ ASPLAYLIST_OPT = Annotated[
     ),
 ]
 """Flag to override default behaviour of downloading watchlist"""
+VERBOSE_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--verbose",
+        "-v",
+        help="Enable verbose output from yt-dlp downloader",
+        rich_help_panel="Output",
+    ),
+]
+"""Flag to enable verbose output"""
 
 FFMPEG_PATH = find_command("ffmpeg")
 MKVPROPEX_PATH = find_command("mkvpropedit")
@@ -310,6 +320,7 @@ class DownloadOptions:
     is_avc: AVC_OPT = False
     forced: FORCED_OPT = False
     download_pv: PV_OPT = False
+    verbose: VERBOSE_OPT = False
 
 
 @dataclass

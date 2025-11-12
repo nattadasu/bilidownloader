@@ -45,6 +45,7 @@ class VideoDownloader:
         subtitle_lang: SubtitleLanguage = SubtitleLanguage.en,
         only_audio: bool = False,
         output_dir: Optional[Path] = None,
+        verbose: bool = False,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -59,6 +60,7 @@ class VideoDownloader:
         self.subtitle_lang = subtitle_lang
         self.only_audio = only_audio
         self.output_dir = output_dir or Path.cwd()
+        self.verbose = verbose
 
     def get_video_info(self, episode_url: str) -> Union[Any, Dict[str, Any], None]:
         """Get video information from yt-dlp"""
@@ -234,8 +236,8 @@ class VideoDownloader:
                 )
             )
             final_path = ydl.prepare_filename(metadata)
-            ydl.params["quiet"] = False
-            ydl.params["verbose"] = True
+            ydl.params["quiet"] = not self.verbose
+            ydl.params["verbose"] = self.verbose
 
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
