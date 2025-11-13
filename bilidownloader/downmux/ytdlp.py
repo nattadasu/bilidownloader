@@ -139,6 +139,7 @@ class VideoDownloader:
             language = "tha"
 
         codec = "avc1" if self.is_avc else "hev1"
+        hcodec = "AVC" if self.is_avc else "HEVC"
 
         ydl_opts = {
             "cookiefile": str(self.cookie),
@@ -153,7 +154,7 @@ class VideoDownloader:
                 "default": str(
                     self.output_dir
                     / "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, {codec}].%(ext)s".format(
-                        inp=title, codec="AVC" if self.is_avc else "HEVC"
+                        inp=title, codec=hcodec
                     )
                 )
             },
@@ -230,9 +231,10 @@ class VideoDownloader:
                 f'Downloading "{title}" {ep_num} ({self.resolution}p, {"AVC" if self.is_avc else "HEVC"})'
             )
             ydl.params["outtmpl"]["default"] = (  # type: ignore
-                "[%(extractor)s] {inp} - {ep} [%(resolution)s, %(vcodec)s].%(ext)s".format(  # type: ignore
+                "[%(extractor)s] {inp} - {ep} [%(resolution)s, {codec}].%(ext)s".format(  # type: ignore
                     inp=title,
                     ep=ep_num,
+                    codec=hcodec,
                 )
             )
             final_path = ydl.prepare_filename(metadata)
