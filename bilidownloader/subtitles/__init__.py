@@ -7,6 +7,7 @@ __all__ = [
 
 try:
     from . import assresample, srttoass  # noqa: F401
+
     __all__.extend(["assresample", "srttoass"])
 except ImportError:
     pass

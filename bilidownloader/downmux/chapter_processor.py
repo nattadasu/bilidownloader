@@ -157,25 +157,25 @@ class ChapterProcessor:
         while i < len(chapters):
             chapter = chapters[i]
             compr = self._compare_time(chapter)
-            
+
             # Check if this is a very short chapter (< 2s) followed by Intro
             if i + 1 < len(chapters):
                 next_chapter = chapters[i + 1]
-                
+
                 # If current chapter is < 2s and next is Intro, merge them
                 if compr < 2 and next_chapter.title == "Intro":
                     merged_chapter = Chapter(
                         start_time=chapter.start_time,
                         end_time=next_chapter.end_time,
-                        title="Intro"
+                        title="Intro",
                     )
                     merged_chapters.append(merged_chapter)
                     i += 2
                     continue
-            
+
             merged_chapters.append(chapter)
             i += 1
-        
+
         chapters = merged_chapters
 
         for i, chapter in enumerate(chapters):
@@ -287,7 +287,9 @@ class ChapterProcessor:
 
             # Render table to string and add 6 space left indent
             table_str = StringIO()
-            temp_console = Console(file=table_str, highlight=False, force_terminal=True, width=50)
+            temp_console = Console(
+                file=table_str, highlight=False, force_terminal=True, width=50
+            )
             temp_console.print(table)
             for line in table_str.getvalue().splitlines():
                 Console(highlight=False).print(f"       {line}")
