@@ -211,7 +211,7 @@ class BiliProcess:
             except DataExistError:
                 prn_error(
                     f"{episode_url} was ripped previously. "
-                    'Delete the entry through history command if necessary.'
+                    "Delete the entry through history command if necessary."
                 )
                 break
             except (KeyboardInterrupt, SystemExit):
