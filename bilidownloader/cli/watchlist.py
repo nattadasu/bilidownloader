@@ -30,7 +30,7 @@ from bilidownloader.cli.options import (
     PostProcessingOptions,
     bili_format,
 )
-from bilidownloader.commons.constants import DEFAULT_WATCHLIST
+from bilidownloader.commons.constants import DEFAULT_WATCHLIST, DEFAULT_COOKIES
 from bilidownloader.commons.ui import prn_error, prn_info
 from bilidownloader.downmux.orchestrator import BiliProcess
 from bilidownloader.watchlist.watchlist import Watchlist
@@ -112,7 +112,7 @@ def watchlist_add(
     ] = None,
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-    cookies: OPTCOOKIE_OPT = None,
+    cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
 ) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
@@ -184,7 +184,7 @@ def watchlist_delete(
     ] = None,
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-    cookies: OPTCOOKIE_OPT = None,
+    cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
 ) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
