@@ -287,7 +287,7 @@ class ChapterProcessor:
 
             # Render table to string and add 6 space left indent
             table_str = StringIO()
-            temp_console = Console(file=table_str, highlight=False, force_terminal=True)
+            temp_console = Console(file=table_str, highlight=False, force_terminal=True, width=50)
             temp_console.print(table)
             for line in table_str.getvalue().splitlines():
                 Console(highlight=False).print(f"       {line}")
