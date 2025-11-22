@@ -1,8 +1,12 @@
-from . import assresample, gap_filler, srtgapfill, srttoass
+from . import gap_filler, srtgapfill
 
 __all__ = [
-    "assresample",
     "gap_filler",
     "srtgapfill",
-    "srttoass",
 ]
+
+try:
+    from . import assresample, srttoass
+    __all__.extend(["assresample", "srttoass"])
+except ImportError:
+    pass
