@@ -92,7 +92,7 @@ def download_today_releases(
     bins: BinaryPaths = Depends(BinaryPaths),
     dl_opts: DownloadOptions = Depends(DownloadOptions),
     pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
-):
+) -> None:
     raise_ffmpeg(bins.ffmpeg_path)
     raise_mkvmerge(bins.mkvmerge_path)
     raise_cookie(files.cookie)
@@ -129,7 +129,7 @@ def download_all_releases(
     bins: BinaryPaths = Depends(BinaryPaths),
     dl_opts: DownloadOptions = Depends(DownloadOptions),
     pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
-):
+) -> None:
     raise_ffmpeg(bins.ffmpeg_path)
     raise_mkvpropedit(bins.mkvpropedit_path)
     raise_mkvmerge(bins.mkvmerge_path)

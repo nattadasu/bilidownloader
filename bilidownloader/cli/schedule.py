@@ -64,7 +64,7 @@ def schedule(
             show_default=False,
         ),
     ] = None,
-):
+) -> None:
     api = BiliApi()
     data = api.get_anime_timeline()
     tpat = re.compile(r"(\d{2}:\d{2})")

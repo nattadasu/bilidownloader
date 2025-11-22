@@ -42,7 +42,7 @@ def download_url(
     bins: BinaryPaths = Depends(BinaryPaths),
     dl_opts: DownloadOptions = Depends(DownloadOptions),
     pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
-):
+) -> None:
     """Download via direct URL, let the app decide what type of the URL"""
 
     raise_ffmpeg(bins.ffmpeg_path)

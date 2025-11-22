@@ -33,7 +33,7 @@ def history_list(
         HistorySortBy,
         typer.Option("--sort-by", help="Sort by field"),
     ] = HistorySortBy.DATE,
-):
+) -> None:
     hi = History(file_path)
 
     if len(hi.list) == 0:
@@ -94,7 +94,7 @@ def history_query(
         HistorySortBy,
         typer.Option("--sort-by", help="Sort by field"),
     ] = HistorySortBy.DATE,
-):
+) -> None:
     hi = History(file_path)
 
     if len(hi.list) == 0:
@@ -184,7 +184,7 @@ def history_clear(
             help="Clear history for specific episode ID(s). Can be specified multiple times.",
         ),
     ] = None,
-):
+) -> None:
     hi = History(file_path)
 
     # Handle by_series option
@@ -280,7 +280,7 @@ def history_clear(
 @hi_app.command("info", help="Show download history statistics", hidden=True)
 def history_statistics(
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
-):
+) -> None:
     hi = History(file_path)
 
     if len(hi.list) == 0:

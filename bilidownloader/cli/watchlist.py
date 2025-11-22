@@ -44,7 +44,7 @@ console = Console()
 def watchlist_list(
     show_url: SHOWURL_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
-):
+) -> None:
     wl = Watchlist(file_path)
 
     if len(wl.list) == 0:
@@ -113,7 +113,7 @@ def watchlist_add(
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
-):
+) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
     wids = {item[0] for item in wl.list}
@@ -185,7 +185,7 @@ def watchlist_delete(
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = None,
-):
+) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
     index: Optional[List[int]] = None
@@ -268,7 +268,7 @@ def watchlist_download(
     bins: BinaryPaths = Depends(BinaryPaths),
     dl_opts: DownloadOptions = Depends(DownloadOptions),
     pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
-):
+) -> None:
     raise_cookie(files.cookie)
     raise_ffmpeg(bins.ffmpeg_path)
     raise_mkvpropedit(bins.mkvpropedit_path)
