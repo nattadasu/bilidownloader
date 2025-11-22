@@ -141,11 +141,41 @@ class VideoDownloader:
         codec = "avc1" if self.is_avc else "hev1"
         hcodec = "AVC" if self.is_avc else "HEVC"
 
+        # Map resolution to BiliBili's quality labels (format_note field)
+        # This handles non-16:9 aspect ratios correctly
+        quality_map = {
+            144: "144P",
+            240: "240P",
+            360: "360P",
+            480: "480P",
+            720: "720P",
+            1080: "1080P",
+            2160: "Enhanced bitrate",  # 4K content
+        }
+        quality_label = quality_map.get(self.resolution, f"{self.resolution}P")
+
+        # Build format selector with fallbacks:
+        # 1. Try exact height match (for standard 16:9 content)
+        # 2. For 1080P, prefer HD variant first, then standard
+        # 3. Fall back to format_note label (handles non-16:9 aspect ratios)
+        # Note: Using *= for substring matching instead of ~= to avoid regex issues
+        if self.resolution == 1080:
+            format_selector = (
+                f"bv*[vcodec^={codec}][format_note*=HD]+ba/"
+                f"bv*[vcodec^={codec}][height={self.resolution}]+ba/"
+                f"bv*[vcodec^={codec}][format_note*={quality_label}]+ba"
+            )
+        else:
+            format_selector = (
+                f"bv*[vcodec^={codec}][height={self.resolution}]+ba/"
+                f"bv*[vcodec^={codec}][format_note*={quality_label}]+ba"
+            )
+
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
             "force_print": {"after_move": ["filepath"]},
-            "format": f"bv*[vcodec^={codec}][height={self.resolution}]+ba",
+            "format": format_selector,
             "fragment_retries": 10,
             "ignoreerrors": "only_download",
             "merge_output_format": "mkv",
