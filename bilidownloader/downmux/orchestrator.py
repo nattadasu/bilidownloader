@@ -91,6 +91,7 @@ class BiliProcess:
             only_audio=post_processing_options.audio_only,
             output_dir=file_config.output_dir,
             verbose=download_options.verbose,
+            skip_no_subtitle=download_options.skip_no_subtitle,
         )
         if binary_paths.ffmpeg_path is None:
             raise ValueError("ffmpeg path is not set properly")
@@ -141,6 +142,9 @@ class BiliProcess:
 
                 # Download video
                 loc, data, language = self.downloader.download_episode(episode_url)
+
+                if loc is None: # Episode was skipped due to no subtitles
+                    return None
 
                 # Process chapters
                 chapters = self.downloader.get_episode_chapters(data)

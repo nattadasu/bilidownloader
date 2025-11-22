@@ -46,6 +46,7 @@ class VideoDownloader:
         only_audio: bool = False,
         output_dir: Optional[Path] = None,
         verbose: bool = False,
+        skip_no_subtitle: bool = False,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -61,8 +62,11 @@ class VideoDownloader:
         self.only_audio = only_audio
         self.output_dir = output_dir or Path.cwd()
         self.verbose = verbose
+        self.skip_no_subtitle = skip_no_subtitle
 
-    def get_video_info(self, episode_url: str) -> Union[Any, Dict[str, Any], None]:
+    def get_video_info(
+        self, episode_url: str, simulate: bool = True
+    ) -> Union[Any, Dict[str, Any], None]:
         """Get video information from yt-dlp"""
         ydl_opts = {
             "cookiefile": str(self.cookie),
@@ -75,10 +79,12 @@ class VideoDownloader:
                 {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
             ],
             "retries": 10,
-            "simulate": True,
+            "simulate": simulate,
             "verbose": False,
             "quiet": True,
             "referer": "https://www.bilibili.tv/",
+            "writesubtitles": True,
+            "allsubtitles": True,
         }
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
@@ -226,6 +232,14 @@ class VideoDownloader:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         if self.mkvmerge_path:
             ydl_opts["mkvmerge_path"] = str(self.mkvmerge_path)
+
+        # Check for subtitles if skip_no_subtitle is True
+        if self.skip_no_subtitle and not self.only_audio:
+            # Use get_video_info to simulate and get metadata with subtitle info
+            metadata_for_sub_check = self.get_video_info(episode_url, simulate=True)
+            if not metadata_for_sub_check or not metadata_for_sub_check.get("subtitles"):
+                prn_info(f"Skipping {episode_url}: No subtitles found and --skip-no-subtitle is enabled.")
+                return None, None, None # Indicate skipped download
 
         with YDL(ydl_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True

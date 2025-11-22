@@ -130,6 +130,15 @@ SRT_OPT = Annotated[
     ),
 ]
 """Flag to download SRT only"""
+SKIP_NO_SUBTITLE_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--skip-no-subtitle",
+        help="Skip downloading the episode if no subtitles are available.",
+        rich_help_panel="Filtering & Selection",
+    ),
+]
+"""Flag to skip episodes without subtitles"""
 AUDIO_OPT = Annotated[
     bool,
     typer.Option(
@@ -321,6 +330,7 @@ class DownloadOptions:
     forced: FORCED_OPT = False
     download_pv: PV_OPT = False
     verbose: VERBOSE_OPT = False
+    skip_no_subtitle: SKIP_NO_SUBTITLE_OPT = False
 
 
 @dataclass
