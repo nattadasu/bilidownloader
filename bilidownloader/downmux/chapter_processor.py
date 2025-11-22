@@ -151,6 +151,33 @@ class ChapterProcessor:
             chapters[0].title = "Episode"
             chapters[1].title = "Outro"
 
+        # Pre-process: merge short brandings into opening
+        merged_chapters: List[Chapter] = []
+        i = 0
+        while i < len(chapters):
+            chapter = chapters[i]
+            compr = self._compare_time(chapter)
+            
+            # Check if this is a very short chapter (< 2s) followed by Intro
+            if i + 1 < len(chapters):
+                next_chapter = chapters[i + 1]
+                
+                # If current chapter is < 2s and next is Intro, merge them
+                if compr < 2 and next_chapter.title == "Intro":
+                    merged_chapter = Chapter(
+                        start_time=chapter.start_time,
+                        end_time=next_chapter.end_time,
+                        title="Intro"
+                    )
+                    merged_chapters.append(merged_chapter)
+                    i += 2
+                    continue
+            
+            merged_chapters.append(chapter)
+            i += 1
+        
+        chapters = merged_chapters
+
         for i, chapter in enumerate(chapters):
             compr = self._compare_time(chapter)
             title = chapter.title
