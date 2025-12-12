@@ -74,7 +74,7 @@ HISTORY_OPT = Annotated[
         "--history",
         "--history-file",
         "-h",
-        help="Path to your history.txt file",
+        help="Path to your history.v2.tsv file",
         rich_help_panel="Data Management",
         resolve_path=True,
     ),
