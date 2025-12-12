@@ -64,8 +64,17 @@ def schedule(
             show_default=False,
         ),
     ] = None,
+    proxy: Annotated[
+        Optional[str],
+        typer.Option(
+            "--proxy",
+            "-p",
+            help="Proxy URL for requests (e.g., http://proxy.example.com:8080)",
+            rich_help_panel="Network",
+        ),
+    ] = None,
 ) -> None:
-    api = BiliApi()
+    api = BiliApi(proxy=proxy)
     data = api.get_anime_timeline()
     tpat = re.compile(r"(\d{2}:\d{2})")
     epat = re.compile(r"E(\d+(-\d+)?)")

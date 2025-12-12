@@ -47,6 +47,7 @@ class VideoDownloader:
         output_dir: Optional[Path] = None,
         verbose: bool = False,
         skip_no_subtitle: bool = False,
+        proxy: Optional[str] = None,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -63,6 +64,7 @@ class VideoDownloader:
         self.output_dir = output_dir or Path.cwd()
         self.verbose = verbose
         self.skip_no_subtitle = skip_no_subtitle
+        self.proxy = proxy
 
     def get_video_info(
         self, episode_url: str, simulate: bool = True
@@ -86,6 +88,8 @@ class VideoDownloader:
             "writesubtitles": True,
             "allsubtitles": True,
         }
+        if self.proxy:
+            ydl_opts["proxy"] = self.proxy
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
         with YDL(ydl_opts) as ydl:  # type: ignore
@@ -105,7 +109,7 @@ class VideoDownloader:
     ) -> Tuple[Path, Any, Optional[Literal["ind", "jpn", "chi", "tha"]]]:
         """Download episode from Bilibili with yt-dlp"""
         prn_info("Resolving some metadata information of the link, may take a while")
-        html = BiliHtml(cookie_path=self.cookie, user_agent=uagent)
+        html = BiliHtml(cookie_path=self.cookie, user_agent=uagent, proxy=self.proxy)
         resp = html.get(episode_url)
 
         ep_url = rsearch(r"play/(\d+)/(\d+)", episode_url)
@@ -202,6 +206,8 @@ class VideoDownloader:
             "writesubtitles": True,
             "referer": "https://www.bilibili.tv/",
         }
+        if self.proxy:
+            ydl_opts["proxy"] = self.proxy
 
         # Build postprocessors list in the correct order
         postprocessors = []
@@ -237,9 +243,13 @@ class VideoDownloader:
         if self.skip_no_subtitle and not self.only_audio:
             # Use get_video_info to simulate and get metadata with subtitle info
             metadata_for_sub_check = self.get_video_info(episode_url, simulate=True)
-            if not metadata_for_sub_check or not metadata_for_sub_check.get("subtitles"):
-                prn_info(f"Skipping {episode_url}: No subtitles found and --skip-no-subtitle is enabled.")
-                return None, None, None # Indicate skipped download
+            if not metadata_for_sub_check or not metadata_for_sub_check.get(
+                "subtitles"
+            ):
+                prn_info(
+                    f"Skipping {episode_url}: No subtitles found and --skip-no-subtitle is enabled."
+                )
+                return None, None, None  # Indicate skipped download
 
         with YDL(ydl_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True

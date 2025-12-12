@@ -57,6 +57,7 @@ class BiliProcess:
         self.dont_convert = post_processing_options.no_convert
         self.subtitle_lang = post_processing_options.sub_lang
         self.only_audio = post_processing_options.audio_only
+        self.proxy = download_options.proxy
 
         # Set verbose mode for debug messages
         set_verbose(download_options.verbose)
@@ -92,6 +93,7 @@ class BiliProcess:
             output_dir=file_config.output_dir,
             verbose=download_options.verbose,
             skip_no_subtitle=download_options.skip_no_subtitle,
+            proxy=download_options.proxy,
         )
         if binary_paths.ffmpeg_path is None:
             raise ValueError("ffmpeg path is not set properly")
@@ -143,7 +145,7 @@ class BiliProcess:
                 # Download video
                 loc, data, language = self.downloader.download_episode(episode_url)
 
-                if loc is None: # Episode was skipped due to no subtitles
+                if loc is None:  # Episode was skipped due to no subtitles
                     return None
 
                 # Process chapters
@@ -259,7 +261,7 @@ class BiliProcess:
         """Process watchlist from Bilibili"""
         final: List[Path] = []
         wl = Watchlist(self.watchlist)
-        api = BiliApi()
+        api = BiliApi(proxy=self.proxy)
         clock = BenchClock()
 
         if forced:

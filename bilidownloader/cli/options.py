@@ -286,6 +286,16 @@ VERBOSE_OPT = Annotated[
     ),
 ]
 """Flag to enable verbose output"""
+PROXY_OPT = Annotated[
+    Optional[str],
+    typer.Option(
+        "--proxy",
+        "-p",
+        help="Proxy URL for requests and yt-dlp (e.g., http://proxy.example.com:8080, socks5://127.0.0.1:1080)",
+        rich_help_panel="Network",
+    ),
+]
+"""Proxy URL option for network requests"""
 
 FFMPEG_PATH = find_command("ffmpeg")
 MKVPROPEX_PATH = find_command("mkvpropedit")
@@ -331,6 +341,7 @@ class DownloadOptions:
     download_pv: PV_OPT = False
     verbose: VERBOSE_OPT = False
     skip_no_subtitle: SKIP_NO_SUBTITLE_OPT = False
+    proxy: PROXY_OPT = None
 
 
 @dataclass

@@ -11,7 +11,10 @@ from bilidownloader.commons.constants import WEB_API_URL
 
 class BiliApi:
     def __init__(
-        self, api_url: str = WEB_API_URL, cookie_path: Union[str, Path, None] = None
+        self,
+        api_url: str = WEB_API_URL,
+        cookie_path: Union[str, Path, None] = None,
+        proxy: Optional[str] = None,
     ):
         self.api_url = api_url
         self.unified_params = {
@@ -20,6 +23,8 @@ class BiliApi:
         }
         self.cookie = cookie_path
         self.session = req.Session()
+        if proxy:
+            self.session.proxies = {"http": proxy, "https": proxy}
         if self.cookie:
             jar = MozCookie(self.cookie)
             jar.load()
@@ -124,6 +129,7 @@ class BiliHtml:
         self,
         cookie_path: Union[str, Path, None] = None,
         user_agent: Optional[str] = None,
+        proxy: Optional[str] = None,
     ):
         self.cookie = cookie_path
         self.user_agent = (
@@ -132,6 +138,8 @@ class BiliHtml:
         )
         self.session = req.Session()
         self.session.headers["User-Agent"] = self.user_agent
+        if proxy:
+            self.session.proxies = {"http": proxy, "https": proxy}
         if self.cookie:
             jar = MozCookie(self.cookie)
             jar.load()

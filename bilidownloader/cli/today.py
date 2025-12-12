@@ -97,7 +97,7 @@ def download_today_releases(
     raise_mkvmerge(bins.mkvmerge_path)
     raise_cookie(files.cookie)
 
-    api = BiliApi().get_today_schedule()
+    api = BiliApi(proxy=dl_opts.proxy).get_today_schedule()
     released = [anime for anime in api if anime.is_available]
     try:
         _cards_selector(
@@ -135,7 +135,7 @@ def download_all_releases(
     raise_mkvmerge(bins.mkvmerge_path)
     raise_cookie(files.cookie)
 
-    api = BiliApi().get_all_available_shows()
+    api = BiliApi(proxy=dl_opts.proxy).get_all_available_shows()
     released = [anime for anime in api if anime.is_available]
     released = sorted(released, key=lambda k: k.title)
     try:

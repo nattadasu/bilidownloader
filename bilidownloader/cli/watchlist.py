@@ -30,7 +30,7 @@ from bilidownloader.cli.options import (
     PostProcessingOptions,
     bili_format,
 )
-from bilidownloader.commons.constants import DEFAULT_WATCHLIST, DEFAULT_COOKIES
+from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_WATCHLIST
 from bilidownloader.commons.ui import prn_error, prn_info
 from bilidownloader.downmux.orchestrator import BiliProcess
 from bilidownloader.watchlist.watchlist import Watchlist
@@ -66,7 +66,7 @@ def watchlist_list(
     console.print(table)
 
 
-def _wl_do_proc(serial_url: str) -> Tuple[str, str]:
+def _wl_do_proc(serial_url: str, proxy: Optional[str] = None) -> Tuple[str, str]:
     search = re.search(bili_format, serial_url)
     if search:
         media_id = search.group("media_id")
@@ -74,7 +74,7 @@ def _wl_do_proc(serial_url: str) -> Tuple[str, str]:
         media_id = serial_url
     url = f"https://www.bilibili.tv/en/media/{media_id}"
     try:
-        resp = BiliHtml().get(url)
+        resp = BiliHtml(proxy=proxy).get(url)
     except Exception as e:
         raise ValueError(f"Failed to fetch {url}: {e}")
     ftitle = re.search(
@@ -113,6 +113,15 @@ def watchlist_add(
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
+    proxy: Annotated[
+        Optional[str],
+        typer.Option(
+            "--proxy",
+            "-p",
+            help="Proxy URL for requests (e.g., http://proxy.example.com:8080)",
+            rich_help_panel="Network",
+        ),
+    ] = None,
 ) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
@@ -122,7 +131,7 @@ def watchlist_add(
         filt: List[Tuple[str, str]] = []
         for url in series:
             try:
-                media_id, title = _wl_do_proc(url)
+                media_id, title = _wl_do_proc(url, proxy=proxy)
                 if media_id not in wids:
                     filt.append((media_id, title))
                 else:
@@ -134,7 +143,7 @@ def watchlist_add(
             exit(2)
         index = [i for i in range(len(filt))]
     else:
-        api = BiliApi().get_all_shows_simple()
+        api = BiliApi(proxy=proxy).get_all_shows_simple()
 
         filt = [item for item in api if item[0] not in wids]
         while True:
@@ -185,6 +194,15 @@ def watchlist_delete(
     assume_yes: ASSUMEYES_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
+    proxy: Annotated[
+        Optional[str],
+        typer.Option(
+            "--proxy",
+            "-p",
+            help="Proxy URL for requests (e.g., http://proxy.example.com:8080)",
+            rich_help_panel="Network",
+        ),
+    ] = None,
 ) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
@@ -194,7 +212,7 @@ def watchlist_delete(
         filt: List[Tuple[str, str]] = []
         for url in series:
             try:
-                media_id, title = _wl_do_proc(url)
+                media_id, title = _wl_do_proc(url, proxy=proxy)
                 if wl.search_watchlist(season_id=media_id):
                     filt.append((media_id, title))
                 else:
