@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +8,7 @@ from rich.console import Console
 ins_notify = Notify()
 console = Console(highlight=False)
 _verbose = False
+_notification_disabled = os.getenv("DISPLAY") is None and os.name != "nt"
 
 
 def set_verbose(verbose: bool) -> None:
@@ -99,6 +101,8 @@ def push_notification(title: str, index: str, path: Optional[Path] = None) -> No
     Returns:
         None
     """
+    if _notification_disabled:
+        return
     ins_notify.application_name = "BiliDownloader"
     if path:
         ins_notify.title = f"{title}, {index} downloaded"
