@@ -38,6 +38,22 @@ NATIVE_FONTS: Dict[str, FontInfo] = {
         "url": f"{NOTO_URI}/NotoSans-Italic[wdth,wght].ttf",
         "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
     },
+    "Arial": {
+        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial@1.0.4/Arial.ttf",
+        "path": BASE_DIR / "fonts" / "arial.ttf",
+    },
+    "Arial::Bold": {
+        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-bold@1.0.4/Arial%20Bold.ttf",
+        "path": BASE_DIR / "fonts" / "arial-bold.ttf",
+    },
+    "Arial::Italic": {
+        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-italic@1.0.4/Arial%20Italic.ttf",
+        "path": BASE_DIR / "fonts" / "arial-italic.ttf",
+    },
+    "Arial::Bold Italic": {
+        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-bold-italic@1.0.4/Arial%20Bold%20Italic.ttf",
+        "path": BASE_DIR / "fonts" / "arial-bold-italic.ttf",
+    },
 }
 
 
