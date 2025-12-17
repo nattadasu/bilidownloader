@@ -226,7 +226,7 @@ class MetadataEditor:
         if not audio_args and not sub_args:
             return video_path
 
-        prn_info("Adding metadata")
+        prn_info("Remuxing file with metadata and attachments")
         prn_dbg(f"Executing mkvpropedit on {video_path.name}")
         sp.run(
             [
@@ -241,6 +241,6 @@ class MetadataEditor:
             ],
             check=True,
         )
-        prn_done("Metadata added")
+        prn_done("Remuxing completed")
 
         return video_path

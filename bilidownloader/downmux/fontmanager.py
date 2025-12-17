@@ -190,6 +190,9 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     # Build a cache of system fonts for faster lookup
     system_fonts_cache = _build_system_fonts_cache(get_system_fonts_filename)
 
+    prn_info(f"Detected {len(fonts)} font(s) used in subtitles, attaching to file")
+
+    found_fonts = 0
     for font_name in fonts:
         font_path: Optional[Path] = None
 
@@ -210,8 +213,13 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
                     str(font_path),
                 ]
             )
+            found_fonts += 1
+            prn_info(f"  - {font_name} ({font_path.name})")
         else:
-            prn_error(f"Font '{font_name}' not found or file does not exist.")
+            prn_error(f"  - Font '{font_name}' not found or file does not exist.")
+
+    if found_fonts > 0:
+        prn_info(f"Successfully attached {found_fonts} font(s) to the file")
 
     return font_json, font_args
 

@@ -299,6 +299,7 @@ class ChapterProcessor:
         metadata_path.write_text("\n".join(self._to_mkvmerge_chapter(deform)))
 
         # Merge changes to the video
+        prn_info("Embedding chapters into the video file")
         sp.run(
             [
                 mkvpropedit,

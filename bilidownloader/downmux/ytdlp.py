@@ -65,6 +65,143 @@ class VideoDownloader:
         self.verbose = verbose
         self.skip_no_subtitle = skip_no_subtitle
         self.proxy = proxy
+        self._progress_bars = {}
+
+    @staticmethod
+    def _get_download_description(
+        filename: str, info_dict: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Generate a descriptive title for the download based on filename and metadata"""
+        import re
+
+        from bilidownloader.commons.utils import langcode_to_str
+
+        path = Path(filename)
+        stem = path.stem
+        ext = path.suffix.lower()
+
+        # Check if it's a subtitle file
+        if ext in [".ass", ".srt", ".vtt"]:
+            # Extract language code from filename (e.g., "video.en.ass" -> "en")
+            lang_match = re.search(
+                r"\.([a-z]{2}(?:-[A-Z][a-z]+)?)\.(?:ass|srt|vtt)$", filename
+            )
+            if lang_match:
+                lang_code = lang_match.group(1)
+                lang_name = langcode_to_str(lang_code)
+                format_name = ext[1:].upper()  # .ass -> ASS
+                return f"{lang_name} {format_name} subtitle"
+            else:
+                return f"{ext[1:].upper()} subtitle"
+
+        # Check if we have info_dict with format info
+        if info_dict:
+            # Check for video/audio based on vcodec and acodec
+            vcodec = info_dict.get("vcodec", "none")
+            acodec = info_dict.get("acodec", "none")
+
+            if vcodec != "none" and acodec == "none":
+                # Video only
+                resolution = info_dict.get("resolution", "")
+                format_note = info_dict.get("format_note", "")
+                if format_note:
+                    return f"Video track ({format_note})"
+                elif resolution:
+                    return f"Video track ({resolution})"
+                else:
+                    return "Video track"
+            elif acodec != "none" and vcodec == "none":
+                # Audio only
+                return "Audio track"
+
+        # Fallback: check filename pattern for .fN.mp4
+        if ".f" in stem and ext in [".mp4", ".m4a", ".webm"]:
+            # Extract format number (e.g., "video.f2.mp4" -> "2")
+            fragment_match = re.search(r"\.f(\d+)$", stem)
+            if fragment_match:
+                format_id = fragment_match.group(1)
+                # BiliBili typically uses lower IDs for audio, higher for video
+                # Based on the format list: 0-2 are audio, 3+ are video
+                try:
+                    fid = int(format_id)
+                    if fid <= 2:
+                        return "Audio track"
+                    else:
+                        return "Video track"
+                except ValueError:
+                    pass
+
+        # Fallback to truncated filename
+        return stem[:35]
+
+    def _progress_hook(self, d: Dict[str, Any]) -> None:
+        """Progress hook for yt-dlp to display download status with alive-progress"""
+        if d["status"] == "downloading":
+            filename = d.get("filename", "")
+
+            try:
+                from alive_progress import alive_bar
+            except ImportError:
+                # Fallback without alive-progress
+                return
+
+            # Get or create progress bar for this file
+            if filename not in self._progress_bars:
+                total = d.get("total_bytes") or d.get("total_bytes_estimate")
+
+                if total and total > 0:
+                    # Pass info_dict if available in the download dict
+                    info_dict = d.get("info_dict")
+                    description = self._get_download_description(filename, info_dict)
+                    # ANSI color codes: \033[46m = cyan background, \033[30m = black text, \033[0m = reset
+                    bar = alive_bar(
+                        total,
+                        title=f"\033[46m\033[30m INFO \033[0m Downloading {description}",
+                        unit="B",
+                        scale="IEC",
+                        receipt=True,
+                        ctrl_c=False,
+                    )
+                    bar_context = bar.__enter__()
+                    self._progress_bars[filename] = {
+                        "bar": bar,
+                        "context": bar_context,
+                        "last_downloaded": 0,
+                    }
+
+            # Update progress bar
+            if filename in self._progress_bars:
+                bar_info = self._progress_bars[filename]
+                downloaded = d.get("downloaded_bytes", 0)
+
+                if downloaded > bar_info["last_downloaded"]:
+                    increment = downloaded - bar_info["last_downloaded"]
+                    bar_info["context"](increment)
+                    bar_info["last_downloaded"] = downloaded
+
+        elif d["status"] == "finished":
+            filename = d.get("filename", "")
+
+            # Close progress bar for this file
+            if filename in self._progress_bars:
+                try:
+                    self._progress_bars[filename]["bar"].__exit__(None, None, None)
+                except Exception:
+                    pass
+                del self._progress_bars[filename]
+
+        elif d["status"] == "error":
+            filename = d.get("filename", "")
+
+            # Close progress bar on error
+            if filename in self._progress_bars:
+                try:
+                    self._progress_bars[filename]["bar"].__exit__(None, None, None)
+                except Exception:
+                    pass
+                del self._progress_bars[filename]
+
+            prn_error("Download error occurred")
 
     def get_video_info(
         self, episode_url: str, simulate: bool = True
@@ -190,6 +327,7 @@ class VideoDownloader:
             "ignoreerrors": "only_download",
             "merge_output_format": "mkv",
             "final_ext": "mkv",
+            "noprogress": True,
             "outtmpl": {
                 "default": str(
                     self.output_dir
@@ -199,6 +337,7 @@ class VideoDownloader:
                 )
             },
             "postprocessors": [],
+            "progress_hooks": [self._progress_hook],
             "retries": 10,
             "subtitlesformat": "srt" if self.srt else "ass/srt",
             "subtitleslangs": ["all"],
@@ -284,6 +423,23 @@ class VideoDownloader:
             prn_info(
                 f'Downloading "{title}" {ep_num} ({self.resolution}p, {"AVC" if self.is_avc else "HEVC"})'
             )
+
+            # Show selected format information
+            if metadata and "requested_formats" in metadata:
+                formats = metadata["requested_formats"]
+                for fmt in formats:
+                    if fmt.get("vcodec") != "none":
+                        # Video stream
+                        vcodec = fmt.get("vcodec", "unknown")
+                        resolution = f"{fmt.get('width', '?')}x{fmt.get('height', '?')}"
+                        prn_info(
+                            f"  Video: {vcodec} @ {resolution} ({fmt.get('format_note', 'unknown quality')})"
+                        )
+                    if fmt.get("acodec") != "none":
+                        # Audio stream
+                        acodec = fmt.get("acodec", "unknown")
+                        prn_info(f"  Audio: {acodec}")
+
             ydl.params["outtmpl"]["default"] = (  # type: ignore
                 "[%(extractor)s] {inp} - {ep} [%(resolution)s, {codec}].%(ext)s".format(  # type: ignore
                     inp=title,
