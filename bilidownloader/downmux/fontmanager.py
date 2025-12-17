@@ -188,7 +188,7 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
         return font_json, font_args
 
     # Build a cache of system fonts for faster lookup
-    system_fonts_cache = _build_system_fonts_cache(get_system_fonts_filename())
+    system_fonts_cache = _build_system_fonts_cache(get_system_fonts_filename)
 
     for font_name in fonts:
         font_path: Optional[Path] = None
