@@ -88,6 +88,28 @@ def prn_dbg(message: str) -> None:
         console.print(f"[reverse yellow] DEBUG [/] [dim]{message}[/dim]")
 
 
+def prn_cmd(command: list[str]) -> None:
+    """
+    Prints an external command that is about to be executed when verbose mode is enabled.
+
+    Args:
+        command (list[str]): the command and its arguments
+
+    Returns:
+        None
+
+    Note:
+        Uses rich for styled output with blue color scheme.
+        Only prints when verbose mode is enabled via set_verbose(True).
+        Formats the command as a shell-escaped string for readability.
+    """
+    if _verbose:
+        import shlex
+
+        cmd_str = " ".join(shlex.quote(str(arg)) for arg in command)
+        console.print(f"[reverse blue] CMD [/] [dim]{cmd_str}[/dim]")
+
+
 def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
     """
     Send native notification for Windows, Linux, and macOS, exclusively used

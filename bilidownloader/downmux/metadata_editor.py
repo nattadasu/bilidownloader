@@ -12,7 +12,14 @@ import requests as reqs
 from PIL import Image
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import _verbose, prn_dbg, prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import (
+    _verbose,
+    prn_cmd,
+    prn_dbg,
+    prn_done,
+    prn_error,
+    prn_info,
+)
 from bilidownloader.commons.utils import SubtitleLanguage, langcode_to_str
 
 
@@ -34,7 +41,7 @@ class MetadataEditor:
     ) -> List[str]:
         """Add audio language to the video file"""
         prn_dbg(
-            f"Adding audio language '{language}' to {video_path.name} using mkvpropedit"
+            f"Preparing audio language metadata: '{language}' for {video_path.name}"
         )
         code = {
             "chi": "Chinese (中文)",
@@ -93,9 +100,9 @@ class MetadataEditor:
                 "mkvmerge is not found in the system, try to install it first or check the path"
             )
 
-        result = sp.run(
-            [mkvmerge, "-J", str(video_path)], capture_output=True, text=True
-        )
+        mkvmerge_cmd = [str(mkvmerge), "-J", str(video_path)]
+        prn_cmd(mkvmerge_cmd)
+        result = sp.run(mkvmerge_cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             return fail("Failed to get subtitle track number")
@@ -228,17 +235,19 @@ class MetadataEditor:
 
         prn_info("Remuxing file with metadata and attachments")
         prn_dbg(f"Executing mkvpropedit on {video_path.name}")
+        mkvpropedit_cmd = [
+            mkvpropedit,
+            str(video_path),
+            *audio_args,
+            *sub_args,
+            *font_args,
+            *attachment_args,
+            "--verbose" if _verbose else "--quiet",
+            "--add-track-statistics-tags",
+        ]
+        prn_cmd(mkvpropedit_cmd)
         sp.run(
-            [
-                mkvpropedit,
-                str(video_path),
-                *audio_args,
-                *sub_args,
-                *font_args,
-                *attachment_args,
-                *["--verbose" if _verbose else "--quiet"],
-                "--add-track-statistics-tags",
-            ],
+            mkvpropedit_cmd,
             check=True,
         )
         prn_done("Remuxing completed")

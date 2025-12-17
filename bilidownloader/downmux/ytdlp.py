@@ -15,7 +15,7 @@ from yt_dlp import YoutubeDL as YDL
 from bilidownloader.apis.api import BiliHtml
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import REINSTALL_ARGS
-from bilidownloader.commons.ui import prn_error, prn_info, push_notification
+from bilidownloader.commons.ui import prn_dbg, prn_error, prn_info, push_notification
 from bilidownloader.commons.utils import (
     Chapter,
     SubtitleLanguage,
@@ -207,6 +207,7 @@ class VideoDownloader:
         self, episode_url: str, simulate: bool = True
     ) -> Union[Any, Dict[str, Any], None]:
         """Get video information from yt-dlp"""
+        prn_dbg(f"Extracting video info from {episode_url} (simulate={simulate})")
         ydl_opts = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -219,8 +220,8 @@ class VideoDownloader:
             ],
             "retries": 10,
             "simulate": simulate,
-            "verbose": False,
-            "quiet": True,
+            "verbose": self.verbose,
+            "quiet": not self.verbose,
             "referer": "https://www.bilibili.tv/",
             "writesubtitles": True,
             "allsubtitles": True,
@@ -229,6 +230,7 @@ class VideoDownloader:
             ydl_opts["proxy"] = self.proxy
         if self.ffmpeg_path:
             ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
+            prn_dbg(f"Using ffmpeg at: {self.ffmpeg_path}")
         with YDL(ydl_opts) as ydl:  # type: ignore
             return ydl.extract_info(episode_url, download=False)
 
@@ -451,6 +453,12 @@ class VideoDownloader:
             ydl.params["quiet"] = not self.verbose
             ydl.params["verbose"] = self.verbose
 
+            prn_dbg(f"Starting download with yt-dlp (verbose={self.verbose})")
+            if self.ffmpeg_path:
+                prn_dbg(f"FFmpeg location: {self.ffmpeg_path}")
+            if self.mkvmerge_path:
+                prn_dbg(f"mkvmerge path: {self.mkvmerge_path}")
+
             # Add subtitle reporter to display found subtitles
             if not self.only_audio:
                 from bilidownloader.subtitles.subtitle_reporter import SubtitleReporter
@@ -489,6 +497,7 @@ class VideoDownloader:
 
                 ydl.add_post_processor(SRTGapFiller(), when="before_dl")
 
+            prn_dbg(f"Calling yt-dlp.download() for {episode_url}")
             ydl.download([episode_url])
 
         metadata["btitle"] = title  # type: ignore

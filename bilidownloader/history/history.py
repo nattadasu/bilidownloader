@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from thefuzz import fuzz
 
 from bilidownloader.commons.constants import DEFAULT_HISTORY
-from bilidownloader.commons.ui import prn_done, prn_info
+from bilidownloader.commons.ui import prn_dbg, prn_done, prn_info
 from bilidownloader.commons.utils import DataExistError
 from bilidownloader.history.migration import HistoryMigrator
 from bilidownloader.history.repository import HistoryRepository
@@ -78,6 +78,7 @@ class History:
 
         if self.repo.check_exists(series_id, episode_id):
             raise DataExistError("Episode was ripped previously")
+        prn_dbg("Episode not found in history")
 
         return self.list
 
@@ -129,6 +130,7 @@ class History:
             episode_idx = ""
 
         self.repo.add_entry(series_id, series_title, episode_id, episode_idx)
+        prn_dbg(f"Episode added to history: Series {series_id}, Episode {episode_id}")
         return self.list
 
     def search_history(

@@ -11,7 +11,14 @@ from rich.console import Console
 from rich.table import Column, Table, box
 
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.ui import _verbose, prn_dbg, prn_done, prn_error, prn_info
+from bilidownloader.commons.ui import (
+    _verbose,
+    prn_cmd,
+    prn_dbg,
+    prn_done,
+    prn_error,
+    prn_info,
+)
 from bilidownloader.commons.utils import (
     Chapter,
     format_human_time,
@@ -99,17 +106,19 @@ class ChapterProcessor:
             )
             return video_path
 
+        ffprobe_cmd = [
+            str(ffprobe),
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(video_path),
+        ]
+        prn_cmd(ffprobe_cmd)
         result = sp.run(
-            [
-                str(ffprobe),
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                str(video_path),
-            ],
+            ffprobe_cmd,
             capture_output=True,
             text=True,
         )
@@ -117,26 +126,28 @@ class ChapterProcessor:
 
         # Remove existing chapters and metadata from the video
         prn_dbg(f"Removing existing metadata from {video_path.name}, if any")
+        mkvpropedit_cmd1 = [
+            mkvpropedit,
+            str(video_path),
+            "--edit",
+            "track:v1",
+            "--delete",
+            "name",
+            "--edit",
+            "track:a1",
+            "--delete",
+            "name",
+            "--delete",
+            "language",
+            "--tags",
+            "all:",
+            "--chapters",
+            "",
+            "--verbose" if _verbose else "--quiet",
+        ]
+        prn_cmd(mkvpropedit_cmd1)
         sp.run(
-            [
-                mkvpropedit,
-                str(video_path),
-                "--edit",
-                "track:v1",
-                "--delete",
-                "name",
-                "--edit",
-                "track:a1",
-                "--delete",
-                "name",
-                "--delete",
-                "language",
-                "--tags",
-                "all:",
-                "--chapters",
-                "",
-                *["--quiet" if not _verbose else "--verbose"],
-            ],
+            mkvpropedit_cmd1,
             check=True,
         )
 
@@ -300,14 +311,16 @@ class ChapterProcessor:
 
         # Merge changes to the video
         prn_info("Embedding chapters into the video file")
+        mkvpropedit_cmd2 = [
+            mkvpropedit,
+            str(video_path),
+            "--chapters",
+            str(metadata_path),
+            "--verbose" if _verbose else "--quiet",
+        ]
+        prn_cmd(mkvpropedit_cmd2)
         sp.run(
-            [
-                mkvpropedit,
-                str(video_path),
-                "--chapters",
-                str(metadata_path),
-                *["--quiet" if not _verbose else "--verbose"],
-            ],
+            mkvpropedit_cmd2,
             check=True,
         )
         prn_done("Chapters have been added to the video file")
