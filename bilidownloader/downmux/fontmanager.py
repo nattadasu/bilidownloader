@@ -27,6 +27,7 @@ class FontInfo(TypedDict):
 
 # Base URI for Noto Sans font files hosted on jsdelivr CDN
 NOTO_URI: str = "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/variable-ttf"
+ARIAL_URI: str = "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial"
 
 # Dictionary mapping font names to their download URLs and local storage paths
 NATIVE_FONTS: Dict[str, FontInfo] = {
@@ -39,19 +40,19 @@ NATIVE_FONTS: Dict[str, FontInfo] = {
         "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
     },
     "Arial": {
-        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial@1.0.4/Arial.ttf",
+        "url": f"{ARIAL_URI}@1.0.4/Arial.ttf",
         "path": BASE_DIR / "fonts" / "arial.ttf",
     },
     "Arial::Bold": {
-        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-bold@1.0.4/Arial%20Bold.ttf",
+        "url": f"{ARIAL_URI}-bold@1.0.4/Arial%20Bold.ttf",
         "path": BASE_DIR / "fonts" / "arial-bold.ttf",
     },
     "Arial::Italic": {
-        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-italic@1.0.4/Arial%20Italic.ttf",
+        "url": f"{ARIAL_URI}-italic@1.0.4/Arial%20Italic.ttf",
         "path": BASE_DIR / "fonts" / "arial-italic.ttf",
     },
     "Arial::Bold Italic": {
-        "url": "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial-bold-italic@1.0.4/Arial%20Bold%20Italic.ttf",
+        "url": f"{ARIAL_URI}-bold-italic@1.0.4/Arial%20Bold%20Italic.ttf",
         "path": BASE_DIR / "fonts" / "arial-bold-italic.ttf",
     },
 }
