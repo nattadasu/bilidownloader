@@ -65,7 +65,7 @@ class SubtitleReporter(PostProcessor):
         # Add 6 space left indent by rendering to string first
         table_str = StringIO()
         temp_console = Console(
-            file=table_str, highlight=False, force_terminal=True, width=50
+            file=table_str, highlight=False, force_terminal=True, width=70
         )
         temp_console.print(table)
         for line in table_str.getvalue().splitlines():
