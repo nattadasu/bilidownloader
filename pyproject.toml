@@ -17,8 +17,11 @@ classifiers = [
 keywords = ["anime"]
 dependencies = [
 	"alive-progress",               # progress bar for history migration
+	"ass",                          # parsing Advanced SubStation Alpha subtitles
     "platformdirs",                 # for platform-dependent config path
 	"fake-useragent",               # for random user agent
+	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
+	"fontTools",                    # font file parsing for name extraction
 	"langcodes",                    # Apply language track title for subtitles
 	"notify-py",                    # for notification
 	"Pillow",                       # for image processing and thumbnail resizing
@@ -34,8 +37,9 @@ dependencies = [
 
 [project.optional-dependencies]
 ass = [
-	"ass",            # parsing Advanced SubStation Alpha subtiltes
-	"matplotlib",     #  only used to get all system fonts and allow download ASS
+	"ass",                          # parsing Advanced SubStation Alpha subtitles
+	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
+	"fontTools",                    # font file parsing for name extraction
 ]
 dev = [
     "yamllint",       # lint yaml

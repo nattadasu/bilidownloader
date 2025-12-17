@@ -7,7 +7,7 @@ downloading, and lookup operations for yt-dlp integration.
 
 from json import loads as jloads
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import Callable, Dict, List, Optional, Tuple, TypedDict
 
 from bilidownloader.commons.constants import BASE_DIR
 from bilidownloader.commons.ui import prn_error, prn_info
@@ -178,12 +178,17 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     if not fonts:
         return font_json, font_args
 
-    # Import matplotlib font manager for system font lookup
+    # Import FindSystemFontsFilename for system font lookup
     try:
-        from matplotlib import font_manager as fontm
+        from find_system_fonts_filename import get_system_fonts_filename
     except ImportError:
-        prn_error("matplotlib is required for font lookup but not installed.")
+        prn_error(
+            "FindSystemFontsFilename is required for font lookup but not installed."
+        )
         return font_json, font_args
+
+    # Build a cache of system fonts for faster lookup
+    system_fonts_cache = _build_system_fonts_cache(get_system_fonts_filename())
 
     for font_name in fonts:
         font_path: Optional[Path] = None
@@ -193,7 +198,7 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
 
         # If not found in native fonts, try system font lookup
         if not font_path:
-            font_path = _resolve_system_font(font_name, fontm)
+            font_path = _resolve_system_font(font_name, system_fonts_cache)
 
         # Add to arguments if font was found and file exists
         if font_path and font_path.exists():
@@ -220,39 +225,71 @@ def _resolve_native_font(font_name: str) -> Optional[Path]:
     Returns:
         Path to the native font file if found, None otherwise.
     """
-    # Check for exact match or variant (e.g., "Noto Sans::Italic")
-    for native_font_name, font_info in NATIVE_FONTS.items():
-        if font_name == native_font_name or font_name.startswith(
-            f"{native_font_name}::"
-        ):
-            return font_info["path"]
+    # Check for exact match first
+    if font_name in NATIVE_FONTS:
+        return NATIVE_FONTS[font_name]["path"]
+
     return None
 
 
-def _resolve_system_font(font_name: str, fontm) -> Optional[Path]:
-    """Resolve a font name to a system font path using matplotlib.
+def _build_system_fonts_cache(
+    system_fonts_filename: Callable[[], List[str]],
+) -> Dict[str, Path]:
+    """Build a cache mapping font names to their file paths.
+
+    Args:
+        system_fonts_filename: Function that returns paths to system fonts.
+
+    Returns:
+        Dictionary mapping lowercase font family names to font file paths.
+    """
+    font_cache: Dict[str, Path] = {}
+
+    try:
+        from fontTools import ttLib
+    except ImportError:
+        prn_error("fontTools is required for font name extraction but not installed.")
+        return font_cache
+
+    for font_path_str in system_fonts_filename():
+        font_path = Path(font_path_str)
+        if not font_path.exists():
+            continue
+
+        try:
+            # Extract font family name from the font file
+            font = ttLib.TTFont(font_path, fontNumber=0)
+            name_table = font.get("name")
+            if name_table:
+                # Try to get the font family name (Name ID 1)
+                for record in name_table.names:
+                    if record.nameID == 1:  # Font Family name
+                        family_name = record.toUnicode().strip()
+                        # Store with lowercase key for case-insensitive lookup
+                        font_cache[family_name.lower()] = font_path
+                        break
+            font.close()
+        except Exception:
+            # If we can't read the font, skip it silently
+            continue
+
+    return font_cache
+
+
+def _resolve_system_font(font_name: str, font_cache: Dict[str, Path]) -> Optional[Path]:
+    """Resolve a font name to a system font path using font cache.
 
     Args:
         font_name: The name of the font to resolve.
-        fontm: The matplotlib font_manager module.
+        font_cache: Dictionary mapping font names to paths.
 
     Returns:
         Path to the system font file if found, None otherwise.
     """
-    try:
-        font_path_str: str = fontm.findfont(
-            fontm.FontProperties(family=font_name),
-            fallback_to_default=False,
-            rebuild_if_missing=False,
-        )
+    # Try case-insensitive lookup
+    font_path = font_cache.get(font_name.lower())
 
-        font_path = Path(font_path_str).absolute()
-
-        # Verify the found font is not a fallback (basic heuristic)
-        if font_path.exists() and font_path.name.lower() != "dejavusans.ttf":
-            return font_path
-
-    except Exception as e:
-        prn_error(f"Error resolving system font '{font_name}': {e}")
+    if font_path and font_path.exists():
+        return font_path
 
     return None
