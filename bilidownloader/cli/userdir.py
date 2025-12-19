@@ -1,10 +1,10 @@
 import os
 import platform
-import psutil
 import subprocess as sp
 import sys
 from pathlib import Path
 
+import psutil
 import typer
 from rich import print as rprint
 
