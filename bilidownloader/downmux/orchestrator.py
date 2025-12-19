@@ -79,7 +79,7 @@ class BiliProcess:
         # Initialize component classes
         self.downloader = VideoDownloader(
             cookie=file_config.cookie,
-            resolution=download_options.resolution,
+            resolution=int(download_options.resolution),
             is_avc=download_options.is_avc,
             download_pv=download_options.download_pv,
             ffmpeg_path=binary_paths.ffmpeg_path,

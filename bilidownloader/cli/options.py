@@ -7,16 +7,11 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from bilidownloader.cli.callbacks import (
-    resolution_autocomplete,
-    resolution_callback,
-)
-from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_HISTORY
+from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_HISTORY, VideoResolution
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.utils import SubtitleLanguage, check_package
 
 bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
-resos = [144, 240, 360, 480, 720, 1080, 2160]
 ass_status = check_package("ass")
 
 
@@ -91,16 +86,12 @@ FORCED_OPT = Annotated[
 ]
 """Forced flag for the command to download"""
 RESO_OPT = Annotated[
-    int,
+    VideoResolution,
     typer.Option(
         "--resolution",
         "--reso",
         "-r",
-        help="Target video resolution, accepted value: 144 | 240 | 360 | 480 | 720 | 1080 | 2160",
-        min=144,
-        max=2160,
-        callback=resolution_callback,
-        autocompletion=resolution_autocomplete,
+        help="Target video resolution",
         rich_help_panel="Filtering & Selection",
     ),
 ]
@@ -334,7 +325,7 @@ class FileConfig:
 class DownloadOptions:
     """Download options dependency"""
 
-    resolution: RESO_OPT = 1080
+    resolution: RESO_OPT = VideoResolution.P1080
     srtonly: SRT_OPT = not ass_status
     is_avc: AVC_OPT = False
     forced: FORCED_OPT = False

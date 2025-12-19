@@ -1,23 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-import typer
-
 from bilidownloader.commons.constants import DEFAULT_COOKIES
-
-
-def resolution_callback(user_input: int) -> int:
-    from bilidownloader.cli.options import resos
-
-    if user_input in resos:
-        return user_input
-    raise typer.BadParameter(f"Only following values were accepted: {resos}")
-
-
-def resolution_autocomplete():
-    from bilidownloader.cli.options import resos
-
-    return resos
 
 
 def raise_ffmpeg(path: Optional[Path]):

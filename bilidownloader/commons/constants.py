@@ -1,5 +1,5 @@
+from enum import Enum
 from pathlib import Path
-from typing import Literal, Union
 
 import platformdirs
 
@@ -10,13 +10,14 @@ DEFAULT_HISTORY = BASE_DIR / "history.v2.tsv"
 DEFAULT_WATCHLIST = BASE_DIR / "watchlist.txt"
 REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git"'
 
-available_res = Union[
-    Literal[144],
-    Literal[240],
-    Literal[360],
-    Literal[480],
-    Literal[720],
-    Literal[1080],
-    Literal[2160],
-]
-"""Available resolutions on Bstation, 4K was skipped"""
+
+class VideoResolution(str, Enum):
+    """Available resolutions on Bstation, 4K was skipped"""
+
+    P144 = "144"
+    P240 = "240"
+    P360 = "360"
+    P480 = "480"
+    P720 = "720"
+    P1080 = "1080"
+    P2160 = "2160"
