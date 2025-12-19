@@ -1,4 +1,5 @@
 import os
+import shlex
 from pathlib import Path
 from typing import Optional
 
@@ -104,8 +105,6 @@ def prn_cmd(command: list[str]) -> None:
         Formats the command as a shell-escaped string for readability.
     """
     if _verbose:
-        import shlex
-
         cmd_str = " ".join(shlex.quote(str(arg)) for arg in command)
         console.print(f"[reverse blue] CMD [/] [dim]{cmd_str}[/dim]")
 

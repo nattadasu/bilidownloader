@@ -5,6 +5,7 @@ Chapter processing - handles chapter formatting and embedding
 import subprocess as sp
 from io import StringIO
 from pathlib import Path
+from re import search as rsearch
 from typing import List, Optional, Tuple
 
 from rich.console import Console
@@ -58,8 +59,6 @@ class ChapterProcessor:
     @staticmethod
     def _deformat_chapter(chapter: List[str] | str) -> List[Chapter]:
         """Deformat a chapter from FFmpeg metadata format"""
-        from re import search as rsearch
-
         chapters: List[Chapter] = []
         if isinstance(chapter, str):
             chapter = [chapter]
