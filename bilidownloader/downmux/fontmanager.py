@@ -7,7 +7,7 @@ downloading, and lookup operations for yt-dlp integration.
 
 from json import loads as jloads
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import Callable, Dict, List, Optional, Set, Tuple, TypedDict
 
 from bilidownloader.commons.constants import BASE_DIR
 from bilidownloader.commons.ui import prn_error, prn_info
@@ -242,7 +242,7 @@ def _resolve_native_font(font_name: str) -> Optional[Path]:
 
 
 def _build_system_fonts_cache(
-    system_fonts_filename: Callable[[], List[str]],
+    system_fonts_filename: Callable[[], Set[str]],
 ) -> Dict[str, Path]:
     """Build a cache mapping font names to their file paths.
 
@@ -271,7 +271,7 @@ def _build_system_fonts_cache(
             name_table = font.get("name")
             if name_table:
                 # Try to get the font family name (Name ID 1)
-                for record in name_table.names:
+                for record in name_table.names:  # type: ignore
                     if record.nameID == 1:  # Font Family name
                         family_name = record.toUnicode().strip()
                         # Store with lowercase key for case-insensitive lookup
