@@ -2,6 +2,7 @@
 Video downloader - handles yt-dlp download operations
 """
 
+import sys
 from html import unescape
 from pathlib import Path
 from re import IGNORECASE
@@ -153,10 +154,19 @@ class VideoDownloader:
                     # Pass info_dict if available in the download dict
                     info_dict = d.get("info_dict")
                     description = self._get_download_description(filename, info_dict)
-                    # ANSI color codes: \033[46m = cyan background, \033[30m = black text, \033[0m = reset
+                    
+                    # Detect if running in a terminal (like rich does)
+                    is_terminal = sys.stdout.isatty()
+                    
+                    # Only use ANSI color codes if in a terminal
+                    if is_terminal:
+                        title = f"\033[46m\033[30m INFO \033[0m Downloading {description}"
+                    else:
+                        title = f" INFO  Downloading {description}"
+                    
                     bar = alive_bar(
                         total,
-                        title=f"\033[46m\033[30m INFO \033[0m Downloading {description}",
+                        title=title,
                         unit="B",
                         scale="IEC",
                         receipt=True,
