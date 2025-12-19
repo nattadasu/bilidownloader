@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD034 -->
+<!-- markdownlint-disable MD028 MD034 -->
 
 # BiliDownloader
 
@@ -19,36 +19,46 @@ to assist you in ripping episode
 
 ## Table of Contents
 
-- [BiliDownloader](#bilidownloader)
-  - [Table of Contents](#table-of-contents)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-  - [Features](#features)
-  - [Limitations](#limitations)
-  - [Usage](#usage)
-    - [Global Options](#global-options)
-  - [Commands](#commands)
-    - [`download`](#download)
-    - [`today`](#today)
-    - [`released`](#released)
-    - [`schedule`](#schedule)
-    - [`watchlist`](#watchlist)
-    - [`history`](#history)
-  - [Configuration](#configuration)
-    - [Cookie File](#cookie-file)
-    - [Watchlist File](#watchlist-file)
-    - [History File](#history-file)
-  - [Development and Testing](#development-and-testing)
-  - [Versioning](#versioning)
-  - [License](#license)
+* [BiliDownloader](#bilidownloader)
+  * [Table of Contents](#table-of-contents)
+  * [Requirements](#requirements)
+  * [Installation](#installation)
+  * [Features](#features)
+  * [Limitations](#limitations)
+  * [Usage](#usage)
+    * [Global Options](#global-options)
+  * [Commands](#commands)
+    * [`download`](#download)
+    * [`today`](#today)
+    * [`released`](#released)
+    * [`schedule`](#schedule)
+    * [`userdir`](#userdir)
+    * [`watchlist`](#watchlist)
+      * [`watchlist list`](#watchlist-list)
+      * [`watchlist add`](#watchlist-add)
+      * [`watchlist delete`](#watchlist-delete)
+      * [`watchlist download`](#watchlist-download)
+    * [`history`](#history)
+      * [`history list`](#history-list)
+      * [`history query`](#history-query)
+      * [`history clear`](#history-clear)
+      * [`history stats`](#history-stats)
+  * [Configuration](#configuration)
+    * [Cookie File](#cookie-file)
+    * [Watchlist File](#watchlist-file)
+    * [History File](#history-file)
+  * [Development and Testing](#development-and-testing)
+  * [Versioning](#versioning)
+  * [License](#license)
 
 ## Requirements
 
 Ensure the following libraries/programs are installed before using this tool:
 
-* Python 3.11 or later
+* Python 3.11 or later (up to 3.13)
 * `git` for cloning the repository
-* `pipx` (install via `pip install pipx`)
+* `pipx` or `pipxu` (install via `pip install pipx` or `pip install pipxu`)
+  * Note: `pipxu` uses `uv` under the hood for faster installation
 * The latest version of FFmpeg, available in your system's PATH
 * MKVToolNix (non-containerized versions only, such as Flatpak or Snap are not
   supported), with `mkvpropedit` accessible from the bundle
@@ -60,57 +70,79 @@ that Premium is activated.
 
 > [!NOTE]
 >
-> Currently, we only support installation via `pipx` for better package
+> Currently, we only support installation via `pipx` or `pipxu` for better package
 > management. If `pipx` is not installed, you can install it using
 > `pip install pipx` or check if your distribution's package manager provides it.
+>
+> Alternatively, you can use `pipxu` (which uses `uv` under the hood) for faster
+> installation: `pip install pipxu`
 
 > [!WARNING]
 >
 > If you're utilizing `pipxu` to manage bilidownloader, keep in mind that due
-> to `uv`'s nature, it can not update the app from bare repository without
+> to `uv`'s nature, it cannot update the app from bare repository without
 > reinstalling it first.
+
+**Using pipx:**
 
 ```bash
 pipx install git+https://github.com/nattadasu/bilidownloader.git
-```
 
-```bash
 # To enable ASS subtitle support, use the following command instead:
 # Note: Depending on your device, installation may take anywhere from a few minutes to an hour.
 pipx install 'bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git'
 ```
 
+**Using pipxu (faster installation):**
+
 ```bash
-# For Termux users, additional steps may be required:
+pipxu install git+https://github.com/nattadasu/bilidownloader.git
+
+# To enable ASS subtitle support:
+pipxu install 'bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git'
+```
+
+**For Termux users:**
+
+```bash
+# Install required packages
 pkg install x11-repo
-pkg install busybox ffmpeg git mkvtoolnix openssl python python-pip
+pkg install busybox ffmpeg git mkvtoolnix openssl python python-pip rust
+
+# Install pipx
 pip install pipx
+
+# Install pydantic from Termux repository
 pip install --extra-index-url "https://termux-user-repository.github.io/pypi/" pydantic
+
+# Install bilidownloader
 pipx install --system-site-packages git+https://github.com/nattadasu/bilidownloader.git
 ```
 
 Starting from version `2.1.0`, dependencies for ASS subtitle support have been
 made optional to ensure compatibility with headless devices and non-x86
 architectures. This change eliminates the need for compiling dependencies but
-sacrifices ASS track support.
+sacrifices ASS subtitle processing support.
 
-For Termux users, it is not recommended to install the `ass` extra unless you
+For Termux users, it is not recommended to install the `[ass]` extra unless you
 are confident in managing the additional unwritten requirements and
-troubleshootings.
+troubleshooting steps.
 
 ## Features
 
-* Download episodes
-* Retrieve the latest schedule
+* Download individual episodes or entire series
+* Retrieve the latest release schedule
 * Monitor and *automatically* download episodes for tracked series (watchlist)
-* Manage your Favorite List directly from the terminal
+* Manage your watchlist directly from the terminal
+* Track download history with search and statistics
+* Desktop notifications for completed downloads
 
 ## Limitations
 
 * Cannot bypass premium restrictions: a premium account is required to download
   paywalled content
-* Does not run in the background: use `crontab` or a task scheduler to automate
-  periodic execution
+* Does not run in the background: use `crontab`, `systemd.timer` or a task
+  scheduler to automate periodic execution.
 * Cannot download user-uploaded content: the tool is specifically designed for
   episode URLs
 * Does not support the Mainland version: it is tested only with the
@@ -185,6 +217,47 @@ bilidownloader schedule [--day <DAY>]
 bilidownloader schedule --day monday
 ```
 
+### `userdir`
+
+Open the user data directory in your file manager, spawn a shell in the directory,
+or print the path for use with the `cd` command.
+
+**Alias:** `cfgd`, `config-dir`
+
+```bash
+bilidownloader userdir [OPTIONS]
+```
+
+**Options:**
+
+* `--cd`: Launch a new shell session in the user data directory
+  * Automatically detects your current shell from environment variables,
+    Starship config if any, or parent process
+  * Supports: nu, elvish, xonsh, fish, zsh, bash, pwsh, and more
+* `--show`, `-s`: Print the directory path for use with command substitution
+
+**Examples:**
+
+```bash
+# Open the user data directory in your file manager (default)
+bilidownloader userdir
+
+# Launch a shell in the user data directory
+bilidownloader userdir --cd
+# Your current shell (fish, bash, zsh, etc.) will be detected automatically
+# Type 'exit' to return to the previous shell
+
+# Print the path for command substitution (Unix/Linux/macOS)
+cd $(bilidownloader userdir --show)
+
+# Print the path for command substitution (Windows PowerShell)
+cd (bilidownloader userdir --show)
+
+# Using aliases
+bilidownloader config --cd
+bilidownloader config-dir --show
+```
+
 ### `watchlist`
 
 Manage your watchlist of series.
@@ -229,7 +302,7 @@ Download all newly released episodes from the series in your watchlist.
 **Alias:** `down`, `dl`, `d`
 
 ```bash
-bilidownloader watchlist download
+bilidownloader watchlist download [OPTIONS]
 ```
 
 ### `history`
@@ -269,6 +342,17 @@ date, or episode.
 bilidownloader history clear [--by-series <SERIES>] [--by-date <DATE>] [--by-episode <EPISODE_ID>]
 ```
 
+#### `history stats`
+
+Show download history statistics including total episodes downloaded and
+series statistics.
+
+**Alias:** `statistics`, `info`
+
+```bash
+bilidownloader history stats
+```
+
 ## Configuration
 
 The tool uses three main files to store your data: `cookie.txt`, `watchlist.txt`,
@@ -280,6 +364,20 @@ of these files using the `--cookie`, `--watchlist`, and `--history` options.
 
 You must provide a `cookie.txt` file from BiliBili to download premium content.
 You can specify the path to your cookie file using the `--cookie` option.
+
+To obtain cookies, depending on browser you're using:
+
+1. Install [Get cookies.txt LOCALLY][crx] extension on Chrome/Chromium-based browsers,
+   or [cookies.txt][xps] on Firefox
+2. Open https://bilibili.tv, and make sure you've signed in and premium activated
+3. Click the extension icon and export cookies ONLY for `bilibili.tv` domain
+4. Save the exported `cookies.txt` to BiliDownloader's user data directory or
+   a custom location
+   * If saved elsewhere, specify the path using `--cookie` option when running commands
+   * Else, you can open the user data directory using `bilidownloader userdir` command
+
+[crx]: https://chromewebstore.google.com/detail/cclelndahbckbenkajhflpdbgdldlbecc
+[xps]: https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/
 
 ### Watchlist File
 
@@ -293,14 +391,24 @@ you download, preventing duplicate downloads.
 
 ## Development and Testing
 
-To test the application, use the following command:
+To test the application locally, clone the repository and install it in a
+separate environment:
 
 ```bash
+# Clone the repository
+git clone https://github.com/nattadasu/bilidownloader.git
+cd bilidownloader
+
+# Install in a test environment
 pipx install --suffix "_test" ".[ass]"
+
+# Or use pipxu for faster installation
+pipxu install --suffix "_test" ".[ass]"
 ```
 
-This installs the package with the `ass` extra in a separate environment,
-allowing you to test without affecting your main installation.
+This installs the package with the `[ass]` extra in a separate environment,
+allowing you to test without affecting your main installation. The test version
+will be available as `bilidownloader_test`.
 
 ## Versioning
 
