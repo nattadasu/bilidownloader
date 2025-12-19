@@ -49,6 +49,7 @@ class VideoDownloader:
         verbose: bool = False,
         skip_no_subtitle: bool = False,
         proxy: Optional[str] = None,
+        simulate: bool = False,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -66,6 +67,7 @@ class VideoDownloader:
         self.verbose = verbose
         self.skip_no_subtitle = skip_no_subtitle
         self.proxy = proxy
+        self.simulate = simulate
         self._progress_bars = {}
 
     @staticmethod
@@ -154,16 +156,18 @@ class VideoDownloader:
                     # Pass info_dict if available in the download dict
                     info_dict = d.get("info_dict")
                     description = self._get_download_description(filename, info_dict)
-                    
+
                     # Detect if running in a terminal (like rich does)
                     is_terminal = sys.stdout.isatty()
-                    
+
                     # Only use ANSI color codes if in a terminal
                     if is_terminal:
-                        title = f"\033[46m\033[30m INFO \033[0m Downloading {description}"
+                        title = (
+                            f"\033[46m\033[30m INFO \033[0m Downloading {description}"
+                        )
                     else:
                         title = f" INFO  Downloading {description}"
-                    
+
                     bar = alive_bar(
                         total,
                         title=title,
@@ -507,8 +511,12 @@ class VideoDownloader:
 
                 ydl.add_post_processor(SRTGapFiller(), when="before_dl")
 
-            prn_dbg(f"Calling yt-dlp.download() for {episode_url}")
-            ydl.download([episode_url])
+            if self.simulate:
+                prn_info("Simulate mode: Skipping actual download")
+                prn_dbg(f"Would download: {final_path}")
+            else:
+                prn_dbg(f"Calling yt-dlp.download() for {episode_url}")
+                ydl.download([episode_url])
 
         metadata["btitle"] = title  # type: ignore
 

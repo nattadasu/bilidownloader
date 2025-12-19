@@ -7,7 +7,11 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_HISTORY, VideoResolution
+from bilidownloader.commons.constants import (
+    DEFAULT_COOKIES,
+    DEFAULT_HISTORY,
+    VideoResolution,
+)
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.utils import SubtitleLanguage, check_package
 
@@ -287,6 +291,16 @@ PROXY_OPT = Annotated[
     ),
 ]
 """Proxy URL option for network requests"""
+SIMULATE_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--simulate",
+        "-s",
+        help="Simulate download without actually downloading files. Still records history.",
+        rich_help_panel="Output",
+    ),
+]
+"""Flag to simulate download without downloading"""
 
 FFMPEG_PATH = find_command("ffmpeg")
 MKVPROPEX_PATH = find_command("mkvpropedit")
@@ -333,6 +347,7 @@ class DownloadOptions:
     verbose: VERBOSE_OPT = False
     skip_no_subtitle: SKIP_NO_SUBTITLE_OPT = False
     proxy: PROXY_OPT = None
+    simulate: SIMULATE_OPT = False
 
 
 @dataclass

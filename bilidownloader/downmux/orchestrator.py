@@ -58,6 +58,7 @@ class BiliProcess:
         self.subtitle_lang = post_processing_options.sub_lang
         self.only_audio = post_processing_options.audio_only
         self.proxy = download_options.proxy
+        self.simulate = download_options.simulate
 
         # Set verbose mode for debug messages
         set_verbose(download_options.verbose)
@@ -94,6 +95,7 @@ class BiliProcess:
             verbose=download_options.verbose,
             skip_no_subtitle=download_options.skip_no_subtitle,
             proxy=download_options.proxy,
+            simulate=download_options.simulate,
         )
         if binary_paths.ffmpeg_path is None:
             raise ValueError("ffmpeg path is not set properly")
@@ -148,34 +150,41 @@ class BiliProcess:
                 if loc is None:  # Episode was skipped due to no subtitles
                     return None
 
-                # Process chapters
-                chapters = self.downloader.get_episode_chapters(data)
-                final = self.chapter_processor.embed_chapters(chapters, loc)
-
-                # Prepare metadata arguments
-                aud_args = self.metadata_editor.add_audio_language(final, language)
-
-                font_args: List[str] = []
-                if not self.srt or not self.dont_convert:
-                    font_json = Path("fonts.json")
-                    if font_json.exists():
-                        font_json, font_args = loop_font_lookup(font_json, font_args)
-                        font_json.unlink(True)
-
-                sub_args = self.metadata_editor.set_default_subtitle(
-                    data, final, self.subtitle_lang
-                )  # type: ignore
-
-                if not self.dont_thumbnail and not self.only_audio:
-                    attachment_args = self.metadata_editor.insert_thumbnail(data)
+                if self.simulate:
+                    # In simulate mode, skip post-processing but keep metadata
+                    final = loc
+                    prn_info("Simulate mode: Skipping post-processing")
                 else:
-                    attachment_args = []
+                    # Process chapters
+                    chapters = self.downloader.get_episode_chapters(data)
+                    final = self.chapter_processor.embed_chapters(chapters, loc)
 
-                # Execute metadata editing
-                final = self.metadata_editor.execute_mkvpropedit(
-                    final, aud_args, sub_args, font_args, attachment_args
-                )
-                Path("thumbnail.png").unlink(True)
+                    # Prepare metadata arguments
+                    aud_args = self.metadata_editor.add_audio_language(final, language)
+
+                    font_args: List[str] = []
+                    if not self.srt or not self.dont_convert:
+                        font_json = Path("fonts.json")
+                        if font_json.exists():
+                            font_json, font_args = loop_font_lookup(
+                                font_json, font_args
+                            )
+                            font_json.unlink(True)
+
+                    sub_args = self.metadata_editor.set_default_subtitle(
+                        data, final, self.subtitle_lang
+                    )  # type: ignore
+
+                    if not self.dont_thumbnail and not self.only_audio:
+                        attachment_args = self.metadata_editor.insert_thumbnail(data)
+                    else:
+                        attachment_args = []
+
+                    # Execute metadata editing
+                    final = self.metadata_editor.execute_mkvpropedit(
+                        final, aud_args, sub_args, font_args, attachment_args
+                    )
+                    Path("thumbnail.png").unlink(True)
 
                 # Update history
                 if not forced:
