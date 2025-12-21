@@ -22,7 +22,7 @@ dependencies = [
 	"fake-useragent",               # for random user agent
 	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
 	"fontTools",                    # font file parsing for name extraction
-	"langcodes",                    # Apply language track title for subtitles
+	"langcodes[data]",              # Apply language track title for subtitles
 	"notify-py",                    # for notification
 	"Pillow",                       # for image processing and thumbnail resizing
 	"psutil",                       # for process information (shell detection)

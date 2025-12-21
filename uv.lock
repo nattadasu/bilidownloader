@@ -92,7 +92,7 @@ requires-dist = [
     { name = "findsystemfontsfilename", marker = "extra == 'ass'" },
     { name = "fonttools" },
     { name = "fonttools", marker = "extra == 'ass'" },
-    { name = "langcodes" },
+    { name = "langcodes", extras = ["data"] },
     { name = "notify-py" },
     { name = "pillow" },
     { name = "platformdirs" },
