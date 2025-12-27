@@ -238,19 +238,32 @@ class BiliProcess:
                 # Check for HTTP 412 rate limiting error from BiliBili
                 error_msg = str(e)
                 traceback_msg = traceback.format_exc()
-                if "412" in error_msg or "412" in traceback_msg:
-                    if (
-                        "Precondition Failed" in error_msg
-                        or "Precondition Failed" in traceback_msg
-                    ):
-                        prn_error("Rate limit detected (HTTP 412: Precondition Failed)")
-                        prn_error(
-                            "It appears you've made too many requests in a short period. "
-                            "Please take a break and try again after at least an hour."
-                        )
-                        raise RateLimitError(
-                            "BiliBili rate limit exceeded (HTTP 412). Please wait at least an hour before retrying."
-                        )
+                # Look for more specific patterns to avoid false positives
+                # Checking for "HTTP Error 412:" or "HTTPError 412:" with colon/space
+                has_http_412 = (
+                    "HTTP Error 412:" in error_msg
+                    or "HTTPError 412:" in error_msg
+                    or "HTTP Error 412 " in error_msg
+                    or "HTTPError 412 " in error_msg
+                    or "HTTP Error 412:" in traceback_msg
+                    or "HTTPError 412:" in traceback_msg
+                    or "HTTP Error 412 " in traceback_msg
+                    or "HTTPError 412 " in traceback_msg
+                )
+                has_precondition_failed = (
+                    "Precondition Failed" in error_msg
+                    or "Precondition Failed" in traceback_msg
+                )
+
+                if has_http_412 and has_precondition_failed:
+                    prn_error("Rate limit detected (HTTP 412: Precondition Failed)")
+                    prn_error(
+                        "It appears you've made too many requests in a short period. "
+                        "Please take a break and try again after at least an hour."
+                    )
+                    raise RateLimitError(
+                        "BiliBili rate limit exceeded (HTTP 412). Please wait at least an hour before retrying."
+                    )
 
                 prn_error("An exception has been thrown:")
                 prn_error(traceback_msg)
