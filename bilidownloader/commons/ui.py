@@ -5,6 +5,7 @@ from typing import Optional
 
 from notifypy import Notify
 from rich.console import Console
+from rich.markup import escape
 
 ins_notify = Notify()
 console = Console(highlight=False)
@@ -36,7 +37,23 @@ def prn_info(message: str) -> None:
     Note:
         Uses rich for styled output with cyan color scheme.
     """
-    console.print(f"[reverse cyan] INFO [/] {message}")
+    console.print(f"[reverse cyan] INFO [/] {escape(message)}")
+
+
+def prn_warn(message: str) -> None:
+    """
+    Prints a warn message to the console.
+
+    Args:
+        message (str): the warn message
+
+    Returns:
+        None
+
+    Note:
+        Uses rich for styled output with orange color scheme.
+    """
+    console.print(f"[reverse yellow] INFO [/] {escape(message)}")
 
 
 def prn_done(message: str) -> None:
@@ -52,7 +69,7 @@ def prn_done(message: str) -> None:
     Note:
         Uses rich for styled output with green color scheme.
     """
-    console.print(f"[reverse green] DONE [/] {message}")
+    console.print(f"[reverse green] DONE [/] {escape(message)}")
 
 
 def prn_error(message: str) -> None:
@@ -68,7 +85,7 @@ def prn_error(message: str) -> None:
     Note:
         Uses rich for styled output with red color scheme.
     """
-    console.print(f"[reverse red] ERROR [/] {message}")
+    console.print(f"[reverse red] ERROR [/] {escape(message)}")
 
 
 def prn_dbg(message: str) -> None:
@@ -86,7 +103,7 @@ def prn_dbg(message: str) -> None:
         Only prints when verbose mode is enabled via set_verbose(True).
     """
     if _verbose:
-        console.print(f"[reverse yellow] DEBUG [/] [dim]{message}[/dim]")
+        console.print(f"[reverse bright_black] DEBUG [/] [dim]{escape(message)}[/dim]")
 
 
 def prn_cmd(command: list[str]) -> None:
@@ -106,7 +123,7 @@ def prn_cmd(command: list[str]) -> None:
     """
     if _verbose:
         cmd_str = " ".join(shlex.quote(str(arg)) for arg in command)
-        console.print(f"[reverse blue] CMD [/] [dim]{cmd_str}[/dim]")
+        console.print(f"[reverse blue] CMD [/] [dim]{escape(cmd_str)}[/dim]")
 
 
 def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
