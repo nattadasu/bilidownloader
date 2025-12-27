@@ -24,6 +24,7 @@ from bilidownloader.commons.ui import (
 from bilidownloader.commons.utils import (
     BenchClock,
     DataExistError,
+    RateLimitError,
     SubtitleLanguage,
     check_package,
     pluralize,
@@ -233,9 +234,26 @@ class BiliProcess:
                 print()
                 prn_error("Interrupt signal received, stopping process")
                 exit(1)
-            except Exception:
+            except Exception as e:
+                # Check for HTTP 412 rate limiting error from BiliBili
+                error_msg = str(e)
+                traceback_msg = traceback.format_exc()
+                if "412" in error_msg or "412" in traceback_msg:
+                    if (
+                        "Precondition Failed" in error_msg
+                        or "Precondition Failed" in traceback_msg
+                    ):
+                        prn_error("Rate limit detected (HTTP 412: Precondition Failed)")
+                        prn_error(
+                            "It appears you've made too many requests in a short period. "
+                            "Please take a break and try again after at least an hour."
+                        )
+                        raise RateLimitError(
+                            "BiliBili rate limit exceeded (HTTP 412). Please wait at least an hour before retrying."
+                        )
+
                 prn_error("An exception has been thrown:")
-                prn_error(traceback.format_exc())
+                prn_error(traceback_msg)
                 prn_info("Retrying...")
                 tries += 1
 

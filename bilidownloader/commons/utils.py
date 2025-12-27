@@ -14,6 +14,10 @@ class DataExistError(Exception):
     """Exception raised when data already exists in the file."""
 
 
+class RateLimitError(Exception):
+    """Exception raised when BiliBili returns HTTP 412 (rate limiting)."""
+
+
 class Chapter(BaseModel):
     """Chapter model for Bilibili videos."""
 
