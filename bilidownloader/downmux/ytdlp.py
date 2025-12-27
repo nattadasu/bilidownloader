@@ -16,9 +16,15 @@ from yt_dlp import YoutubeDL as YDL
 from bilidownloader.apis.api import BiliHtml
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import REINSTALL_ARGS
-from bilidownloader.commons.ui import prn_dbg, prn_error, prn_info, push_notification
+from bilidownloader.commons.ui import (
+    prn_dbg,
+    prn_error,
+    prn_info,
+    push_notification,
+)
 from bilidownloader.commons.utils import (
     Chapter,
+    RateLimitError,
     SubtitleLanguage,
     check_package,
     sanitize_filename,
@@ -26,6 +32,35 @@ from bilidownloader.commons.utils import (
 
 ua = UserAgent()
 uagent = ua.chrome
+
+
+class YtDlpLogger:
+    def debug(self, msg):
+        if "412" in msg and "Precondition Failed" in msg:
+            raise RateLimitError(
+                "Bilibili rate limit reached (412 Precondition Failed)"
+            )
+
+        # Remove generic scopes from start of message
+        # This handles [debug], [info], [download], [BiliIntl], etc.
+        # But preserves [BiliIntl] if it appears later (e.g. in filename)
+        msg = rsub(r"^\[[^]]+\]\s", "", msg)
+
+        prn_dbg(msg)
+
+    def warning(self, msg):
+        if "412" in msg and "Precondition Failed" in msg:
+            raise RateLimitError(
+                "Bilibili rate limit reached (412 Precondition Failed)"
+            )
+        prn_info(msg)
+
+    def error(self, msg):
+        if "412" in msg and "Precondition Failed" in msg:
+            raise RateLimitError(
+                "Bilibili rate limit reached (412 Precondition Failed)"
+            )
+        prn_error(msg)
 
 
 class VideoDownloader:
@@ -239,6 +274,7 @@ class VideoDownloader:
             "referer": "https://www.bilibili.tv/",
             "writesubtitles": True,
             "allsubtitles": True,
+            "logger": YtDlpLogger(),
         }
         if self.proxy:
             ydl_opts["proxy"] = self.proxy
@@ -360,6 +396,7 @@ class VideoDownloader:
             "updatetime": False,
             "writesubtitles": True,
             "referer": "https://www.bilibili.tv/",
+            "logger": YtDlpLogger(),
         }
         if self.proxy:
             ydl_opts["proxy"] = self.proxy
@@ -515,7 +552,6 @@ class VideoDownloader:
                 prn_info("Simulate mode: Skipping actual download")
                 prn_dbg(f"Would download: {final_path}")
             else:
-                prn_dbg(f"Calling yt-dlp.download() for {episode_url}")
                 ydl.download([episode_url])
 
         metadata["btitle"] = title  # type: ignore

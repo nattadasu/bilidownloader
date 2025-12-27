@@ -24,6 +24,7 @@ from bilidownloader.commons.ui import (
 from bilidownloader.commons.utils import (
     BenchClock,
     DataExistError,
+    RateLimitError,
     SubtitleLanguage,
     check_package,
     pluralize,
@@ -111,6 +112,16 @@ class BiliProcess:
             mkvpropedit_path=binary_paths.mkvpropedit_path,
             mkvmerge_path=binary_paths.mkvmerge_path,
         )
+
+    @staticmethod
+    def _handle_rate_limit() -> None:
+        """Handle rate limit error from Bilibili"""
+        prn_error(
+            "You have been rate-limited by BiliBili (412 Precondition Failed). "
+            "Please try again later, change your IP address, or make sure you "
+            "are not currently watching on another device"
+        )
+        exit(1)
 
     @staticmethod
     def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
@@ -223,6 +234,8 @@ class BiliProcess:
             except (ReferenceError, NameError) as err:
                 prn_error(str(err))
                 break
+            except RateLimitError:
+                self._handle_rate_limit()
             except DataExistError:
                 prn_error(
                     f"{episode_url} was ripped previously. "
@@ -244,6 +257,8 @@ class BiliProcess:
         clock = BenchClock()
         try:
             data = self._get_video_info(playlist_url)
+        except RateLimitError:
+            self._handle_rate_limit()
         except Exception:
             data = None
         if data is None:
