@@ -12,6 +12,11 @@ class CornerMark(BaseModel):
     bg_color: str
 
 
+class ViewHistory(BaseModel):
+    progress: int
+    progress_text: str
+
+
 class CardItem(BaseModel):
     type: str
     card_type: str
@@ -26,7 +31,7 @@ class CardItem(BaseModel):
     index_show: str
     label: int
     rank_info: None
-    view_history: None
+    view_history: Optional[ViewHistory] = None
     watched: str
     duration: str
     view_at: str
@@ -64,6 +69,11 @@ class ReturnData(BaseModel):
     current_time_ts: datetime
 
 
+class FavoriteData(BaseModel):
+    has_more: bool
+    cards: List[CardItem]
+
+
 class BiliTvResponse(BaseModel):
     code: int
     message: str
@@ -75,3 +85,10 @@ class BiliFavoriteResponse(BaseModel):
     code: int
     message: str
     ttl: int
+
+
+class BiliFavoritesListResponse(BaseModel):
+    code: int
+    message: str
+    ttl: int
+    data: FavoriteData

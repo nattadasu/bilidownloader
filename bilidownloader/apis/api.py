@@ -4,7 +4,12 @@ from typing import List, Literal, Optional, Tuple, Union
 
 import requests as req
 
-from bilidownloader.apis.models import BiliFavoriteResponse, BiliTvResponse, CardItem
+from bilidownloader.apis.models import (
+    BiliFavoriteResponse,
+    BiliFavoritesListResponse,
+    BiliTvResponse,
+    CardItem,
+)
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import WEB_API_URL
 
@@ -40,6 +45,31 @@ class BiliApi:
         resp = self.session.get(uri, params=self.unified_params)
         resp.raise_for_status()
         return BiliTvResponse(**resp.json())
+
+    def get_favorites(self, pn: int = 1, ps: int = 20) -> BiliFavoritesListResponse:
+        """Get favorites list
+
+        Args:
+            pn (int, optional): Page number. Defaults to 1.
+            ps (int, optional): Page size. Defaults to 20.
+
+        Returns:
+            BiliFavoritesListResponse: Response in Model Object
+        """
+        if not self.cookie:
+            raise ValueError("Cookie path must be set to perform this action")
+
+        uri = f"{self.api_url}/fav/list"
+        params = self.unified_params.copy()
+        params.update({
+            "type": "2",
+            "sub_type": "101",
+            "pn": str(pn),
+            "ps": str(ps),
+        })
+        resp = self.session.get(uri, params=params)
+        resp.raise_for_status()
+        return BiliFavoritesListResponse(**resp.json())
 
     def post_favorite(
         self, action: Literal["add", "del"], show_id: Union[int, str]

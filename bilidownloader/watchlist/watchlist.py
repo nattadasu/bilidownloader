@@ -199,3 +199,44 @@ class Watchlist:
 
         self._prn_rw("delete", season_id, entry_to_delete[1])
         return self.list
+
+    def pull_favorites(self) -> None:
+        """
+        Pull all favorites from Bilibili and add them to the watchlist.
+        """
+        if not self.cookie:
+            raise ValueError("Cookie path must be set to perform this action")
+
+        api = BiliApi(cookie_path=self.cookie)
+        pn = 1
+        ps = 20
+        total_added = 0
+
+        prn_info("Fetching favorites from Bilibili...")
+
+        while True:
+            try:
+                resp = api.get_favorites(pn=pn, ps=ps)
+                if not resp.data.cards:
+                    break
+
+                for card in resp.data.cards:
+                    try:
+                        self.add_watchlist(card.season_id, card.title, remote_update=False)
+                        total_added += 1
+                    except DataExistError:
+                        pass
+                    except Exception as e:
+                        prn_error(f"Failed to add {card.title} ({card.season_id}): {e}")
+
+                if not resp.data.has_more:
+                    break
+                pn += 1
+            except Exception as e:
+                prn_error(f"Failed to fetch favorites page {pn}: {e}")
+                break
+
+        if total_added > 0:
+            prn_done(f"Finished pulling favorites. Added {total_added} new shows.")
+        else:
+            prn_info("No new favorites found.")

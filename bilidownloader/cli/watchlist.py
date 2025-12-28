@@ -307,3 +307,15 @@ def watchlist_download(
             url = f"https://www.bilibili.tv/en/play/{sid}"
             prn_info(f"Downloading {title} ({url})")
             bili.process_playlist(url, dl_opts.forced)
+
+
+@wl_app.command("pull", help="Pull favorites from Bilibili to watchlist")
+@wl_app.command("sync", help="Pull favorites from Bilibili to watchlist", hidden=True)
+def watchlist_pull(
+    file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
+    cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
+) -> None:
+    raise_cookie(cookies)
+    wl = Watchlist(file_path, cookies)
+    wl.pull_favorites()
+    exit(0)
