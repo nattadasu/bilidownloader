@@ -85,8 +85,15 @@ class BiliApi:
         """
         if not self.cookie:
             raise ValueError("Cookie path must be set to perform this action")
+
+        spm_id = (
+            "bstar-web.pgc-video-detail.0.0"
+            if action == "add"
+            else "bstar-web.mylist-video.0.0"
+        )
+
         post_body = {
-            "from_spm_id": "bstar-web.timeline-detail.0.0",
+            "from_spm_id": spm_id,
             "rid": f"{show_id}",
             "type": 2,
         }

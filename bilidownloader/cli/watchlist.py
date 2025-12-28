@@ -162,7 +162,8 @@ def watchlist_add(
         title = filt[i][1]
         if cookies and not assume_yes:
             confirm: bool = survey.routines.inquire(  # type: ignore
-                f"Do you want to add {title} ({sid}) to watchlist? ", default=False
+                f"Do you also want to add {title} ({sid}) to your Bilibili Favorites? ",
+                default=False,
             )
         elif cookies and assume_yes:
             confirm = True
@@ -244,7 +245,8 @@ def watchlist_delete(
     for sid in ids:
         if cookies and not assume_yes:
             confirm: bool = survey.routines.inquire(  # type: ignore
-                f"Do you want to delete {sid} from watchlist? ", default=False
+                f"Do you also want to delete {sid} from your Bilibili Favorites? ",
+                default=False,
             )
         elif cookies and assume_yes:
             confirm = True
