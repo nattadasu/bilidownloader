@@ -23,6 +23,7 @@ from bilidownloader.cli.options import (
     ASSUMEYES_OPT,
     OPTCOOKIE_OPT,
     SHOWURL_OPT,
+    SKIPREMOTE_OPT,
     WATCHLIST_OPT,
     BinaryPaths,
     DownloadOptions,
@@ -111,6 +112,7 @@ def watchlist_add(
         ),
     ] = None,
     assume_yes: ASSUMEYES_OPT = False,
+    skip_remote: SKIPREMOTE_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
     proxy: Annotated[
@@ -160,13 +162,16 @@ def watchlist_add(
     for i in index:
         sid = filt[i][0]
         title = filt[i][1]
-        if cookies and not assume_yes:
-            confirm: bool = survey.routines.inquire(  # type: ignore
-                f"Do you also want to add {title} ({sid}) to your Bilibili Favorites? ",
-                default=False,
-            )
-        elif cookies and assume_yes:
-            confirm = True
+        if cookies:
+            if skip_remote:
+                confirm = False
+            elif assume_yes:
+                confirm = True
+            else:
+                confirm = survey.routines.inquire(  # type: ignore
+                    f"Do you also want to add {title} ({sid}) to your Bilibili Favorites? ",
+                    default=False,
+                )
         else:
             confirm = False
         wl.add_watchlist(filt[i][0], filt[i][1], confirm)
@@ -193,6 +198,7 @@ def watchlist_delete(
         ),
     ] = None,
     assume_yes: ASSUMEYES_OPT = False,
+    skip_remote: SKIPREMOTE_OPT = False,
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
     proxy: Annotated[
@@ -243,13 +249,16 @@ def watchlist_delete(
         ids.append(wl.list[i][0])
 
     for sid in ids:
-        if cookies and not assume_yes:
-            confirm: bool = survey.routines.inquire(  # type: ignore
-                f"Do you also want to delete {sid} from your Bilibili Favorites? ",
-                default=False,
-            )
-        elif cookies and assume_yes:
-            confirm = True
+        if cookies:
+            if skip_remote:
+                confirm = False
+            elif assume_yes:
+                confirm = True
+            else:
+                confirm = survey.routines.inquire(  # type: ignore
+                    f"Do you also want to delete {sid} from your Bilibili Favorites? ",
+                    default=False,
+                )
         else:
             confirm = False
         wl.delete_from_watchlist(sid, confirm)

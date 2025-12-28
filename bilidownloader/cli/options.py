@@ -257,6 +257,16 @@ ASSUMEYES_OPT = Annotated[
     ),
 ]
 """Flag to force accept all prompts to True"""
+SKIPREMOTE_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--skip-remote",
+        "-R",
+        help="Skip updating changes to Bilibili's server (add/delete from Favorites)",
+        rich_help_panel="Data Management",
+    ),
+]
+"""Flag to skip remote update on watchlist operations"""
 ASPLAYLIST_OPT = Annotated[
     bool,
     typer.Option(
