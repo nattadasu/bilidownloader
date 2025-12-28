@@ -25,7 +25,7 @@ class CardItem(BaseModel):
     view: str
     dm: str
     styles: str
-    style_list: List[str]
+    style_list: Optional[List[str]] = None
     season_id: str
     episode_id: str
     index_show: str
@@ -71,7 +71,7 @@ class ReturnData(BaseModel):
 
 class FavoriteData(BaseModel):
     has_more: bool
-    cards: List[CardItem]
+    cards: Optional[List[CardItem]] = None
 
 
 class BiliTvResponse(BaseModel):
