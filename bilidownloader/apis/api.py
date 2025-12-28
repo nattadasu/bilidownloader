@@ -61,12 +61,14 @@ class BiliApi:
 
         uri = f"{self.api_url}/fav/list"
         params = self.unified_params.copy()
-        params.update({
-            "type": "2",
-            "sub_type": "101",
-            "pn": str(pn),
-            "ps": str(ps),
-        })
+        params.update(
+            {
+                "type": "2",
+                "sub_type": "101",
+                "pn": str(pn),
+                "ps": str(ps),
+            }
+        )
         resp = self.session.get(uri, params=params)
         resp.raise_for_status()
         return BiliFavoritesListResponse(**resp.json())

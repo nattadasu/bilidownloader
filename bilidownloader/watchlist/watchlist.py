@@ -222,7 +222,9 @@ class Watchlist:
 
                 for card in resp.data.cards:
                     try:
-                        self.add_watchlist(card.season_id, card.title, remote_update=False)
+                        self.add_watchlist(
+                            card.season_id, card.title, remote_update=False
+                        )
                         total_added += 1
                     except DataExistError:
                         pass
