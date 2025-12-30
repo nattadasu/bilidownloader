@@ -19,7 +19,9 @@ SERIES_ALIASES = {
     "2246170": "One-Punch Man Season 3",
     "2246246": "Unlimited Gacha",
     "2247104": "Hero Without a Class",
+    "2288339": "Sentenced to Be a Hero",
     "2288556": "Easygoing Territory Defense by the Optimistic Lord",
     "2289383": "Dark Moon The Blood Altar",
     "2289667": "Yuukawa",
+    "2289875": "Noble Reincarnation",
 }
