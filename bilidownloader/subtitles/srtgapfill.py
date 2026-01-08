@@ -1,6 +1,6 @@
 """SRT gap filler for bilidownloader.
 
-This module provides functionality to fill 3-frame gaps in SRT subtitle files
+This module provides functionality to fill 1-3 frame gaps in SRT subtitle files
 to prevent frame jitter during video playback.
 """
 
@@ -14,10 +14,10 @@ from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
 class SRTGapFiller(PostProcessor):
-    """A yt-dlp post-processor for filling 3-frame gaps in SRT subtitles.
+    """A yt-dlp post-processor for filling 1-3 frame gaps in SRT subtitles.
 
     This class processes SRT subtitle files to fill gaps between lines
-    that are exactly 3 frames apart to prevent frame jitter.
+    that are 1-3 frames apart to prevent frame jitter.
     """
 
     def __init__(self, *args, **kwargs):
@@ -115,8 +115,9 @@ class SRTGapFiller(PostProcessor):
             ]  # Get original end time for logging comparison
 
             if new_end_s != original_end_s:
+                gap_frames = (new_end_s - original_end_s) * 24
                 self.write_debug(
-                    f"  Filled 3-frame gap: extended line ending at "
+                    f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
                     f"{original_end_s:.3f}s to {new_end_s:.3f}s"
                 )
             srt_lines.append(
@@ -128,7 +129,7 @@ class SRTGapFiller(PostProcessor):
         return "\n".join(srt_lines)
 
     def _process_srt_file(self, srt_path: Path) -> bool:
-        """Process a single SRT file to fill 3-frame gaps.
+        """Process a single SRT file to fill 1-3 frame gaps.
 
         Args:
             srt_path: Path to the SRT file to process
@@ -152,7 +153,7 @@ class SRTGapFiller(PostProcessor):
             with open(srt_path, "w", encoding="utf-8-sig") as f:
                 f.write(modified_content)
 
-            self.write_debug(f"Processed {srt_path.name} for 3-frame gaps")
+            self.write_debug(f"Processed {srt_path.name} for 1-3 frame gaps")
             return True
 
         except Exception as e:
@@ -168,7 +169,7 @@ class SRTGapFiller(PostProcessor):
         Returns:
             Tuple of (files_to_delete, updated_info)
         """
-        self.to_screen("Filling 3-frame gaps in SRT subtitles")
+        self.to_screen("Filling 1-3 frame gaps in SRT subtitles")
 
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
@@ -193,7 +194,7 @@ class SRTGapFiller(PostProcessor):
 
         if processed_count > 0:
             self.to_screen(
-                f"Successfully processed {processed_count} SRT files for 3-frame gaps"
+                f"Successfully processed {processed_count} SRT files for 1-3 frame gaps"
             )
 
         return [], info

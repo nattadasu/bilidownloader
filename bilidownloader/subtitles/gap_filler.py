@@ -3,12 +3,14 @@ from typing import Any, List, Tuple
 
 class GenericGapFiller:
     """
-    Provides a generic method to fill 3-frame gaps between subtitle events.
+    Provides a generic method to fill 1-3 frame gaps between subtitle events.
     This class assumes that input event times are in seconds (float).
     """
 
-    # Constants for 3-frame gap detection
+    # Constants for frame gap detection
+    ONE_FRAME_24FPS = 1.0 / 24.0  # 0.0417 seconds
     THREE_FRAMES_24FPS = 3.0 / 24.0  # 0.125 seconds
+    ONE_FRAME_23976FPS = 1.0 / 23.976  # 0.0417 seconds
     THREE_FRAMES_23976FPS = 3.0 / 23.976  # 0.125125 seconds
     TOLERANCE = 0.01  # 1 centisecond tolerance for ASS, 1 millisecond for SRT
 
@@ -27,7 +29,7 @@ class GenericGapFiller:
         self, events: List[Tuple[float, float, Any]]
     ) -> List[Tuple[float, float, Any]]:
         """
-        Fill gaps between subtitle lines if they are approximately 3 frames apart.
+        Fill gaps between subtitle lines if they are approximately 1-3 frames apart.
 
         Args:
             events: A list of tuples, where each tuple represents a subtitle event:
@@ -50,9 +52,16 @@ class GenericGapFiller:
 
                 gap = next_start - current_end
 
+                # Check if gap is between 1-3 frames at either 24fps or 23.976fps
+                # At 24fps: 1 frame = 0.0417s, 3 frames = 0.125s
+                # At 23.976fps: 1 frame = 0.0417s, 3 frames = 0.125125s
                 if (
-                    abs(gap - self.THREE_FRAMES_24FPS) <= self.TOLERANCE
-                    or abs(gap - self.THREE_FRAMES_23976FPS) <= self.TOLERANCE
+                    self.ONE_FRAME_24FPS - self.TOLERANCE
+                    <= gap
+                    <= self.THREE_FRAMES_24FPS + self.TOLERANCE
+                    or self.ONE_FRAME_23976FPS - self.TOLERANCE
+                    <= gap
+                    <= self.THREE_FRAMES_23976FPS + self.TOLERANCE
                 ):
                     # Fill the gap by extending the end time to the next start time
                     new_end = next_start

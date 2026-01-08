@@ -62,7 +62,7 @@ class SSARescaler(PostProcessor):
         return timedelta(seconds=seconds)
 
     def _fill_frame_gaps(self, events: List[Any]) -> None:
-        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
+        """Fill gaps between subtitle lines if they are 1-3 frames apart.
 
         Assumes 23.976/24 fps for frame duration calculation.
         Adjusts the end time of the current line to meet the start time of the next line.
@@ -74,10 +74,12 @@ class SSARescaler(PostProcessor):
         if len(events) <= 1:
             return
 
-        # 3 frames at 24 fps = 3/24 = 0.125 seconds (12.5 centiseconds)
-        # 3 frames at 23.976 fps = 3/23.976 = 0.125125 seconds (12.5125 centiseconds)
+        # 1-3 frames at 24 fps = 0.0417-0.125 seconds
+        # 1-3 frames at 23.976 fps = 0.0417-0.125125 seconds
         # Use a tolerance of 1 centisecond to account for precision loss
+        one_frame_24fps = 1.0 / 24.0  # 0.0417
         three_frames_24fps = 3.0 / 24.0  # 0.125
+        one_frame_23976fps = 1.0 / 23.976  # 0.0417
         three_frames_23976fps = 3.0 / 23.976  # 0.125125
         tolerance = 0.01  # 1 centisecond tolerance
 
@@ -92,15 +94,18 @@ class SSARescaler(PostProcessor):
             # Calculate the gap
             gap = next_start_seconds - current_end_seconds
 
-            # Check if gap is approximately 3 frames (at 24 or 23.976 fps)
+            # Check if gap is between 1-3 frames (at 24 or 23.976 fps)
             if (
-                abs(gap - three_frames_24fps) <= tolerance
-                or abs(gap - three_frames_23976fps) <= tolerance
+                one_frame_24fps - tolerance <= gap <= three_frames_24fps + tolerance
+                or one_frame_23976fps - tolerance
+                <= gap
+                <= three_frames_23976fps + tolerance
             ):
                 # Fill the gap by extending the end time to the next start time
+                gap_frames = gap * 24
                 current_event.end = next_event.start
                 self.write_debug(
-                    f"  Filled 3-frame gap: extended line ending at "
+                    f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
                     f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
                 )
 
@@ -216,7 +221,11 @@ class SSARescaler(PostProcessor):
                 )
 
     def _process_style_definitions(
-        self, styles: List[Any], used_styles: Set[str], all_fonts_found: Set[str], ass_document: AssDocument
+        self,
+        styles: List[Any],
+        used_styles: Set[str],
+        all_fonts_found: Set[str],
+        ass_document: AssDocument,
     ) -> List[Any]:
         """Process style definitions and detect style-level italic Noto Sans/Arial.
 
@@ -395,8 +404,8 @@ class SSARescaler(PostProcessor):
             # Process and filter styles
             self._process_styles(ass_document, used_styles, all_fonts_found)
 
-            # Fill 3-frame gaps between subtitle lines
-            self.write_debug("Filling 3-frame gaps between subtitle lines...")
+            # Fill 1-3 frame gaps between subtitle lines
+            self.write_debug("Filling 1-3 frame gaps between subtitle lines...")
             # Prepare events for generic gap filler
             generic_events = []
             for event in ass_document.events:
@@ -411,8 +420,11 @@ class SSARescaler(PostProcessor):
                 adjusted_generic_events
             ):
                 if original_event.end != self._seconds_to_ass_time(new_end_s):
+                    gap_frames = (
+                        new_end_s - self._ass_time_to_seconds(original_event.end)
+                    ) * 24
                     self.write_debug(
-                        f"  Filled 3-frame gap: extended line ending at "
+                        f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
                         f"{self._ass_time_to_seconds(original_event.end):.3f}s to {new_end_s:.3f}s"
                     )
                     original_event.end = self._seconds_to_ass_time(new_end_s)

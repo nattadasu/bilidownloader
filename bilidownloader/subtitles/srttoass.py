@@ -212,7 +212,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             events.append((ass_start, ass_end, text))
 
-        # Fill 3-frame gaps between subtitle lines
+        # Fill 1-3 frame gaps between subtitle lines
         events = self._fill_frame_gaps(events)
 
         # Create ASS dialogue lines
