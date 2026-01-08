@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.markup import escape
 
 ins_notify = Notify()
-console = Console(highlight=False)
+console = Console(highlight=False, emoji=False)
 _verbose = False
 _notification_disabled = os.getenv("DISPLAY") is None and os.name != "nt"
 
