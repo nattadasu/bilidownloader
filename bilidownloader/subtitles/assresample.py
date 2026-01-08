@@ -10,7 +10,7 @@ from datetime import timedelta
 from json import dumps, loads
 from math import floor, modf
 from os import path
-from typing import Any, Callable, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple, Union
 
 from ass import Document as AssDocument
 from ass import parse_string as ass_loads
@@ -280,36 +280,61 @@ class SSARescaler(PostProcessor):
             int(rescaled_value) if fractional_part == 0.0 else round(rescaled_value, 2)
         )
 
-    def _create_tag_replacer(self) -> Callable[[re.Match[str]], str]:
-        """Create a function to replace ASS tags with rescaled values.
+    def _rescale_inline_tags(
+        self,
+        line_text: str,
+        event_index: int,
+        line_number: int,
+        start_time: Any,
+        end_time: Any,
+    ) -> str:
+        """Rescale inline ASS tags in a line of text with detailed logging.
+
+        Args:
+            line_text: The text content containing inline tags
+            event_index: The index of this event in the events list (0-based)
+            line_number: The line number in the file (for user reference)
+            start_time: Start time of the event
+            end_time: End time of the event
 
         Returns:
-            A function that takes a regex match and returns the rescaled tag string.
+            Modified text with rescaled tags
         """
+        tag_pattern = re.compile(r"\\(fs|bord|shad)([\d\.]+)")
+
+        # Convert times to seconds and frames
+        start_seconds = self._ass_time_to_seconds(start_time)
+        end_seconds = self._ass_time_to_seconds(end_time)
+        start_frames = int(start_seconds * 24)
+        end_frames = int(end_seconds * 24)
+
+        modifications = []
 
         def replacer(match: re.Match[str]) -> str:
-            r"""Replace ASS tags (\fs, \bord, \shad) with rescaled values.
-
-            Args:
-                match: Regex match object containing tag name and value.
-
-            Returns:
-                Rescaled tag string or original string if conversion fails.
-            """
-            tag_name = match.group(1)  # 'fs', 'bord', or 'shad'
-            value_str = match.group(2)  # The numeric part as a string
+            r"""Replace ASS tags (\fs, \bord, \shad) with rescaled values."""
+            tag_name = match.group(1)
+            value_str = match.group(2)
             try:
                 modified_value = self._rescale_value(value_str)
                 if value_str != str(modified_value):
-                    self.write_debug(
-                        f"  Rescaled inline tag '\\{tag_name}': {value_str} -> {modified_value}"
-                    )
+                    modifications.append((tag_name, value_str, modified_value))
                 return f"\\{tag_name}{modified_value}"
             except (ValueError, TypeError):
-                # If conversion fails, return the original matched string
                 return match.group(0)
 
-        return replacer
+        modified_text = tag_pattern.sub(replacer, line_text)
+
+        # Log modifications with full context
+        if modifications:
+            time_str = f"{start_seconds:.3f}s-{end_seconds:.3f}s"
+            frame_str = f"f{start_frames}-f{end_frames}"
+            self.write_debug(
+                f"  Event #{event_index + 1} (line {line_number}, {time_str}, {frame_str}):"
+            )
+            for tag_name, old_val, new_val in modifications:
+                self.write_debug(f"    \\{tag_name}: {old_val} -> {new_val}")
+
+        return modified_text
 
     def run(self, info: Dict[str, Any]) -> Tuple[List[Any], Dict[str, Any]]:
         """Process ASS/SSA subtitle files to rescale font sizes, borders, and shadows.
@@ -369,9 +394,6 @@ class SSARescaler(PostProcessor):
                 "Modified with github:nattadasu/bilidownloader"
             )
 
-            # Create tag pattern and replacer function
-            tag_pattern = re.compile(r"\\(fs|bord|shad)([\d\.]+)")
-            tag_replacer = self._create_tag_replacer()
             italic_pattern = re.compile(r"\\i1")
             used_styles: Set[str] = set()
 
@@ -379,8 +401,24 @@ class SSARescaler(PostProcessor):
                 "Scanning events for used styles, inline fonts, and tags..."
             )
 
+            # First pass: count total lines in file for accurate line numbers
+            with open(sub_file, "r", encoding="utf-8-sig") as file:
+                total_lines = file.readlines()
+
+            # Find line number where [Events] section starts
+            events_section_line = 0
+            for i, line in enumerate(total_lines):
+                if line.strip() == "[Events]":
+                    events_section_line = (
+                        i + 2
+                    )  # +1 for Format line, +1 for 1-based indexing
+                    break
+
             # Process all subtitle events/lines
-            for line in ass_document.events:
+            for event_index, line in enumerate(ass_document.events):
+                # Calculate approximate line number in file
+                line_number = events_section_line + event_index
+
                 # Collect the names of all styles that are actually in use
                 used_styles.add(line.style)
 
@@ -398,8 +436,10 @@ class SSARescaler(PostProcessor):
                         line.style, ass_document.styles, has_italic_tag, all_fonts_found
                     )
 
-                # Use regex substitution to modify all tags at once
-                line.text = tag_pattern.sub(tag_replacer, line.text)
+                # Rescale inline tags with detailed logging
+                line.text = self._rescale_inline_tags(
+                    line.text, event_index, line_number, line.start, line.end
+                )
 
             # Process and filter styles
             self._process_styles(ass_document, used_styles, all_fonts_found)
