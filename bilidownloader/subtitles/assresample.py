@@ -216,7 +216,7 @@ class SSARescaler(PostProcessor):
                 )
 
     def _process_style_definitions(
-        self, styles: List[Any], used_styles: Set[str], all_fonts_found: Set[str]
+        self, styles: List[Any], used_styles: Set[str], all_fonts_found: Set[str], ass_document: AssDocument
     ) -> List[Any]:
         """Process style definitions and detect style-level italic Noto Sans/Arial.
 
@@ -224,6 +224,7 @@ class SSARescaler(PostProcessor):
             styles: List of all style definitions in the subtitle file.
             used_styles: Set of style names that are actually used in the subtitle.
             all_fonts_found: Set of all fonts already discovered.
+            ass_document: The ASS document containing resolution information.
 
         Returns:
             List of filtered styles containing only those that are actually used.
@@ -247,6 +248,10 @@ class SSARescaler(PostProcessor):
                 self._add_arial_italic_if_needed(
                     all_fonts_found, "Found italic style using Arial"
                 )
+
+            # Rescale style properties immediately after detection
+            self._rescale_style_properties(style)
+            self._apply_style_modifications(style, ass_document)
 
         return filtered_styles
 
@@ -452,15 +457,10 @@ class SSARescaler(PostProcessor):
         else:
             self.write_debug("No unused styles to remove.")
 
-        # Process style definitions and filter to used styles only
+        # Process style definitions, rescale, and filter to used styles only
         ass_document.styles = self._process_style_definitions(
-            ass_document.styles, used_styles, all_fonts_found
+            ass_document.styles, used_styles, all_fonts_found, ass_document
         )
-
-        # Rescale style properties
-        for style in ass_document.styles:
-            self._rescale_style_properties(style)
-            self._apply_style_modifications(style, ass_document)
 
     def _rescale_style_properties(self, style: Any) -> None:
         """Rescale font size, outline, and shadow properties of a style.
