@@ -22,8 +22,10 @@ from bilidownloader.cli.options import (
     FileConfig,
     PostProcessingOptions,
 )
+from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import DEFAULT_WATCHLIST
 from bilidownloader.commons.ui import prn_done, prn_info
+from bilidownloader.commons.utils import sanitize_filename
 from bilidownloader.watchlist.watchlist import Watchlist
 
 
@@ -41,7 +43,7 @@ def _cards_selector(
     raise_cookie(files.cookie)
 
     choices = [
-        f"{anime.title} ({anime.index_show.removesuffix(' updated')})"
+        f"{SERIES_ALIASES.get(anime.season_id, anime.title)} ({anime.index_show.removesuffix(' updated')})"
         for anime in cards
     ]
     if len(choices) == 0:
@@ -50,11 +52,12 @@ def _cards_selector(
     if query is None:
         raise ValueError("Query is empty")
     anime = cards[query]
+    display_title = sanitize_filename(SERIES_ALIASES.get(anime.season_id, anime.title))
     as_playlist = survey.routines.inquire("Download as playlist? ", default=False)
     url = f"https://www.bilibili.tv/en/play/{anime.season_id}"
     url = url + f"/{anime.episode_id}" if not as_playlist else url
     prn_info(
-        f"Downloading {anime.title} {anime.index_show.removesuffix(' updated')} ({url})"
+        f"Downloading {display_title} {anime.index_show.removesuffix(' updated')} ({url})"
     )
     download_url(
         url=url,
@@ -67,12 +70,12 @@ def _cards_selector(
     wl = Watchlist(watchlist_file)
     if not wl.search_watchlist(season_id=anime.season_id):
         if survey.routines.inquire(
-            f"Would you like to add {anime.title} to your watchlist? This allows you to quickly download the latest episodes using dedicated commands.",
+            f"Would you like to add {display_title} to your watchlist? This allows you to quickly download the latest episodes using dedicated commands.",
             default=False,
         ):
-            wl.add_watchlist(anime.season_id, anime.title)
+            wl.add_watchlist(anime.season_id, display_title)
     else:
-        prn_done(f"{anime.title} is exist on watchlist, skipping prompt")
+        prn_done(f"{display_title} is exist on watchlist, skipping prompt")
 
 
 @app.command(
