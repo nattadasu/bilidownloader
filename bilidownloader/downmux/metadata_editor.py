@@ -233,6 +233,11 @@ class MetadataEditor:
         if not audio_args and not sub_args:
             return video_path
 
+        # Verify video file exists before processing
+        if not video_path.exists():
+            prn_error(f"Video file not found: {video_path}. Cannot edit metadata.")
+            return video_path
+
         prn_info("Remuxing file with metadata and attachments")
         prn_dbg(f"Executing mkvpropedit on {video_path.name}")
         mkvpropedit_cmd = [

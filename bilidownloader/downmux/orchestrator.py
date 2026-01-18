@@ -161,6 +161,13 @@ class BiliProcess:
                 if loc is None:  # Episode was skipped due to no subtitles
                     return None
 
+                # Verify the downloaded file exists
+                if not loc.exists():
+                    prn_error(
+                        f"Downloaded file not found: {loc}. This may indicate a download failure."
+                    )
+                    raise FileNotFoundError(f"Video file not found: {loc}")
+
                 if self.simulate:
                     # In simulate mode, skip post-processing but keep metadata
                     final = loc
@@ -234,6 +241,10 @@ class BiliProcess:
             except (ReferenceError, NameError) as err:
                 prn_error(str(err))
                 break
+            except FileNotFoundError as err:
+                prn_error(str(err))
+                prn_info("Retrying...")
+                tries += 1
             except RateLimitError:
                 self._handle_rate_limit()
             except DataExistError:
