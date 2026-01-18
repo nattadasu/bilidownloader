@@ -121,7 +121,22 @@ class ChapterProcessor:
             capture_output=True,
             text=True,
         )
-        total_duration = float(result.stdout.strip())
+
+        if result.returncode != 0 or not result.stdout.strip():
+            prn_error(
+                f"Failed to get video duration from {video_path.name}. "
+                f"Skipping chapter embedding."
+            )
+            return video_path
+
+        try:
+            total_duration = float(result.stdout.strip())
+        except ValueError:
+            prn_error(
+                f"Invalid duration value from ffprobe: '{result.stdout.strip()}'. "
+                f"Skipping chapter embedding."
+            )
+            return video_path
 
         # Remove existing chapters and metadata from the video
         prn_dbg(f"Removing existing metadata from {video_path.name}, if any")
