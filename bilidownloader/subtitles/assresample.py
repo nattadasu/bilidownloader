@@ -453,7 +453,7 @@ class SSARescaler(PostProcessor):
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
         if not file_paths:
-            self.report_error("No subtitle filepaths found in the metadata")
+            self.write_debug("No subtitle files found in metadata")
             return return_dump()
 
         # Check if there are any ASS files to process
