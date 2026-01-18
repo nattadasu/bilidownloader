@@ -2,6 +2,7 @@
 Video downloader - handles yt-dlp download operations
 """
 
+import shlex
 import sys
 from html import unescape
 from pathlib import Path
@@ -17,6 +18,7 @@ from bilidownloader.apis.api import BiliHtml
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import REINSTALL_ARGS
 from bilidownloader.commons.ui import (
+    prn_cmd,
     prn_dbg,
     prn_error,
     prn_info,
@@ -46,7 +48,18 @@ class YtDlpLogger:
         # But preserves [BiliIntl] if it appears later (e.g. in filename)
         msg = rsub(r"^\[[^]]+\]\s", "", msg)
 
-        prn_dbg(msg)
+        # Check if this is an ffmpeg command line and format it as CMD
+        if msg.startswith("ffmpeg command line: "):
+            cmd_line = msg.replace("ffmpeg command line: ", "")
+            # Parse the command line into a list for prn_cmd
+            try:
+                cmd_parts = shlex.split(cmd_line)
+                prn_cmd(cmd_parts)
+            except ValueError:
+                # Fallback if parsing fails
+                prn_dbg(msg)
+        else:
+            prn_dbg(msg)
 
     def warning(self, msg):
         if "412" in msg and "Precondition Failed" in msg:
