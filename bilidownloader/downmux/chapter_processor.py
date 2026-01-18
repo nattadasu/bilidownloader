@@ -86,6 +86,15 @@ class ChapterProcessor:
 
     def embed_chapters(self, chapters: List[Chapter], video_path: Path) -> Path:
         """Create chapter metadata and merge it into the video file"""
+        if not chapters:
+            prn_dbg("No chapters found, skipping chapter embedding")
+            return video_path
+
+        # Verify video file exists before processing
+        if not video_path.exists():
+            prn_error(f"Video file not found: {video_path}. Cannot embed chapters.")
+            return video_path
+
         prn_info("Creating chapters")
 
         metadata_path = video_path.with_suffix(".txt")
