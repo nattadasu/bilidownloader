@@ -141,6 +141,30 @@ class SSARescaler(PostProcessor):
             self.write_debug(f"  {context}, adding 'Noto Sans::Italic'")
             all_fonts_found.add("Noto Sans::Italic")
 
+    def _add_noto_bold_if_needed(self, all_fonts_found: Set[str], context: str) -> None:
+        """Add Noto Sans Bold if not already present.
+
+        Args:
+            all_fonts_found: Set of all fonts already discovered.
+            context: Context string explaining why the bold font is being added.
+        """
+        if "Noto Sans Bold" not in all_fonts_found:
+            self.write_debug(f"  {context}, adding 'Noto Sans::Bold'")
+            all_fonts_found.add("Noto Sans::Bold")
+
+    def _add_noto_bold_italic_if_needed(
+        self, all_fonts_found: Set[str], context: str
+    ) -> None:
+        """Add Noto Sans Bold Italic if not already present.
+
+        Args:
+            all_fonts_found: Set of all fonts already discovered.
+            context: Context string explaining why the bold italic font is being added.
+        """
+        if "Noto Sans Bold Italic" not in all_fonts_found:
+            self.write_debug(f"  {context}, adding 'Noto Sans::Bold Italic'")
+            all_fonts_found.add("Noto Sans::Bold Italic")
+
     def _add_arial_italic_if_needed(
         self, all_fonts_found: Set[str], context: str
     ) -> None:
@@ -153,6 +177,32 @@ class SSARescaler(PostProcessor):
         if "Arial Italic" not in all_fonts_found:
             self.write_debug(f"  {context}, adding 'Arial::Italic'")
             all_fonts_found.add("Arial::Italic")
+
+    def _add_arial_bold_if_needed(
+        self, all_fonts_found: Set[str], context: str
+    ) -> None:
+        """Add Arial Bold if not already present.
+
+        Args:
+            all_fonts_found: Set of all fonts already discovered.
+            context: Context string explaining why the bold font is being added.
+        """
+        if "Arial Bold" not in all_fonts_found:
+            self.write_debug(f"  {context}, adding 'Arial::Bold'")
+            all_fonts_found.add("Arial::Bold")
+
+    def _add_arial_bold_italic_if_needed(
+        self, all_fonts_found: Set[str], context: str
+    ) -> None:
+        """Add Arial Bold Italic if not already present.
+
+        Args:
+            all_fonts_found: Set of all fonts already discovered.
+            context: Context string explaining why the bold italic font is being added.
+        """
+        if "Arial Bold Italic" not in all_fonts_found:
+            self.write_debug(f"  {context}, adding 'Arial::Bold Italic'")
+            all_fonts_found.add("Arial::Bold Italic")
 
     def _process_inline_fonts(
         self, line_text: str, has_italic_tag: bool, all_fonts_found: Set[str]
@@ -194,31 +244,58 @@ class SSARescaler(PostProcessor):
         line_style_name: str,
         styles: List[Any],
         has_italic_tag: bool,
+        has_bold_tag: bool,
         all_fonts_found: Set[str],
     ) -> None:
-        """Check if style-defined Noto Sans/Arial font is used with inline italic tags.
+        """Check if style-defined Noto Sans/Arial font is used with inline bold/italic tags.
 
         Args:
             line_style_name: The name of the style used by the current line.
             styles: List of all style definitions in the subtitle file.
             has_italic_tag: Whether the line contains italic formatting tags.
+            has_bold_tag: Whether the line contains bold formatting tags.
             all_fonts_found: Set of all fonts already discovered.
         """
-        if not has_italic_tag:
+        if not has_italic_tag and not has_bold_tag:
             return
 
         line_style = next((s for s in styles if s.name == line_style_name), None)
         if line_style:
+            # Check for Noto Sans with bold/italic combinations
             if line_style.fontname == "Noto Sans":
-                self._add_noto_italic_if_needed(
-                    all_fonts_found,
-                    f"Found italic tag with style-defined Noto Sans font '{line_style_name}'",
-                )
+                if has_bold_tag and has_italic_tag:
+                    self._add_noto_bold_italic_if_needed(
+                        all_fonts_found,
+                        f"Found bold+italic tags with style-defined Noto Sans font '{line_style_name}'",
+                    )
+                elif has_italic_tag:
+                    self._add_noto_italic_if_needed(
+                        all_fonts_found,
+                        f"Found italic tag with style-defined Noto Sans font '{line_style_name}'",
+                    )
+                elif has_bold_tag:
+                    self._add_noto_bold_if_needed(
+                        all_fonts_found,
+                        f"Found bold tag with style-defined Noto Sans font '{line_style_name}'",
+                    )
+
+            # Check for Arial with bold/italic combinations
             elif line_style.fontname == "Arial":
-                self._add_arial_italic_if_needed(
-                    all_fonts_found,
-                    f"Found italic tag with style-defined Arial font '{line_style_name}'",
-                )
+                if has_bold_tag and has_italic_tag:
+                    self._add_arial_bold_italic_if_needed(
+                        all_fonts_found,
+                        f"Found bold+italic tags with style-defined Arial font '{line_style_name}'",
+                    )
+                elif has_italic_tag:
+                    self._add_arial_italic_if_needed(
+                        all_fonts_found,
+                        f"Found italic tag with style-defined Arial font '{line_style_name}'",
+                    )
+                elif has_bold_tag:
+                    self._add_arial_bold_if_needed(
+                        all_fonts_found,
+                        f"Found bold tag with style-defined Arial font '{line_style_name}'",
+                    )
 
     def _process_style_definitions(
         self,
@@ -246,17 +323,35 @@ class SSARescaler(PostProcessor):
             # Add the base font name from the style definition
             self._add_font_if_new(style.fontname, all_fonts_found, "style ")
 
-            # Check if style uses Noto Sans with italic enabled
-            if style.fontname == "Noto Sans" and style.italic:
-                self._add_noto_italic_if_needed(
-                    all_fonts_found, "Found italic style using Noto Sans"
-                )
+            # Check if style uses Noto Sans with italic or bold enabled
+            if style.fontname == "Noto Sans":
+                if style.italic and style.bold:
+                    self._add_noto_bold_italic_if_needed(
+                        all_fonts_found, "Found bold+italic style using Noto Sans"
+                    )
+                elif style.italic:
+                    self._add_noto_italic_if_needed(
+                        all_fonts_found, "Found italic style using Noto Sans"
+                    )
+                elif style.bold:
+                    self._add_noto_bold_if_needed(
+                        all_fonts_found, "Found bold style using Noto Sans"
+                    )
 
-            # Check if style uses Arial with italic enabled
-            if style.fontname == "Arial" and style.italic:
-                self._add_arial_italic_if_needed(
-                    all_fonts_found, "Found italic style using Arial"
-                )
+            # Check if style uses Arial with italic or bold enabled
+            if style.fontname == "Arial":
+                if style.italic and style.bold:
+                    self._add_arial_bold_italic_if_needed(
+                        all_fonts_found, "Found bold+italic style using Arial"
+                    )
+                elif style.italic:
+                    self._add_arial_italic_if_needed(
+                        all_fonts_found, "Found italic style using Arial"
+                    )
+                elif style.bold:
+                    self._add_arial_bold_if_needed(
+                        all_fonts_found, "Found bold style using Arial"
+                    )
 
             # Rescale style properties immediately after detection
             self._rescale_style_properties(style)
@@ -395,6 +490,7 @@ class SSARescaler(PostProcessor):
             )
 
             italic_pattern = re.compile(r"\\i1")
+            bold_pattern = re.compile(r"\\b1")
             used_styles: Set[str] = set()
 
             self.write_debug(
@@ -422,18 +518,23 @@ class SSARescaler(PostProcessor):
                 # Collect the names of all styles that are actually in use
                 used_styles.add(line.style)
 
-                # Check for italic tags in the line text
+                # Check for italic and bold tags in the line text
                 has_italic_tag = bool(italic_pattern.search(line.text))
+                has_bold_tag = bool(bold_pattern.search(line.text))
 
-                # Process inline fonts and detect Noto Sans + italic combinations
+                # Process inline fonts and detect Noto Sans + bold/italic combinations
                 has_inline_fonts = self._process_inline_fonts(
-                    line.text, has_italic_tag, all_fonts_found
+                    line.text, has_italic_tag, has_bold_tag, all_fonts_found
                 )
 
-                # Check if italic tag is used with style-defined Noto Sans font
+                # Check if bold/italic tags are used with style-defined Noto Sans font
                 if not has_inline_fonts:
                     self._process_style_font_with_italic(
-                        line.style, ass_document.styles, has_italic_tag, all_fonts_found
+                        line.style,
+                        ass_document.styles,
+                        has_italic_tag,
+                        has_bold_tag,
+                        all_fonts_found,
                     )
 
                 # Rescale inline tags with detailed logging
