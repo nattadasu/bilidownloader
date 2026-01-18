@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple, TypedDict
 
 from bilidownloader.commons.constants import BASE_DIR
-from bilidownloader.commons.ui import prn_error, prn_info
+from bilidownloader.commons.ui import prn_dbg, prn_error, prn_info
 
 
 class FontInfo(TypedDict):
@@ -189,7 +189,9 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
         return font_json, font_args
 
     # Build a cache of system fonts for faster lookup
+    prn_dbg("Building system fonts cache, this may take a moment...")
     system_fonts_cache = _build_system_fonts_cache(get_system_fonts_filename)
+    prn_dbg(f"System fonts cache built with {len(system_fonts_cache)} fonts")
 
     prn_info(f"Detected {len(fonts)} font(s) used in subtitles, attaching to file")
 
@@ -197,12 +199,18 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     for font_name in fonts:
         font_path: Optional[Path] = None
 
+        prn_dbg(f"Looking up font: {font_name}")
         # First, check if it's a native font we manage
         font_path = _resolve_native_font(font_name)
+        if font_path:
+            prn_dbg(f" Found in native fonts: {font_path}")
 
         # If not found in native fonts, try system font lookup
         if not font_path:
+            prn_dbg("  Not found in native fonts, checking system fonts...")
             font_path = _resolve_system_font(font_name, system_fonts_cache)
+            if font_path:
+                prn_dbg(f" Found in system fonts: {font_path}")
 
         # Add to arguments if font was found and file exists
         if font_path and font_path.exists():
@@ -260,7 +268,12 @@ def _build_system_fonts_cache(
         prn_error("fontTools is required for font name extraction but not installed.")
         return font_cache
 
-    for font_path_str in system_fonts_filename():
+    system_fonts = system_fonts_filename()
+    prn_dbg(
+        f"Found {len(system_fonts)} font files to process, starts mapping font family name"
+    )
+
+    for font_path_str in system_fonts:
         font_path = Path(font_path_str)
         if not font_path.exists():
             continue
