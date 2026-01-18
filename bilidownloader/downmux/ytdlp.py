@@ -222,7 +222,7 @@ class VideoDownloader:
                         unit="B",
                         scale="IEC",
                         receipt=True,
-                        ctrl_c=False,
+                        ctrl_c=True,
                     )
                     bar_context = bar.__enter__()
                     self._progress_bars[filename] = {
