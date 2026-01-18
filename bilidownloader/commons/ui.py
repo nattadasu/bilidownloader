@@ -123,7 +123,7 @@ def prn_cmd(command: list[str]) -> None:
     """
     if _verbose:
         cmd_str = " ".join(shlex.quote(str(arg)) for arg in command)
-        console.print(f"[reverse blue] CMD [/] [dim]{escape(cmd_str)}[/dim]")
+        console.print(f"[reverse bright_black] CMD [/] [dim]{escape(cmd_str)}[/dim]")
 
 
 def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
