@@ -272,8 +272,7 @@ class VideoDownloader:
         prn_dbg(f"Extracting video info from {episode_url} (simulate={simulate})")
         ydl_opts = {
             "cookiefile": str(self.cookie),
-            "extract_flat": "discard_in_playlist",
-            "forcejson": True,
+            "extract_flat": "in_playlist",
             "fragment_retries": 10,
             "ignoreerrors": "only_download",
             "noprogress": True,
