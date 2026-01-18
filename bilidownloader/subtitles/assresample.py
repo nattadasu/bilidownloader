@@ -205,13 +205,18 @@ class SSARescaler(PostProcessor):
             all_fonts_found.add("Arial::Bold Italic")
 
     def _process_inline_fonts(
-        self, line_text: str, has_italic_tag: bool, all_fonts_found: Set[str]
+        self,
+        line_text: str,
+        has_italic_tag: bool,
+        has_bold_tag: bool,
+        all_fonts_found: Set[str],
     ) -> bool:
-        """Process inline font tags and detect Noto Sans/Arial + italic combinations.
+        """Process inline font tags and detect Noto Sans/Arial + bold/italic combinations.
 
         Args:
             line_text: The text content of the subtitle line.
             has_italic_tag: Whether the line contains italic formatting tags.
+            has_bold_tag: Whether the line contains bold formatting tags.
             all_fonts_found: Set of all fonts already discovered.
 
         Returns:

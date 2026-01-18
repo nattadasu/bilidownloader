@@ -81,7 +81,7 @@ class MetadataEditor:
         flang = lcodex.get(language.value, "eng")
 
         def fail(msg: str) -> List[str]:
-            prn_error(msg)
+            prn_dbg(msg)
             return []
 
         try:
