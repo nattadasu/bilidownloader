@@ -87,25 +87,25 @@ class FontCache:
     def _build_reverse_lookup(self) -> None:
         """Build reverse lookup dictionary from path_to_names."""
         self._name_to_path = {}
-        
+
         for font_path_str, names in self._path_to_names.items():
             font_path = Path(font_path_str)
             family = names.get("family", "")
             full_name = names.get("full_name", "")
             subfamily = names.get("subfamily", "")
-            
+
             # Store by full name (highest priority - includes Bold/Italic)
             if full_name:
                 key = full_name.lower()
                 if key not in self._name_to_path:
                     self._name_to_path[key] = font_path
-            
+
             # Store by family name (fallback)
             if family:
                 key = family.lower()
                 if key not in self._name_to_path:
                     self._name_to_path[key] = font_path
-            
+
             # Store combined family + subfamily for explicit matching
             if family and subfamily and subfamily not in ["Regular", "Normal"]:
                 combined = f"{family} {subfamily}".lower()
@@ -206,9 +206,9 @@ class FontCache:
                 # Extract font names from the font file
                 font = ttLib.TTFont(font_path, fontNumber=0)
                 name_table = font.get("name")
-                
+
                 names_info = {"family": "", "full_name": "", "subfamily": ""}
-                
+
                 if name_table:
                     for record in name_table.names:  # type: ignore
                         if record.nameID == 1:  # Font Family name
@@ -217,11 +217,11 @@ class FontCache:
                             names_info["subfamily"] = record.toUnicode().strip()
                         elif record.nameID == 4:  # Full font name
                             names_info["full_name"] = record.toUnicode().strip()
-                
+
                 # Only store if we got at least one name
                 if names_info["family"] or names_info["full_name"]:
                     font_mappings[font_path_str] = names_info
-                
+
                 font.close()
             except Exception:
                 # If we can't read the font, skip it silently
@@ -241,6 +241,14 @@ NATIVE_FONTS: Dict[str, FontInfo] = {
         "path": BASE_DIR / "fonts" / "noto-sans.ttf",
     },
     "Noto Sans::Italic": {
+        "url": f"{NOTO_URI}/NotoSans-Italic[wdth,wght].ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
+    },
+    "Noto Sans::Bold": {
+        "url": f"{NOTO_URI}/NotoSans[wdth,wght].ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans.ttf",
+    },
+    "Noto Sans::Bold Italic": {
         "url": f"{NOTO_URI}/NotoSans-Italic[wdth,wght].ttf",
         "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
     },
@@ -455,13 +463,13 @@ def _resolve_native_font(font_name: str) -> Optional[Path]:
     # Check for exact match first (includes :: syntax)
     if font_name in NATIVE_FONTS:
         return NATIVE_FONTS[font_name]["path"]
-    
+
     # Try with :: syntax for common variations
     for variation in ["Bold", "Italic", "Bold Italic"]:
         key = f"{font_name}::{variation}"
         if key in NATIVE_FONTS:
             return NATIVE_FONTS[key]["path"]
-    
+
     return None
 
 
