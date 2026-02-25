@@ -17,6 +17,7 @@ from ass import parse_string as ass_loads
 from yt_dlp.postprocessor import PostProcessor  # type: ignore
 
 from bilidownloader.commons.ui import prn_info
+from bilidownloader.commons.utils import format_log_time
 from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
@@ -106,7 +107,7 @@ class SSARescaler(PostProcessor):
                 current_event.end = next_event.start
                 self.write_debug(
                     f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
-                    f"{current_end_seconds:.3f}s to {next_start_seconds:.3f}s"
+                    f"{format_log_time(current_end_seconds)} to {format_log_time(next_start_seconds)}"
                 )
 
     def _add_font_if_new(
@@ -450,7 +451,7 @@ class SSARescaler(PostProcessor):
 
         # Log modifications with full context
         if modifications:
-            time_str = f"{start_seconds:.3f}s-{end_seconds:.3f}s"
+            time_str = f"{format_log_time(start_seconds)}-{format_log_time(end_seconds)}"
             frame_str = f"f{start_frames}-f{end_frames}"
             self.write_debug(
                 f"  Event #{event_index + 1} (line {line_number}, {time_str}, {frame_str}):"
@@ -642,7 +643,7 @@ class SSARescaler(PostProcessor):
                     ) * 24
                     self.write_debug(
                         f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
-                        f"{self._ass_time_to_seconds(original_event.end):.3f}s to {new_end_s:.3f}s"
+                        f"{format_log_time(self._ass_time_to_seconds(original_event.end))} to {format_log_time(new_end_s)}"
                     )
                     original_event.end = self._seconds_to_ass_time(new_end_s)
 

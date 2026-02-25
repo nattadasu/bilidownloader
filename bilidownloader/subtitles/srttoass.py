@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from yt_dlp.postprocessor import PostProcessor
 
 from bilidownloader.commons.ui import prn_info
-from bilidownloader.commons.utils import langcode_to_str
+from bilidownloader.commons.utils import format_log_time, langcode_to_str
 from bilidownloader.subtitles.gap_filler import GenericGapFiller
 
 
@@ -113,7 +113,7 @@ class SRTToASSConverter(PostProcessor):
             if new_end_s != original_end_s:
                 self.write_debug(
                     f"  Filled 3-frame gap: extended line ending at "
-                    f"{original_end_s:.3f}s to {new_end_s:.3f}s"
+                    f"{format_log_time(original_end_s)} to {format_log_time(new_end_s)}"
                 )
             adjusted_events.append(
                 (

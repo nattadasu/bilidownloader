@@ -155,6 +155,20 @@ def format_mkvmerge_time(seconds: float) -> str:
     return f"{h_:02}:{m_:02}:{s_:02}.{ms_:03}"
 
 
+def format_log_time(seconds: float) -> str:
+    """
+    Formats a duration in seconds to H:MM:SS.mmm format for logging.
+
+    Args:
+        seconds (float): the duration in seconds
+
+    Returns:
+        str: the formatted duration
+    """
+    _, h_, m_, s_, ms_ = secs_to_proper(seconds)
+    return f"{h_}:{m_:02}:{s_:02}.{ms_:03}"
+
+
 class BenchClock:
     """A simple class to measure the time taken to perform a task."""
 
