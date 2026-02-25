@@ -231,26 +231,26 @@ class FontCache:
 
 
 # Base URI for Noto Sans font files hosted on jsdelivr CDN
-NOTO_URI: str = "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/variable-ttf"
+NOTO_URI: str = "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/ttf"
 ARIAL_URI: str = "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial"
 
 # Dictionary mapping font names to their download URLs and local storage paths
 NATIVE_FONTS: Dict[str, FontInfo] = {
     "Noto Sans": {
-        "url": f"{NOTO_URI}/NotoSans[wdth,wght].ttf",
+        "url": f"{NOTO_URI}/NotoSans-Regular.ttf",
         "path": BASE_DIR / "fonts" / "noto-sans.ttf",
     },
     "Noto Sans::Italic": {
-        "url": f"{NOTO_URI}/NotoSans-Italic[wdth,wght].ttf",
+        "url": f"{NOTO_URI}/NotoSans-Italic.ttf",
         "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
     },
     "Noto Sans::Bold": {
-        "url": f"{NOTO_URI}/NotoSans[wdth,wght].ttf",
-        "path": BASE_DIR / "fonts" / "noto-sans.ttf",
+        "url": f"{NOTO_URI}/NotoSans-Bold.ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-bold.ttf",
     },
     "Noto Sans::Bold Italic": {
-        "url": f"{NOTO_URI}/NotoSans-Italic[wdth,wght].ttf",
-        "path": BASE_DIR / "fonts" / "noto-sans-italic.ttf",
+        "url": f"{NOTO_URI}/NotoSans-BoldItalic.ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-bold-italic.ttf",
     },
     "Arial": {
         "url": f"{ARIAL_URI}@1.0.4/Arial.ttf",
@@ -412,6 +412,8 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     prn_info(f"Detected {len(fonts)} font(s) used in subtitles, attaching to file")
 
     found_fonts = 0
+    seen_paths: Set[Path] = set()
+
     for font_name in fonts:
         font_path: Optional[Path] = None
 
@@ -430,6 +432,10 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
 
         # Add to arguments if font was found and file exists
         if font_path and font_path.exists():
+            if font_path in seen_paths:
+                prn_dbg(f"  - Font file '{font_path.name}' already seen, skipping duplicate attachment")
+                continue
+
             font_args.extend(
                 [
                     "--attachment-name",
@@ -438,6 +444,7 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
                     str(font_path),
                 ]
             )
+            seen_paths.add(font_path)
             found_fonts += 1
             prn_info(f"  - {font_name} ({font_path.name})")
         else:
