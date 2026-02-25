@@ -152,6 +152,10 @@ class ChapterProcessor:
         mkvpropedit_cmd1 = [
             mkvpropedit,
             str(video_path),
+            "--delete",
+            "title",
+            "--delete",
+            "description",
             "--edit",
             "track:v1",
             "--delete",

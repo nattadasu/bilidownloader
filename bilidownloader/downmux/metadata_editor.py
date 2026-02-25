@@ -218,6 +218,10 @@ class MetadataEditor:
             str(thumbnail_path),
         ]
 
+    def delete_title_and_desc(self) -> List[str]:
+        """Delete title and description from the video file"""
+        return ["--delete", "title", "--delete", "description", "--tags", "all:"]
+
     def execute_mkvpropedit(
         self,
         video_path: Path,
@@ -225,13 +229,12 @@ class MetadataEditor:
         sub_args: List[str],
         font_args: List[str],
         attachment_args: List[str],
+        delete_metadata: bool = True,
     ) -> Path:
         """Execute mkvpropedit on the video file"""
         mkvpropedit = (
             str(self.mkvpropedit_path) if self.mkvpropedit_path else "mkvpropedit"
         )
-        if not audio_args and not sub_args:
-            return video_path
 
         # Verify video file exists before processing
         if not video_path.exists():
@@ -240,9 +243,13 @@ class MetadataEditor:
 
         prn_info("Remuxing file with metadata and attachments")
         prn_dbg(f"Executing mkvpropedit on {video_path.name}")
+
+        delete_args = self.delete_title_and_desc() if delete_metadata else []
+
         mkvpropedit_cmd = [
             mkvpropedit,
             str(video_path),
+            *delete_args,
             *audio_args,
             *sub_args,
             *font_args,
