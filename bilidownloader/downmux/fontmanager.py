@@ -231,7 +231,9 @@ class FontCache:
 
 
 # Base URI for Noto Sans font files hosted on jsdelivr CDN
-NOTO_URI: str = "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/ttf"
+NOTO_URI: str = (
+    "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/ttf"
+)
 ARIAL_URI: str = "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial"
 
 # Dictionary mapping font names to their download URLs and local storage paths
@@ -433,7 +435,9 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
         # Add to arguments if font was found and file exists
         if font_path and font_path.exists():
             if font_path in seen_paths:
-                prn_dbg(f"  - Font file '{font_path.name}' already seen, skipping duplicate attachment")
+                prn_dbg(
+                    f"  - Font file '{font_path.name}' already seen, skipping duplicate attachment"
+                )
                 continue
 
             font_args.extend(

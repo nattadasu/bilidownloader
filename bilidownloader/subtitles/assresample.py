@@ -451,7 +451,9 @@ class SSARescaler(PostProcessor):
 
         # Log modifications with full context
         if modifications:
-            time_str = f"{format_log_time(start_seconds)}-{format_log_time(end_seconds)}"
+            time_str = (
+                f"{format_log_time(start_seconds)}-{format_log_time(end_seconds)}"
+            )
             frame_str = f"f{start_frames}-f{end_frames}"
             self.write_debug(
                 f"  Event #{event_index + 1} (line {line_number}, {time_str}, {frame_str}):"
@@ -519,8 +521,6 @@ class SSARescaler(PostProcessor):
                 "Modified with github:nattadasu/bilidownloader"
             )
 
-            italic_pattern = re.compile(r"\\i1")
-            bold_pattern = re.compile(r"\\b1")
             used_styles: Set[str] = set()
 
             self.write_debug(
@@ -558,26 +558,22 @@ class SSARescaler(PostProcessor):
                 style_is_bold = False
                 if line_style:
                     # ASS specs use -1 or 1 for True
-                    style_is_italic = getattr(line_style, "italic", False) in [True, -1, 1]
+                    style_is_italic = getattr(line_style, "italic", False) in [
+                        True,
+                        -1,
+                        1,
+                    ]
                     style_is_bold = getattr(line_style, "bold", False) in [True, -1, 1]
 
-                # Check for italic and bold tags/properties in the line
-                # 1. Check for override tags in the text: \i1, \i, \b1, \b, etc.
-                #    \i1 or \i enables italic, \i0 disables it.
-                #    We check if italics are enabled anywhere in the line.
-                
-                has_italic_tag = False
-                has_bold_tag = False
-
-                # Simple check for any italic/bold tags. 
+                # Simple check for any italic/bold tags.
                 # If style is already italic, we only care if it's NOT turned off for the WHOLE line
                 # If style is NOT italic, we care if it's turned ON
-                
+
                 text = line.text
-                
+
                 # Use regex to find all \i and \b tags
                 italic_tags = re.findall(r"\\i([0-9]?)", text)
-                bold_tags = re.findall(r"\\b([0-9]+)?", text) # \b can be weight or 0/1
+                bold_tags = re.findall(r"\\b([0-9]+)?", text)  # \b can be weight or 0/1
 
                 effective_italic = style_is_italic
                 effective_bold = style_is_bold
@@ -586,7 +582,7 @@ class SSARescaler(PostProcessor):
                     # If there's any \i1 or \i, it's italic (at least partially)
                     if any(t != "0" for t in italic_tags):
                         effective_italic = True
-                
+
                 if bold_tags:
                     # If there's any \b1 or \b (>0), it's bold (at least partially)
                     if any(t != "0" for t in bold_tags):
