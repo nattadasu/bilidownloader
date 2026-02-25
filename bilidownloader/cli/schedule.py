@@ -6,6 +6,7 @@ import typer
 from rich import box
 from rich import print as rprint
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Column, Table
 
 from bilidownloader.apis.api import BiliApi
@@ -110,6 +111,15 @@ def schedule(
         rprint(
             f"[reverse blue bold] {dow.full_day_of_week} [/][reverse white] {dow.full_date_text} [/]{is_today}"
         )
+        if not dow.cards:
+            rprint(
+                Panel(
+                    "[dim italic]No shows scheduled for this day[/]",
+                    box=box.ROUNDED,
+                    expand=False,
+                )
+            )
+            continue
         tab = Table(
             Column("Time", justify="center"),
             "Series ID",
@@ -118,12 +128,9 @@ def schedule(
             box=box.ROUNDED,
         )
         if show_url:
-            tab.add_column("URL")
+            tab.add_column("URL", style="dim blue")
         released = []
         upcoming = []
-        if not dow.cards:
-            console.print(tab)
-            continue
         for item in dow.cards:
             tmat = tpat.search(item.index_show)
             time = tmat.group(0) if tmat else ""
