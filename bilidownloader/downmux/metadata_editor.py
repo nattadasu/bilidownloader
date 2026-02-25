@@ -220,7 +220,7 @@ class MetadataEditor:
 
     def delete_title_and_desc(self) -> List[str]:
         """Delete title and description from the video file"""
-        return ["--delete", "title", "--delete", "description", "--tags", "all:"]
+        return ["--delete", "title", "--tags", "global:"]
 
     def execute_mkvpropedit(
         self,
@@ -244,22 +244,41 @@ class MetadataEditor:
         prn_info("Remuxing file with metadata and attachments")
         prn_dbg(f"Executing mkvpropedit on {video_path.name}")
 
-        delete_args = self.delete_title_and_desc() if delete_metadata else []
+        # Pass 1: Global metadata deletion
+        if delete_metadata:
+            delete_cmd = [
+                mkvpropedit,
+                str(video_path),
+                *self.delete_title_and_desc(),
+                "--verbose" if _verbose else "--quiet",
+            ]
+            prn_cmd(delete_cmd)
+            sp.run(delete_cmd, check=True)
 
-        mkvpropedit_cmd = [
+        # Pass 2: Track edits and attachments
+        if audio_args or sub_args or font_args or attachment_args:
+            edit_cmd = [
+                mkvpropedit,
+                str(video_path),
+                *audio_args,
+                *sub_args,
+                *font_args,
+                *attachment_args,
+                "--verbose" if _verbose else "--quiet",
+            ]
+            prn_cmd(edit_cmd)
+            sp.run(edit_cmd, check=True)
+
+        # Pass 3: Add track statistics tags separately to avoid logic colliding
+        stats_cmd = [
             mkvpropedit,
             str(video_path),
-            *delete_args,
-            *audio_args,
-            *sub_args,
-            *font_args,
-            *attachment_args,
-            "--verbose" if _verbose else "--quiet",
             "--add-track-statistics-tags",
+            "--verbose" if _verbose else "--quiet",
         ]
-        prn_cmd(mkvpropedit_cmd)
+        prn_cmd(stats_cmd)
         sp.run(
-            mkvpropedit_cmd,
+            stats_cmd,
             check=True,
         )
         prn_done("Remuxing completed")
