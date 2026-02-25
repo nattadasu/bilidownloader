@@ -329,31 +329,35 @@ class SSARescaler(PostProcessor):
             self._add_font_if_new(style.fontname, all_fonts_found, "style ")
 
             # Check if style uses Noto Sans with italic or bold enabled
+            # ASS spec uses -1 or 1 for True
+            is_italic = getattr(style, "italic", False) in [True, -1, 1]
+            is_bold = getattr(style, "bold", False) in [True, -1, 1]
+
             if style.fontname == "Noto Sans":
-                if style.italic and style.bold:
+                if is_italic and is_bold:
                     self._add_noto_bold_italic_if_needed(
                         all_fonts_found, "Found bold+italic style using Noto Sans"
                     )
-                elif style.italic:
+                elif is_italic:
                     self._add_noto_italic_if_needed(
                         all_fonts_found, "Found italic style using Noto Sans"
                     )
-                elif style.bold:
+                elif is_bold:
                     self._add_noto_bold_if_needed(
                         all_fonts_found, "Found bold style using Noto Sans"
                     )
 
             # Check if style uses Arial with italic or bold enabled
             if style.fontname == "Arial":
-                if style.italic and style.bold:
+                if is_italic and is_bold:
                     self._add_arial_bold_italic_if_needed(
                         all_fonts_found, "Found bold+italic style using Arial"
                     )
-                elif style.italic:
+                elif is_italic:
                     self._add_arial_italic_if_needed(
                         all_fonts_found, "Found italic style using Arial"
                     )
-                elif style.bold:
+                elif is_bold:
                     self._add_arial_bold_if_needed(
                         all_fonts_found, "Found bold style using Arial"
                     )
@@ -523,22 +527,66 @@ class SSARescaler(PostProcessor):
                 # Collect the names of all styles that are actually in use
                 used_styles.add(line.style)
 
-                # Check for italic and bold tags in the line text
-                has_italic_tag = bool(italic_pattern.search(line.text))
-                has_bold_tag = bool(bold_pattern.search(line.text))
+                # Find the style object for this line to check its base formatting
+                line_style = next(
+                    (s for s in ass_document.styles if s.name == line.style), None
+                )
+                style_is_italic = False
+                style_is_bold = False
+                if line_style:
+                    # ASS specs use -1 or 1 for True
+                    style_is_italic = getattr(line_style, "italic", False) in [True, -1, 1]
+                    style_is_bold = getattr(line_style, "bold", False) in [True, -1, 1]
 
-                # Process inline fonts and detect Noto Sans + bold/italic combinations
+                # Check for italic and bold tags/properties in the line
+                # 1. Check for override tags in the text: \i1, \i, \b1, \b, etc.
+                #    \i1 or \i enables italic, \i0 disables it.
+                #    We check if italics are enabled anywhere in the line.
+                
+                has_italic_tag = False
+                has_bold_tag = False
+
+                # Simple check for any italic/bold tags. 
+                # If style is already italic, we only care if it's NOT turned off for the WHOLE line
+                # If style is NOT italic, we care if it's turned ON
+                
+                text = line.text
+                
+                # Use regex to find all \i and \b tags
+                italic_tags = re.findall(r"\\i([0-9]?)", text)
+                bold_tags = re.findall(r"\\b([0-9]+)?", text) # \b can be weight or 0/1
+
+                effective_italic = style_is_italic
+                effective_bold = style_is_bold
+
+                if italic_tags:
+                    # If there's any \i1 or \i, it's italic (at least partially)
+                    if any(t != "0" for t in italic_tags):
+                        effective_italic = True
+                
+                if bold_tags:
+                    # If there's any \b1 or \b (>0), it's bold (at least partially)
+                    if any(t != "0" for t in bold_tags):
+                        effective_bold = True
+
+                # Also check event-level properties if available (some parsers put them there)
+                if not effective_italic:
+                    effective_italic = getattr(line, "italic", False) in [True, -1, 1]
+                if not effective_bold:
+                    effective_bold = getattr(line, "bold", False) in [True, -1, 1]
+
+                # Process inline fonts
                 has_inline_fonts = self._process_inline_fonts(
-                    line.text, has_italic_tag, has_bold_tag, all_fonts_found
+                    text, effective_italic, effective_bold, all_fonts_found
                 )
 
-                # Check if bold/italic tags are used with style-defined Noto Sans font
+                # Check if bold/italic tags are used with style-defined Noto Sans/Arial font
                 if not has_inline_fonts:
                     self._process_style_font_with_italic(
                         line.style,
                         ass_document.styles,
-                        has_italic_tag,
-                        has_bold_tag,
+                        effective_italic,
+                        effective_bold,
                         all_fonts_found,
                     )
 
