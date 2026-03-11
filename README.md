@@ -42,6 +42,7 @@ to assist you in ripping episode
       * [`history list`](#history-list)
       * [`history query`](#history-query)
       * [`history clear`](#history-clear)
+      * [`history import`](#history-import)
       * [`history stats`](#history-stats)
   * [Configuration](#configuration)
     * [Cookie File](#cookie-file)
@@ -340,6 +341,15 @@ date, or episode.
 
 ```bash
 bilidownloader history clear [--by-series <SERIES>] [--by-date <DATE>] [--by-episode <EPISODE_ID>]
+```
+
+#### `history import`
+
+Merge entries from another `history.v2.tsv` file into your main history file.
+Duplicates are resolved by episode ID first, then by timestamp/date-time.
+
+```bash
+bilidownloader history import <IMPORT_FILE>
 ```
 
 #### `history stats`

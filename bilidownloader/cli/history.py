@@ -1,3 +1,4 @@
+from pathlib import Path
 from sys import exit
 from typing import Annotated, List, Optional
 
@@ -19,6 +20,18 @@ from bilidownloader.commons.ui import prn_error, prn_info
 from bilidownloader.history.history import History
 
 console = Console()
+
+IMPORT_HISTORY_ARG = Annotated[
+    Path,
+    typer.Argument(
+        ...,
+        exists=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Path to another history TSV file to merge into the current history file.",
+    ),
+]
 
 
 @hi_app.command(
@@ -271,6 +284,26 @@ def history_clear(
     if yes:
         hi.purge_all(confirm=False)
         prn_info("History successfully cleared!")
+
+
+@hi_app.command("import", help="Import and merge another history TSV file.")
+def history_import(
+    import_file: IMPORT_HISTORY_ARG,
+    file_path: HISTORY_OPT = DEFAULT_HISTORY,
+) -> None:
+    if import_file == file_path:
+        prn_error("Import source must be different from the destination history file.")
+        exit(1)
+
+    hi = History(file_path)
+    result = hi.import_history(import_file)
+
+    prn_info(
+        "History import complete: "
+        f"{result.imported} read, {result.added} added, "
+        f"{result.replaced} replaced, {result.skipped} skipped. "
+        f"Total entries: {result.total}"
+    )
 
 
 @hi_app.command(

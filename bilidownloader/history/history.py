@@ -9,7 +9,7 @@ from bilidownloader.commons.constants import DEFAULT_HISTORY
 from bilidownloader.commons.ui import prn_dbg, prn_done, prn_info
 from bilidownloader.commons.utils import DataExistError
 from bilidownloader.history.migration import HistoryMigrator
-from bilidownloader.history.repository import HistoryRepository
+from bilidownloader.history.repository import HistoryImportResult, HistoryRepository
 
 
 class History:
@@ -132,6 +132,16 @@ class History:
         self.repo.add_entry(series_id, series_title, episode_id, episode_idx)
         prn_dbg(f"Episode added to history: Series {series_id}, Episode {episode_id}")
         return self.list
+
+    def import_history(self, source_path: Path) -> HistoryImportResult:
+        """Import entries from another TSV history file."""
+        result = self.repo.import_entries(source_path)
+        prn_dbg(
+            "Imported history entries: "
+            f"imported={result.imported}, added={result.added}, "
+            f"replaced={result.replaced}, skipped={result.skipped}, total={result.total}"
+        )
+        return result
 
     def search_history(
         self,

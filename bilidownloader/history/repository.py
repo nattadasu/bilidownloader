@@ -3,9 +3,10 @@ History data access layer - handles file I/O and basic CRUD operations
 """
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import DEFAULT_HISTORY
@@ -14,6 +15,17 @@ from bilidownloader.commons.ui import prn_done
 # Constants for TSV format
 HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"
 SEP = "\t"
+
+
+@dataclass(frozen=True)
+class HistoryImportResult:
+    """Summary of a history import operation."""
+
+    imported: int
+    added: int
+    replaced: int
+    skipped: int
+    total: int
 
 
 class HistoryRepository:
@@ -141,6 +153,66 @@ class HistoryRepository:
         self.write(self.list)
         prn_done(f"{series_title} (Episode {episode_id}) has been added to history")
         return entry
+
+    def import_entries(self, source_path: Path) -> HistoryImportResult:
+        """Merge entries from another history file into the current history."""
+        source_repo = HistoryRepository(source_path)
+        imported_entries = source_repo.read()
+        merged_entries: Dict[str, Tuple[int, str, str, str, str]] = {
+            entry[4]: entry for entry in self.list
+        }
+        added = 0
+        replaced = 0
+        skipped = 0
+
+        for entry in imported_entries:
+            episode_id = entry[4]
+            current = merged_entries.get(episode_id)
+
+            if current is None:
+                merged_entries[episode_id] = entry
+                added += 1
+                continue
+
+            if self._should_replace_entry(current, entry):
+                merged_entries[episode_id] = entry
+                replaced += 1
+                continue
+
+            skipped += 1
+
+        self.list = list(merged_entries.values())
+        self.write(self.list)
+
+        return HistoryImportResult(
+            imported=len(imported_entries),
+            added=added,
+            replaced=replaced,
+            skipped=skipped,
+            total=len(self.list),
+        )
+
+    @staticmethod
+    def _should_replace_entry(
+        current: Tuple[int, str, str, str, str],
+        candidate: Tuple[int, str, str, str, str],
+    ) -> bool:
+        """Choose the better duplicate using timestamp as the primary tiebreaker."""
+        current_timestamp = current[0]
+        candidate_timestamp = candidate[0]
+
+        if candidate_timestamp != current_timestamp:
+            if current_timestamp == 0:
+                return candidate_timestamp > 0
+            if candidate_timestamp == 0:
+                return False
+            return candidate_timestamp > current_timestamp
+
+        if not current[3] and candidate[3]:
+            return True
+        if not current[2] and candidate[2]:
+            return True
+        return False
 
     def check_exists(self, series_id: str, episode_id: str) -> bool:
         """Check if an episode exists in history"""
