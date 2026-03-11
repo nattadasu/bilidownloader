@@ -175,7 +175,9 @@ class BiliProcess:
                 else:
                     # Process chapters
                     chapters = self.downloader.get_episode_chapters(data)
-                    final = self.chapter_processor.embed_chapters(chapters, loc)
+                    final = self.chapter_processor.embed_chapters(
+                        chapters, loc, language
+                    )
 
                     # Prepare metadata arguments
                     aud_args = self.metadata_editor.add_audio_language(final, language)

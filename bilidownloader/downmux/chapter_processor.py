@@ -6,7 +6,7 @@ import subprocess as sp
 from io import StringIO
 from pathlib import Path
 from re import search as rsearch
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 from rich.console import Console
 from rich.table import Column, Table, box
@@ -49,6 +49,46 @@ class ChapterProcessor:
         seconds = self._sms(chapter.end_time) - self._sms(chapter.start_time)
         return seconds / 1000
 
+    @staticmethod
+    def _uses_ident_label(
+        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+    ) -> bool:
+        """Whether recap-like logo chapters should be labeled as Idents."""
+        return audio_language == "chi"
+
+    def _resolve_chapter_title(
+        self,
+        title: str,
+        duration: float,
+        next_chapter: Optional[Chapter],
+        part_index: int,
+        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+    ) -> tuple[str, int]:
+        """Normalize chapter titles based on timing heuristics and audio language."""
+
+        def pidx(index: int) -> tuple[str, int]:
+            return f"Part {int_to_abc(index)}", index + 1
+
+        if title not in ["Intro", "Outro"]:
+            title, _ = pidx(part_index)
+            if duration < 25:
+                title = "Idents"
+            elif duration >= 25 and duration <= 40:
+                title = "Idents" if self._uses_ident_label(audio_language) else "Recap"
+            elif next_chapter and next_chapter.title == "Intro":
+                title = "Prologue"
+            else:
+                part_index += 1
+        else:
+            if title == "Intro":
+                title = "Opening"
+                if duration > 120:
+                    title, part_index = pidx(part_index)
+            elif title == "Outro":
+                title = "Ending"
+
+        return title, part_index
+
     def _format_chapter(self, chapter: Chapter, title: str) -> str:
         """Format a chapter into FFmpeg metadata format"""
         start_ms = self._sms(chapter.start_time)
@@ -84,7 +124,12 @@ class ChapterProcessor:
             )
         return mkv_chapters
 
-    def embed_chapters(self, chapters: List[Chapter], video_path: Path) -> Path:
+    def embed_chapters(
+        self,
+        chapters: List[Chapter],
+        video_path: Path,
+        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+    ) -> Path:
         """Create chapter metadata and merge it into the video file"""
         if not chapters:
             prn_dbg("No chapters found, skipping chapter embedding")
@@ -170,9 +215,6 @@ class ChapterProcessor:
         formatted_chapters: List[str] = []
         part_index = 1
 
-        def pidx(index: int) -> tuple[str, int]:
-            return f"Part {int_to_abc(index)}", index + 1
-
         if len(chapters) == 2:
             chapters[0].title = "Episode"
             chapters[1].title = "Outro"
@@ -213,23 +255,13 @@ class ChapterProcessor:
             except IndexError:
                 next_chapter = None
 
-            if title not in ["Intro", "Outro"]:
-                title, _ = pidx(part_index)
-                if compr < 25:
-                    title = "Brandings"
-                elif compr >= 25 and compr <= 40:
-                    title = "Recap"
-                elif next_chapter and next_chapter.title == "Intro":
-                    title = "Prologue"
-                else:
-                    part_index += 1
-            else:
-                if title == "Intro":
-                    title = "Opening"
-                    if compr > 120:
-                        title, part_index = pidx(part_index)
-                elif title == "Outro":
-                    title = "Ending"
+            title, part_index = self._resolve_chapter_title(
+                title,
+                compr,
+                next_chapter,
+                part_index,
+                audio_language,
+            )
 
             formatted_chapters.append(self._format_chapter(chapter, title))
 
@@ -237,7 +269,8 @@ class ChapterProcessor:
             if i < len(chapters) - 1:
                 next_chapter = chapters[i + 1]
                 if chapter.end_time < next_chapter.start_time - 0.001:
-                    title, part_index = pidx(part_index)
+                    title = f"Part {int_to_abc(part_index)}"
+                    part_index += 1
                     gap_chapter = Chapter(
                         start_time=chapter.end_time,
                         end_time=next_chapter.start_time,
@@ -259,7 +292,7 @@ class ChapterProcessor:
                     )
                 else:
                     is_under_minute = drn_ < 60
-                    title, _ = pidx(part_index)
+                    title = f"Part {int_to_abc(part_index)}"
                     final_chapter = Chapter(
                         start_time=chapters[-1].end_time,
                         end_time=total_duration,
