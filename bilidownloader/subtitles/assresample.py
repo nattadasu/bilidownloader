@@ -186,13 +186,45 @@ class SSARescaler(PostProcessor):
     ) -> None:
         """Collect font names from all styles in the subtitle file.
 
+        Detects base fonts and their bold/italic variants from style properties.
+
         Args:
             subs: SSAFile object
             all_fonts_found: Set to collect fonts
         """
         for style in subs.styles.values():
-            if style.fontname:
-                self._add_font_if_new(style.fontname, all_fonts_found, "style ")
+            if not style.fontname:
+                continue
+
+            self._add_font_if_new(style.fontname, all_fonts_found, "style ")
+
+            # Detect and add bold/italic variants based on style properties
+            if "Noto Sans" in style.fontname:
+                if style.bold and style.italic:
+                    self._add_noto_bold_italic_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is bold+italic"
+                    )
+                elif style.bold:
+                    self._add_noto_bold_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is bold"
+                    )
+                elif style.italic:
+                    self._add_noto_italic_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is italic"
+                    )
+            elif "Arial" in style.fontname:
+                if style.bold and style.italic:
+                    self._add_arial_bold_italic_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is bold+italic"
+                    )
+                elif style.bold:
+                    self._add_arial_bold_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is bold"
+                    )
+                elif style.italic:
+                    self._add_arial_italic_if_needed(
+                        all_fonts_found, f"Style '{style.name}' is italic"
+                    )
 
     def _process_events(
         self,

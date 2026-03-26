@@ -149,10 +149,13 @@ class SRTToASSConverter(PostProcessor):
                 continue
 
             # Convert SRT to ASS with resolution info
+            # Note: SubtitleStyle.DEFAULT and THAI both have bold=True
             if ".th." in current_file.name:
                 fonts_found.add("Arial")
+                fonts_found.add("Arial::Bold")  # Default-Thai style has bold=True
             else:
                 fonts_found.add("Noto Sans")
+                fonts_found.add("Noto Sans::Bold")  # Default style has bold=True
             ass_file, gaps_filled = self._convert_srt_file(current_file, play_res_x, play_res_y)
             if ass_file:
                 converted_files.append(ass_file)
