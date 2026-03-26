@@ -301,16 +301,16 @@ PROXY_OPT = Annotated[
     ),
 ]
 """Proxy URL option for network requests"""
-SIMULATE_OPT = Annotated[
+MARK_DOWNLOADED_OPT = Annotated[
     bool,
     typer.Option(
-        "--simulate",
-        "-s",
-        help="Simulate download without actually downloading files. Still records history.",
+        "--mark-downloaded",
+        "-m",
+        help="Mark episode as downloaded by adding to history without downloading files.",
         rich_help_panel="Output",
     ),
 ]
-"""Flag to simulate download without downloading"""
+"""Flag to mark episodes as downloaded without downloading"""
 
 FFMPEG_PATH = find_command("ffmpeg")
 MKVPROPEX_PATH = find_command("mkvpropedit")
@@ -357,7 +357,7 @@ class DownloadOptions:
     verbose: VERBOSE_OPT = False
     skip_no_subtitle: SKIP_NO_SUBTITLE_OPT = False
     proxy: PROXY_OPT = None
-    simulate: SIMULATE_OPT = False
+    mark_downloaded: MARK_DOWNLOADED_OPT = False
 
 
 @dataclass

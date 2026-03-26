@@ -97,7 +97,7 @@ class VideoDownloader:
         verbose: bool = False,
         skip_no_subtitle: bool = False,
         proxy: Optional[str] = None,
-        simulate: bool = False,
+        mark_downloaded: bool = False,
     ):
         self.cookie = cookie
         self.resolution = resolution
@@ -115,7 +115,7 @@ class VideoDownloader:
         self.verbose = verbose
         self.skip_no_subtitle = skip_no_subtitle
         self.proxy = proxy
-        self.simulate = simulate
+        self.mark_downloaded = mark_downloaded
         self._progress_bars = {}
 
     @staticmethod
@@ -560,8 +560,8 @@ class VideoDownloader:
 
                 ydl.add_post_processor(SRTGapFiller(), when="before_dl")
 
-            if self.simulate:
-                prn_info("Simulate mode: Skipping actual download")
+            if self.mark_downloaded:
+                prn_info("Mark-downloaded mode: Skipping actual download")
                 prn_dbg(f"Would download: {final_path}")
             else:
                 ydl.download([episode_url])
