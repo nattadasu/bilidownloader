@@ -6,7 +6,6 @@ by eliminating distracting rapid transitions between consecutive subtitle lines.
 
 from typing import Any, List, Tuple
 
-
 # Frame rate constants (in seconds per frame)
 FRAME_RATE_24FPS = 24.0
 FRAME_RATE_23976FPS = 23.976
@@ -26,7 +25,9 @@ class FlickerFiller:
     which are often intentional for sentence splitting.
     """
 
-    def __init__(self, max_gap_frames: float = 4.0, fps: float = FRAME_RATE_24FPS) -> None:
+    def __init__(
+        self, max_gap_frames: float = 4.0, fps: float = FRAME_RATE_24FPS
+    ) -> None:
         """Initialize the FlickerFiller.
 
         Args:

@@ -1,133 +1,27 @@
-"""SRT gap filler for bilidownloader.
+"""SRT gap filler post-processor for yt-dlp.
 
-This module provides functionality to fill distracting flicker gaps in SRT
-subtitle files to improve readability during video playback.
+Fills distracting flicker gaps in SRT subtitle files to improve readability.
 """
 
-import re
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
 from bilidownloader.subtitles.gap_filler import FlickerFiller
+from bilidownloader.subtitles.subtitle_io import SubtitleIO
 
 
 class SRTGapFiller(PostProcessor):
-    """A yt-dlp post-processor for filling flicker gaps in SRT subtitles.
-
-    This class processes SRT subtitle files to fill rapid gaps (1-100ms)
-    between lines that cause distracting flickering during playback.
-    """
+    """A yt-dlp post-processor for filling flicker gaps in SRT subtitles."""
 
     def __init__(self, *args, **kwargs):
-        """Initialize the SRT gap filler.
-
-        Args:
-            *args: Arguments passed to parent PostProcessor
-            **kwargs: Keyword arguments passed to parent PostProcessor
-        """
+        """Initialize the SRT gap filler."""
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller()
 
-    def _srt_time_to_seconds(self, time_str: str) -> float:
-        """Convert SRT time format to seconds.
-
-        Args:
-            time_str: Time string in SRT format (HH:MM:SS,mmm)
-
-        Returns:
-            Time in seconds as a float
-        """
-        time_str = time_str.replace(",", ".")
-        parts = time_str.split(":")
-        hours = int(parts[0])
-        minutes = int(parts[1])
-        seconds_parts = parts[2].split(".")
-        seconds = int(seconds_parts[0])
-        milliseconds = int(seconds_parts[1]) if len(seconds_parts) > 1 else 0
-
-        return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000.0
-
-    def _seconds_to_srt_time(self, seconds: float) -> str:
-        """Convert seconds to SRT time format.
-
-        Args:
-            seconds: Time in seconds as a float
-
-        Returns:
-            Time string in SRT format (HH:MM:SS,mmm)
-        """
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        milliseconds = int((seconds % 1) * 1000)
-
-        return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
-
-    def _fill_frame_gaps(self, srt_content: str) -> str:
-        """Fill distracting flicker gaps (1-100ms) between subtitle lines.
-
-        Adjusts the end time of the current line to meet the start time of the
-        next line when the gap is between 1-100ms. Preserves 0ms gaps.
-
-        Args:
-            srt_content: The content of the SRT file as a string
-
-        Returns:
-            The modified SRT content as a string
-        """
-        # Parse SRT content
-        srt_pattern = re.compile(
-            r"(\d+)\s*\n"  # Subtitle number
-            r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})\s*\n"  # Time
-            r"((?:.*\n?)*?)\s*(?=\n\d+\s*\n|\n*$)",  # Text content
-            re.MULTILINE,
-        )
-
-        events = []
-        for match in srt_pattern.finditer(srt_content):
-            number, start_time_str, end_time_str, text = match.groups()
-            start_s = self._srt_time_to_seconds(start_time_str)
-            end_s = self._srt_time_to_seconds(end_time_str)
-            events.append((int(number), start_s, end_s, text.strip()))
-
-        if len(events) <= 1:
-            return srt_content
-
-        # Prepare events for flicker filler
-        generic_events = []
-        for number, start_s, end_s, text in events:
-            generic_events.append((start_s, end_s, (number, text)))
-
-        adjusted_generic_events = self.gap_filler.fill_flicker_gaps(generic_events)
-
-        # Rebuild SRT content
-        srt_lines = []
-        for i, (start_s, new_end_s, original_data) in enumerate(
-            adjusted_generic_events
-        ):
-            number, text = original_data
-            original_end_s = events[i][
-                2
-            ]  # Get original end time for logging comparison
-
-            if new_end_s != original_end_s:
-                gap_ms = (new_end_s - original_end_s) * 1000
-                self.write_debug(
-                    f"  Filled {gap_ms:.1f}ms flicker gap: extended line ending at "
-                    f"{original_end_s:.3f}s to {new_end_s:.3f}s"
-                )
-            srt_lines.append(
-                f"{number}\n"
-                f"{self._seconds_to_srt_time(start_s)} --> {self._seconds_to_srt_time(new_end_s)}\n"
-                f"{text}\n"
-            )
-
-        return "\n".join(srt_lines)
-
     def _process_srt_file(self, srt_path: Path) -> bool:
-        """Process a single SRT file to fill 1-3 frame gaps.
+        """Process a single SRT file to fill flicker gaps.
 
         Args:
             srt_path: Path to the SRT file to process
@@ -140,18 +34,20 @@ class SRTGapFiller(PostProcessor):
             return False
 
         try:
-            # Read SRT content
-            with open(srt_path, "r", encoding="utf-8-sig") as f:
-                srt_content = f.read()
+            # Load subtitles
+            subs = SubtitleIO.load(srt_path)
 
-            # Fill gaps
-            modified_content = self._fill_frame_gaps(srt_content)
+            # Extract events and apply gap filler
+            events = SubtitleIO.extract_events(subs)
+            adjusted_events = self.gap_filler.fill_flicker_gaps(events)
+
+            # Update events with adjusted times
+            SubtitleIO.update_events(subs, adjusted_events)
 
             # Write back to file
-            with open(srt_path, "w", encoding="utf-8-sig") as f:
-                f.write(modified_content)
+            SubtitleIO.save(subs, srt_path)
 
-            self.write_debug(f"Processed {srt_path.name} for 1-3 frame gaps")
+            self.write_debug(f"Processed {srt_path.name} for flicker gap filling")
             return True
 
         except Exception as e:

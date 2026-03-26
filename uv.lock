@@ -38,21 +38,11 @@ wheels = [
 ]
 
 [[package]]
-name = "ass"
-version = "1.0.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e5/07/5c6a42e66414502df0aae1d8f752c4412f3845d953c45dbd705f7932de59/ass-1.0.3.tar.gz", hash = "sha256:1e48e181c8a6516d5a7a98de1e1be18ac6661526c3c37d92b6d16680650ef673", size = 12419, upload-time = "2025-10-22T21:11:04.82Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/3d/c51af75f531131d4f575cd8a8ffc8b101d21d80804626c25613f352ec85b/ass-1.0.3-py3-none-any.whl", hash = "sha256:8b46e481c5f866eec8be831d62697a0a580395e9ecc93239025cdd667cbe91b2", size = 15315, upload-time = "2025-10-22T21:11:03.996Z" },
-]
-
-[[package]]
 name = "bilidownloader"
 version = "4.10.0"
 source = { editable = "." }
 dependencies = [
     { name = "alive-progress" },
-    { name = "ass" },
     { name = "fake-useragent" },
     { name = "findsystemfontsfilename" },
     { name = "fonttools" },
@@ -62,6 +52,7 @@ dependencies = [
     { name = "platformdirs" },
     { name = "psutil" },
     { name = "pydantic" },
+    { name = "pysubs2" },
     { name = "requests" },
     { name = "semver" },
     { name = "survey" },
@@ -72,11 +63,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-ass = [
-    { name = "ass" },
-    { name = "findsystemfontsfilename" },
-    { name = "fonttools" },
-]
 dev = [
     { name = "ruff" },
     { name = "yamllint" },
@@ -85,19 +71,16 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alive-progress" },
-    { name = "ass" },
-    { name = "ass", marker = "extra == 'ass'" },
     { name = "fake-useragent" },
     { name = "findsystemfontsfilename" },
-    { name = "findsystemfontsfilename", marker = "extra == 'ass'" },
     { name = "fonttools" },
-    { name = "fonttools", marker = "extra == 'ass'" },
     { name = "langcodes", extras = ["data"] },
     { name = "notify-py" },
     { name = "pillow" },
     { name = "platformdirs" },
     { name = "psutil" },
     { name = "pydantic" },
+    { name = "pysubs2", specifier = ">=1.8.1" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "semver" },
@@ -108,7 +91,7 @@ requires-dist = [
     { name = "yamllint", marker = "extra == 'dev'" },
     { name = "yt-dlp", extras = ["default"], specifier = ">=2025.3.26" },
 ]
-provides-extras = ["ass", "dev"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "brotli"
@@ -743,6 +726,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
+]
+
+[[package]]
+name = "pysubs2"
+version = "1.8.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/73/eff32fcc4babb32b76d7fce6d74995de2d04201f7b43c9a7764554d6ab49/pysubs2-1.8.1.tar.gz", hash = "sha256:af3a288643da87db6bb13dbde70e94c9570765cc8f6423b1c21de11f16d734da", size = 1153150, upload-time = "2026-03-19T17:25:01.941Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/bb/0dc8b9a38609701ca3f107dc516300b317641bed9b2ef1c964a9ad37ae9e/pysubs2-1.8.1-py3-none-any.whl", hash = "sha256:eb5d8872b7f87208070dd6f0d85fc110b7ad6cc2a7ec422f5b12363e9194e4e4", size = 44269, upload-time = "2026-03-19T17:24:59.953Z" },
 ]
 
 [[package]]

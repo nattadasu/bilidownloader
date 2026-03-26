@@ -17,7 +17,6 @@ classifiers = [
 keywords = ["anime"]
 dependencies = [
 	"alive-progress",               # progress bar for history migration
-	"ass",                          # parsing Advanced SubStation Alpha subtitles
 	"platformdirs",                 # for platform-dependent config path
 	"fake-useragent",               # for random user agent
 	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
@@ -34,14 +33,10 @@ dependencies = [
 	"typer >= 0.13.1",              # backend for CLI
 	"typer-di",                     # dependency injection for Typer
 	"yt-dlp[default] >= 2025.3.26", # the most important dependency, downloader
+	"pysubs2>=1.8.1",               # for subtitle file handling (SRT, ASS, SSA, etc.)
 ]
 
 [project.optional-dependencies]
-ass = [
-	"ass",                          # parsing Advanced SubStation Alpha subtitles
-	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
-	"fontTools",                    # font file parsing for name extraction
-]
 dev = [
 	"yamllint",       # lint yaml
 	"ruff",           # type and syntax check
