@@ -127,6 +127,7 @@ class SubtitleIO:
         subs: SSAFile,
         style: Optional[SSAStyle] = None,
         is_thai: bool = False,
+        style_name: Optional[str] = None,
     ) -> None:
         """Apply or update style in subtitle file.
 
@@ -134,14 +135,18 @@ class SubtitleIO:
             subs: SSAFile object to update
             style: SSAStyle object (uses Thai style if is_thai=True)
             is_thai: Whether to use Thai style defaults
+            style_name: Override the style name (defaults to "Default" or "Default-Thai")
         """
         if style is None:
             style = SubtitleStyle.THAI if is_thai else SubtitleStyle.DEFAULT
 
-        subs.styles[style.name] = style
+        if style_name is None:
+            style_name = "Default-Thai" if is_thai else "Default"
+
+        subs.styles[style_name] = style
 
         for event in subs.events:
-            event.style = style.name
+            event.style = style_name
 
     @staticmethod
     def convert_srt_to_ass(
@@ -158,9 +163,10 @@ class SubtitleIO:
             SSAFile with ASS formatting and styles applied
         """
         style = SubtitleStyle.THAI if is_thai else SubtitleStyle.DEFAULT
-        srt_subs.styles[style.name] = style
+        style_name = "Default-Thai" if is_thai else "Default"
+        srt_subs.styles[style_name] = style
 
         for event in srt_subs.events:
-            event.style = style.name
+            event.style = style_name
 
         return srt_subs
