@@ -28,9 +28,7 @@ class SRTGapFiller(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller(
-            min_gap_ms=1, max_gap_ms=100, tolerance=0.001
-        )
+        self.gap_filler = FlickerFiller()
 
     def _srt_time_to_seconds(self, time_str: str) -> float:
         """Convert SRT time format to seconds.

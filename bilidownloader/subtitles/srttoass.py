@@ -40,9 +40,7 @@ class SRTToASSConverter(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller(
-            min_gap_ms=1, max_gap_ms=100, tolerance=0.001
-        )
+        self.gap_filler = FlickerFiller()
 
     def _ass_time_to_seconds(self, time_str: str) -> float:
         """Convert ASS time format to seconds.
