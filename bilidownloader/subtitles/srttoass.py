@@ -12,7 +12,7 @@ from yt_dlp.postprocessor import PostProcessor
 
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import format_log_time, langcode_to_str
-from bilidownloader.subtitles.gap_filler import GenericGapFiller
+from bilidownloader.subtitles.gap_filler import FlickerFiller
 
 
 class SRTToASSConverter(PostProcessor):
@@ -40,9 +40,9 @@ class SRTToASSConverter(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(
-            tolerance=0.01
-        )  # ASS uses centiseconds, so 0.01s tolerance is appropriate
+        self.gap_filler = FlickerFiller(
+            min_gap_ms=1, max_gap_ms=100, tolerance=0.001
+        )
 
     def _ass_time_to_seconds(self, time_str: str) -> float:
         """Convert ASS time format to seconds.
@@ -81,10 +81,10 @@ class SRTToASSConverter(PostProcessor):
     def _fill_frame_gaps(
         self, events: List[Tuple[str, str, str]]
     ) -> List[Tuple[str, str, str]]:
-        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
+        """Fill distracting flicker gaps (1-100ms) between subtitle lines.
 
-        Assumes 23.976/24 fps for frame duration calculation.
-        Adjusts the end time of the current line to meet the start time of the next line.
+        Adjusts the end time of the current line to meet the start time of the
+        next line when the gap is between 1-100ms. Preserves 0ms gaps.
 
         Args:
             events: List of tuples (start_time, end_time, text) in ASS format
@@ -95,14 +95,14 @@ class SRTToASSConverter(PostProcessor):
         if len(events) <= 1:
             return events
 
-        # Prepare events for generic gap filler
+        # Prepare events for flicker filler
         generic_events = []
         for start_time_str, end_time_str, text in events:
             start_s = self._ass_time_to_seconds(start_time_str)
             end_s = self._ass_time_to_seconds(end_time_str)
             generic_events.append((start_s, end_s, text))
 
-        adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
+        adjusted_generic_events = self.gap_filler.fill_flicker_gaps(generic_events)
 
         # Convert back to original format
         adjusted_events = []
@@ -111,8 +111,9 @@ class SRTToASSConverter(PostProcessor):
                 events[i][1]
             )  # Get original end time for logging comparison
             if new_end_s != original_end_s:
+                gap_ms = (new_end_s - original_end_s) * 1000
                 self.write_debug(
-                    f"  Filled 3-frame gap: extended line ending at "
+                    f"  Filled {gap_ms:.1f}ms flicker gap: extended line ending at "
                     f"{format_log_time(original_end_s)} to {format_log_time(new_end_s)}"
                 )
             adjusted_events.append(
@@ -212,7 +213,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             events.append((ass_start, ass_end, text))
 
-        # Fill 1-3 frame gaps between subtitle lines
+        # Fill 1-100ms flicker gaps between subtitle lines
         events = self._fill_frame_gaps(events)
 
         # Create ASS dialogue lines

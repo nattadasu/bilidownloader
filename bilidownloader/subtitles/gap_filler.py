@@ -1,6 +1,83 @@
 from typing import Any, List, Tuple
 
 
+class FlickerFiller:
+    """
+    Fills distracting flicker gaps (1-100ms) between subtitle events while
+    preserving 0ms gaps (intentional consecutive subtitles).
+    
+    This is useful for fixing rapid subtitle flickering that occurs when
+    subtitles transition too quickly (< 100ms) between lines, making them
+    hard to read. It specifically avoids filling 0ms gaps which are often
+    intentional for proper sentence splitting.
+    """
+
+    # Flicker detection thresholds
+    MIN_FLICKER_MS = 1  # Minimum gap to be considered a flicker
+    MAX_FLICKER_MS = 100  # Maximum gap considered distracting
+
+    def __init__(
+        self,
+        min_gap_ms: int = 1,
+        max_gap_ms: int = 100,
+        tolerance: float = 0.001,
+    ) -> None:
+        """
+        Initializes the FlickerFiller.
+
+        Args:
+            min_gap_ms (int): Minimum gap in milliseconds to be considered for filling.
+                             Defaults to 1ms (ignores 0ms gaps).
+            max_gap_ms (int): Maximum gap in milliseconds to be filled.
+                             Defaults to 100ms.
+            tolerance (float): Tolerance in seconds for gap detection.
+                              Defaults to 0.001 (1ms).
+        """
+        self.min_gap_ms = min_gap_ms
+        self.max_gap_ms = max_gap_ms
+        self.tolerance = tolerance
+
+    def fill_flicker_gaps(
+        self, events: List[Tuple[float, float, Any]]
+    ) -> List[Tuple[float, float, Any]]:
+        """
+        Fill distracting gaps between subtitle lines (1-100ms).
+
+        Args:
+            events: A list of tuples, where each tuple represents a subtitle event:
+                    (start_seconds: float, end_seconds: float, original_event_data: Any)
+
+        Returns:
+            A new list of tuples with adjusted end times for events where flickers
+            were filled.
+        """
+        if len(events) <= 1:
+            return list(events)
+
+        adjusted_events = []
+        for i in range(len(events)):
+            current_start, current_end, current_data = events[i]
+            new_end = current_end
+
+            if i < len(events) - 1:
+                next_start, _, _ = events[i + 1]
+                gap_seconds = next_start - current_end
+                gap_ms = gap_seconds * 1000
+
+                # Fill gaps in the flicker range (min_gap_ms < gap <= max_gap_ms)
+                # Preserve 0ms gaps (intentional consecutive subtitles)
+                if (
+                    self.min_gap_ms < gap_ms <= self.max_gap_ms
+                    or (gap_ms > 0 and gap_ms < self.min_gap_ms)
+                ):
+                    # Extend to next start time to eliminate the gap
+                    new_end = next_start
+
+            adjusted_events.append((current_start, new_end, current_data))
+
+        return adjusted_events
+
+
 class GenericGapFiller:
     """
     Provides a generic method to fill 1-3 frame gaps between subtitle events.

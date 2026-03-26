@@ -18,7 +18,7 @@ from yt_dlp.postprocessor import PostProcessor  # type: ignore
 
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import format_log_time
-from bilidownloader.subtitles.gap_filler import GenericGapFiller
+from bilidownloader.subtitles.gap_filler import FlickerFiller
 
 
 class SSARescaler(PostProcessor):
@@ -36,9 +36,9 @@ class SSARescaler(PostProcessor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(
-            tolerance=0.01
-        )  # ASS uses centiseconds, so 0.01s tolerance is appropriate
+        self.gap_filler = FlickerFiller(
+            min_gap_ms=1, max_gap_ms=100, tolerance=0.001
+        )
 
     def _ass_time_to_seconds(self, time_obj: Any) -> float:
         """Convert ASS time object to seconds.
@@ -618,27 +618,27 @@ class SSARescaler(PostProcessor):
             # Process and filter styles
             self._process_styles(ass_document, used_styles, all_fonts_found)
 
-            # Fill 1-3 frame gaps between subtitle lines
-            self.write_debug("Filling 1-3 frame gaps between subtitle lines...")
-            # Prepare events for generic gap filler
+            # Fill 1-100ms flicker gaps between subtitle lines
+            self.write_debug("Filling flicker gaps (1-100ms) between subtitle lines...")
+            # Prepare events for flicker filler
             generic_events = []
             for event in ass_document.events:
                 start_s = self._ass_time_to_seconds(event.start)
                 end_s = self._ass_time_to_seconds(event.end)
                 generic_events.append((start_s, end_s, event))
 
-            adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
+            adjusted_generic_events = self.gap_filler.fill_flicker_gaps(generic_events)
 
             # Update original ASS events with adjusted end times
             for i, (start_s, new_end_s, original_event) in enumerate(
                 adjusted_generic_events
             ):
                 if original_event.end != self._seconds_to_ass_time(new_end_s):
-                    gap_frames = (
+                    gap_ms = (
                         new_end_s - self._ass_time_to_seconds(original_event.end)
-                    ) * 24
+                    ) * 1000
                     self.write_debug(
-                        f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
+                        f"  Filled {gap_ms:.1f}ms flicker gap: extended line ending at "
                         f"{format_log_time(self._ass_time_to_seconds(original_event.end))} to {format_log_time(new_end_s)}"
                     )
                     original_event.end = self._seconds_to_ass_time(new_end_s)

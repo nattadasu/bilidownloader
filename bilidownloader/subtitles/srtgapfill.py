@@ -1,7 +1,7 @@
 """SRT gap filler for bilidownloader.
 
-This module provides functionality to fill 1-3 frame gaps in SRT subtitle files
-to prevent frame jitter during video playback.
+This module provides functionality to fill distracting flicker gaps in SRT
+subtitle files to improve readability during video playback.
 """
 
 import re
@@ -10,14 +10,14 @@ from typing import Dict, List, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
-from bilidownloader.subtitles.gap_filler import GenericGapFiller
+from bilidownloader.subtitles.gap_filler import FlickerFiller
 
 
 class SRTGapFiller(PostProcessor):
-    """A yt-dlp post-processor for filling 1-3 frame gaps in SRT subtitles.
+    """A yt-dlp post-processor for filling flicker gaps in SRT subtitles.
 
-    This class processes SRT subtitle files to fill gaps between lines
-    that are 1-3 frames apart to prevent frame jitter.
+    This class processes SRT subtitle files to fill rapid gaps (1-100ms)
+    between lines that cause distracting flickering during playback.
     """
 
     def __init__(self, *args, **kwargs):
@@ -28,9 +28,9 @@ class SRTGapFiller(PostProcessor):
             **kwargs: Keyword arguments passed to parent PostProcessor
         """
         super().__init__(*args, **kwargs)
-        self.gap_filler = GenericGapFiller(
-            tolerance=0.001
-        )  # SRT uses milliseconds, so 0.001s tolerance is appropriate
+        self.gap_filler = FlickerFiller(
+            min_gap_ms=1, max_gap_ms=100, tolerance=0.001
+        )
 
     def _srt_time_to_seconds(self, time_str: str) -> float:
         """Convert SRT time format to seconds.
@@ -68,10 +68,10 @@ class SRTGapFiller(PostProcessor):
         return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
 
     def _fill_frame_gaps(self, srt_content: str) -> str:
-        """Fill gaps between subtitle lines if they are exactly 3 frames apart.
+        """Fill distracting flicker gaps (1-100ms) between subtitle lines.
 
-        Assumes 23.976/24 fps for frame duration calculation.
-        Adjusts the end time of the current line to meet the start time of the next line.
+        Adjusts the end time of the current line to meet the start time of the
+        next line when the gap is between 1-100ms. Preserves 0ms gaps.
 
         Args:
             srt_content: The content of the SRT file as a string
@@ -97,12 +97,12 @@ class SRTGapFiller(PostProcessor):
         if len(events) <= 1:
             return srt_content
 
-        # Prepare events for generic gap filler
+        # Prepare events for flicker filler
         generic_events = []
         for number, start_s, end_s, text in events:
             generic_events.append((start_s, end_s, (number, text)))
 
-        adjusted_generic_events = self.gap_filler.fill_frame_gaps(generic_events)
+        adjusted_generic_events = self.gap_filler.fill_flicker_gaps(generic_events)
 
         # Rebuild SRT content
         srt_lines = []
@@ -115,9 +115,9 @@ class SRTGapFiller(PostProcessor):
             ]  # Get original end time for logging comparison
 
             if new_end_s != original_end_s:
-                gap_frames = (new_end_s - original_end_s) * 24
+                gap_ms = (new_end_s - original_end_s) * 1000
                 self.write_debug(
-                    f"  Filled {gap_frames:.1f}-frame gap: extended line ending at "
+                    f"  Filled {gap_ms:.1f}ms flicker gap: extended line ending at "
                     f"{original_end_s:.3f}s to {new_end_s:.3f}s"
                 )
             srt_lines.append(
@@ -169,7 +169,7 @@ class SRTGapFiller(PostProcessor):
         Returns:
             Tuple of (files_to_delete, updated_info)
         """
-        self.to_screen("Filling 1-3 frame gaps in SRT subtitles")
+        self.to_screen("Filling flicker gaps (1-100ms) in SRT subtitles")
 
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
@@ -194,7 +194,7 @@ class SRTGapFiller(PostProcessor):
 
         if processed_count > 0:
             self.to_screen(
-                f"Successfully processed {processed_count} SRT files for 1-3 frame gaps"
+                f"Successfully processed {processed_count} SRT files for flicker gap filling"
             )
 
         return [], info
