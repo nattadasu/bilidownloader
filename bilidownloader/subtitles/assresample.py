@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Set, Tuple
 import pysubs2
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.commons.metadata import __VERSION__
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import format_log_time
 from bilidownloader.subtitles.gap_filler import FlickerFiller
@@ -369,7 +370,7 @@ class SSARescaler(PostProcessor):
 
             # Update title
             if subs.info:
-                subs.info["Title"] = "Modified with github:nattadasu/bilidownloader"
+                subs.info["Title"] = f"Modified with github:nattadasu/bilidownloader v{__VERSION__}"
 
             used_styles: Set[str] = set()
 

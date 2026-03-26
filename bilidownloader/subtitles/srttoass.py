@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.commons.metadata import __VERSION__
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import langcode_to_str
 from bilidownloader.subtitles.gap_filler import FlickerFiller
@@ -49,7 +50,7 @@ class SRTToASSConverter(PostProcessor):
             # Set script info for ASS file
             if not subs.info:
                 subs.info = {}
-            subs.info["Title"] = "Modified with github:nattadasu/bilidownloader (converted from SRT)"
+            subs.info["Title"] = f"Modified with github:nattadasu/bilidownloader v{__VERSION__} (converted from SRT)"
             subs.info["ScriptType"] = "v4.00+"
             subs.info["WrapStyle"] = "0"
             subs.info["ScaledBorderAndShadow"] = "yes"
