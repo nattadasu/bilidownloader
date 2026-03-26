@@ -26,7 +26,6 @@ from bilidownloader.commons.utils import (
     DataExistError,
     RateLimitError,
     SubtitleLanguage,
-    check_package,
     pluralize,
 )
 from bilidownloader.downmux.chapter_processor import ChapterProcessor
@@ -64,18 +63,8 @@ class BiliProcess:
         # Set verbose mode for debug messages
         set_verbose(download_options.verbose)
 
-        if not self.srt and self.srt == check_package("ass"):
-            prn_error(
-                (
-                    "`ass` package is not found inside the environment, "
-                    "please reinstall `bilidownloader` by executing this command to "
-                    "install the required package:"
-                )
-            )
-            prn_error(REINSTALL_ARGS)
-            prn_info("Reverting to use SRT")
-            self.srt = True
-        else:
+        # Initialize fonts for ASS subtitle processing
+        if not self.srt:
             initialize_fonts()
 
         # Initialize component classes
@@ -207,7 +196,7 @@ class BiliProcess:
                 aud_args = self.metadata_editor.add_audio_language(final, language)
 
                 font_args: List[str] = []
-                if not self.srt or not self.dont_convert:
+                if (not self.srt) and (not self.dont_convert):
                     font_json = Path("fonts.json")
                     if font_json.exists():
                         font_json, font_args = loop_font_lookup(

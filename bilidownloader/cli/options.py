@@ -13,10 +13,9 @@ from bilidownloader.commons.constants import (
     VideoResolution,
 )
 from bilidownloader.commons.filesystem import find_command
-from bilidownloader.commons.utils import SubtitleLanguage, check_package
+from bilidownloader.commons.utils import SubtitleLanguage
 
 bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
-ass_status = check_package("ass")
 
 
 class HistorySortBy(str, Enum):
@@ -350,7 +349,7 @@ class DownloadOptions:
     """Download options dependency"""
 
     resolution: RESO_OPT = VideoResolution.P1080
-    srtonly: SRT_OPT = not ass_status
+    srtonly: SRT_OPT = False
     is_avc: AVC_OPT = False
     forced: FORCED_OPT = False
     download_pv: PV_OPT = False

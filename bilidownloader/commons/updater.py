@@ -92,13 +92,6 @@ def _is_pipxu_install() -> bool:
     return "pipxu" in str(venv_path)
 
 
-def _has_ass_dependencies() -> bool:
-    """Check if ASS optional dependencies are installed."""
-    from importlib.util import find_spec
-
-    return find_spec("ass") is not None and find_spec("matplotlib") is not None
-
-
 def _get_git_repo_url() -> Optional[str]:
     """Get the git repository URL from package metadata."""
     from importlib.metadata import distribution
@@ -121,10 +114,9 @@ def _get_update_command(is_pipxu: bool = False) -> str:
         return "pipx upgrade bilidownloader"
     git_repo = _get_git_repo_url()
     if git_repo:
-        extras = "[ass]" if _has_ass_dependencies() else ""
         return (
             f"pipxu uninstall bilidownloader && "
-            f"pipxu install 'bilidownloader{extras} @ git+{git_repo}'"
+            f"pipxu install 'bilidownloader @ git+{git_repo}'"
         )
 
 

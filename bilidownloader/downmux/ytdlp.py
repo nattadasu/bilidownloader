@@ -28,7 +28,6 @@ from bilidownloader.commons.utils import (
     Chapter,
     RateLimitError,
     SubtitleLanguage,
-    check_package,
     sanitize_filename,
 )
 
@@ -530,29 +529,15 @@ class VideoDownloader:
 
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
-                if check_package("ass"):
-                    from bilidownloader.subtitles.assresample import SSARescaler
+                from bilidownloader.subtitles.assresample import SSARescaler
 
-                    ydl.add_post_processor(SSARescaler(), when="before_dl")
+                ydl.add_post_processor(SSARescaler(), when="before_dl")
 
             # Add SRT to ASS converter if needed
             if not self.srt and not self.only_audio and not self.dont_convert:
-                if check_package("ass"):
-                    from bilidownloader.subtitles.srttoass import SRTToASSConverter
+                from bilidownloader.subtitles.srttoass import SRTToASSConverter
 
-                    ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
-                else:
-                    prn_error(
-                        (
-                            "`ass` package is not found inside the environment, "
-                            "please reinstall `bilidownloader` by executing this "
-                            "command to install the required package:"
-                        )
-                    )
-                    prn_error(REINSTALL_ARGS)
-                    prn_info("Reverting to use SRT")
-                    self.srt = True
-                    self.dont_rescale = False
+                ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
 
             # Add SRT gap filler for direct SRT subtitles
             if self.srt and not self.only_audio:
