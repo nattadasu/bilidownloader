@@ -6,7 +6,7 @@ import subprocess as sp
 from io import BytesIO
 from json import loads as jloads
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, cast
 
 import requests as reqs
 from PIL import Image
@@ -33,6 +33,164 @@ class MetadataEditor:
     ):
         self.mkvpropedit_path = mkvpropedit_path
         self.mkvmerge_path = mkvmerge_path
+
+    @staticmethod
+    def _empty_track_counts() -> Dict[str, int]:
+        return {"video": 0, "audio": 0, "text": 0}
+
+    @classmethod
+    def _parse_mediainfo_track_counts(cls, data: Dict[str, Any]) -> Dict[str, int]:
+        """Extract comparable track counts from mediainfo JSON output."""
+        counts = cls._empty_track_counts()
+        media = cast(Dict[str, Any], data.get("media", {}))
+        tracks = cast(List[Dict[str, Any]], media.get("track", []))
+        for track in tracks:
+            track_type = str(track.get("@type", "")).lower()
+            if track_type == "video":
+                counts["video"] += 1
+            elif track_type == "audio":
+                counts["audio"] += 1
+            elif track_type == "text":
+                counts["text"] += 1
+        return counts
+
+    @classmethod
+    def _parse_mkvmerge_track_counts(cls, data: Dict[str, Any]) -> Dict[str, int]:
+        """Extract comparable track counts from mkvmerge JSON output."""
+        counts = cls._empty_track_counts()
+        tracks = cast(List[Dict[str, Any]], data.get("tracks", []))
+        for track in tracks:
+            track_type = str(track.get("type", "")).lower()
+            if track_type == "video":
+                counts["video"] += 1
+            elif track_type == "audio":
+                counts["audio"] += 1
+            elif track_type == "subtitles":
+                counts["text"] += 1
+        return counts
+
+    @staticmethod
+    def _mediainfo_is_missing_tracks(
+        mediainfo_counts: Dict[str, int], mkvmerge_counts: Dict[str, int]
+    ) -> bool:
+        """Return True when mediainfo reports fewer core tracks than mkvmerge."""
+        return any(
+            mediainfo_counts[track_type] < mkvmerge_counts[track_type]
+            for track_type in ("video", "audio", "text")
+        )
+
+    def _read_mediainfo_track_counts(
+        self, video_path: Path
+    ) -> Optional[Dict[str, int]]:
+        """Read video/audio/text track counts from mediainfo."""
+        mediainfo = find_command("mediainfo")
+        if not mediainfo:
+            prn_info("mediainfo is not found, skipping track sanity check")
+            return None
+
+        cmd = [str(mediainfo), "--Output=JSON", str(video_path)]
+        prn_cmd(cmd)
+        result = sp.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            prn_error(
+                f"mediainfo failed to inspect {video_path.name}, attempting repair remux"
+            )
+            return self._empty_track_counts()
+
+        try:
+            data = jloads(result.stdout)
+        except ValueError as err:
+            prn_error(
+                f"Failed to parse mediainfo output for {video_path.name}: {err}. "
+                "Attempting repair remux."
+            )
+            return self._empty_track_counts()
+
+        return self._parse_mediainfo_track_counts(cast(Dict[str, Any], data))
+
+    def _read_mkvmerge_track_counts(self, video_path: Path) -> Dict[str, int]:
+        """Read video/audio/text track counts from mkvmerge."""
+        mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
+        if not mkvmerge:
+            raise FileNotFoundError(
+                "mkvmerge is not found in the system, try to install it first or check the path"
+            )
+
+        cmd = [str(mkvmerge), "-J", str(video_path)]
+        prn_cmd(cmd)
+        result = sp.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise ValueError(f"Failed to inspect track data for {video_path.name}")
+
+        try:
+            data = jloads(result.stdout)
+        except ValueError as err:
+            raise ValueError(
+                f"Failed to parse mkvmerge output for {video_path.name}: {err}"
+            ) from err
+
+        return self._parse_mkvmerge_track_counts(cast(Dict[str, Any], data))
+
+    def _repair_tracks_with_mkvmerge(self, video_path: Path) -> Path:
+        """Remux a file in place to repair track metadata issues."""
+        mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
+        if not mkvmerge:
+            raise FileNotFoundError(
+                "mkvmerge is not found in the system, try to install it first or check the path"
+            )
+
+        temp_path = video_path.with_name(
+            f"{video_path.stem}.sanity-remux{video_path.suffix}"
+        )
+        cmd = [str(mkvmerge), "--quiet", "-o", str(temp_path), str(video_path)]
+        prn_info("Repairing MKV container so mediainfo can read all tracks")
+        prn_cmd(cmd)
+        try:
+            sp.run(cmd, check=True)
+            temp_path.replace(video_path)
+        finally:
+            if temp_path.exists():
+                temp_path.unlink(True)
+
+        return video_path
+
+    def ensure_mediainfo_tracks(self, video_path: Path) -> Path:
+        """Ensure mediainfo can see the same core tracks as mkvmerge."""
+        if not video_path.exists():
+            raise FileNotFoundError(
+                f"Video file not found: {video_path}. Cannot verify track metadata."
+            )
+
+        mediainfo_counts = self._read_mediainfo_track_counts(video_path)
+        if mediainfo_counts is None:
+            return video_path
+
+        mkvmerge_counts = self._read_mkvmerge_track_counts(video_path)
+        if not self._mediainfo_is_missing_tracks(mediainfo_counts, mkvmerge_counts):
+            prn_dbg(
+                f"mediainfo track sanity passed for {video_path.name}: "
+                f"{mediainfo_counts} vs {mkvmerge_counts}"
+            )
+            return video_path
+
+        prn_error(
+            f"mediainfo track mismatch for {video_path.name}: "
+            f"{mediainfo_counts} vs {mkvmerge_counts}"
+        )
+        repaired_path = self._repair_tracks_with_mkvmerge(video_path)
+        repaired_counts = self._read_mediainfo_track_counts(repaired_path)
+        if repaired_counts is None:
+            return repaired_path
+
+        expected_counts = self._read_mkvmerge_track_counts(repaired_path)
+        if self._mediainfo_is_missing_tracks(repaired_counts, expected_counts):
+            raise ValueError(
+                f"mediainfo still reports incomplete tracks for {video_path.name}: "
+                f"{repaired_counts} vs {expected_counts}"
+            )
+
+        prn_done(f"Track sanity repair completed for {video_path.name}")
+        return repaired_path
 
     def add_audio_language(
         self,
@@ -283,4 +441,4 @@ class MetadataEditor:
         )
         prn_done("Remuxing completed")
 
-        return video_path
+        return self.ensure_mediainfo_tracks(video_path)
