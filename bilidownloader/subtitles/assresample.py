@@ -9,6 +9,7 @@ import json
 import re
 from math import modf
 from pathlib import Path
+from re import search as rsearch
 from typing import Any, Dict, List, Set, Tuple
 
 import pysubs2
@@ -290,8 +291,6 @@ class SSARescaler(PostProcessor):
             subs: SSAFile object
             used_styles: Set of style names in use
         """
-        self.write_debug("Processing and rescaling styles...")
-
         styles_to_keep = {}
         for style_name in used_styles:
             if style_name in subs.styles:
@@ -299,28 +298,12 @@ class SSARescaler(PostProcessor):
 
         unused_styles = set(subs.styles.keys()) - used_styles
         if unused_styles:
-            self.write_debug(f"Removing {len(unused_styles)} unused style(s):")
-            for style_name in unused_styles:
-                self.write_debug(f"  - {style_name}")
             subs.styles = styles_to_keep
 
         for style in subs.styles.values():
-            original_fontsize = style.fontsize
-            original_outline = style.outline
-            original_shadow = style.shadow
-
             style.fontsize = int(style.fontsize * self.SIZE_MODIFIER)
             style.outline = style.outline * self.SIZE_MODIFIER
             style.shadow = style.shadow * self.SIZE_MODIFIER
-
-            self.write_debug(f"Processing Style: '{style.name}'")
-            self.write_debug(
-                f"  Rescaled Fontsize: {original_fontsize} -> {style.fontsize}"
-            )
-            self.write_debug(
-                f"  Rescaled Outline: {original_outline} -> {style.outline}"
-            )
-            self.write_debug(f"  Rescaled Shadow: {original_shadow} -> {style.shadow}")
 
     def run(self, info: Dict[str, Any]) -> Tuple[List[Any], Dict[str, Any]]:
         """Process ASS/SSA subtitle files to rescale font sizes, borders, and shadows."""
@@ -336,10 +319,7 @@ class SSARescaler(PostProcessor):
 
         for _, sub_file in file_paths.items():
             if not sub_file.endswith(".ass"):
-                self.write_debug(f"Skipping non-ASS file: {sub_file}")
                 continue
-
-            self.write_debug(f"Processing file: {sub_file}")
 
             try:
                 # Load with pysubs2
@@ -354,31 +334,31 @@ class SSARescaler(PostProcessor):
 
             used_styles: Set[str] = set()
 
-            self.write_debug(
-                "Scanning events for used styles, inline fonts, and tags..."
-            )
-
             # Collect fonts from styles
             self._collect_fonts_from_styles(subs, all_fonts_found)
 
             # Process events
             self._process_events(subs, all_fonts_found, used_styles)
 
-             # Fill flicker gaps
-            self.write_debug("Filling flicker gaps (4 frames @24fps ~167ms) between subtitle lines...")
+            # Fill flicker gaps
             events = SubtitleIO.extract_events(subs)
             adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
-            if gaps_filled > 0:
-                self.write_debug(f"  Filled {gaps_filled} gap(s)")
             SubtitleIO.update_events(subs, adjusted_events)
 
             # Rescale styles
             self._rescale_styles(subs, used_styles)
 
+            # Extract language code from filename
+            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.ass$", sub_file)
+            lang_code = lang_match.group(1) if lang_match else "unknown"
+
             # Save file
             try:
                 pysubs2.save(subs, sub_file)
-                self.write_debug(f"  Successfully processed and rescaled: {sub_file}")
+                if gaps_filled > 0:
+                    self.write_debug(f"  [{lang_code}] rescaled, filled {gaps_filled} gap(s)")
+                else:
+                    self.write_debug(f"  [{lang_code}] rescaled")
             except Exception as e:
                 self.report_error(f"Failed to save {sub_file}: {e}")
                 continue

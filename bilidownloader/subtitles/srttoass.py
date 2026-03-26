@@ -6,6 +6,7 @@ Converts SRT subtitle files to ASS format with proper styling.
 import json
 import re
 from pathlib import Path
+from re import search as rsearch
 from typing import Dict, List, Optional, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
@@ -58,14 +59,13 @@ class SRTToASSConverter(PostProcessor):
             # Remove the original SRT file after successful conversion
             try:
                 srt_path.unlink()
+                # Extract language code from filename
+                lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
+                lang_code = lang_match.group(1) if lang_match else "unknown"
                 if gaps_filled > 0:
-                    self.write_debug(
-                        f"Converted {srt_path.name} to {ass_path.name}, filled {gaps_filled} gap(s), removed SRT"
-                    )
+                    self.write_debug(f"  [{lang_code}] filled {gaps_filled} gap(s)")
                 else:
-                    self.write_debug(
-                        f"Converted {srt_path.name} to {ass_path.name}, removed SRT"
-                    )
+                    self.write_debug(f"  [{lang_code}] converted")
             except Exception as e:
                 self.write_debug(
                     f"Converted {srt_path.name} to {ass_path.name} but failed to remove SRT file: {e}"
@@ -128,8 +128,6 @@ class SRTToASSConverter(PostProcessor):
             if not current_file.suffix.lower() == ".srt":
                 continue
 
-            self.write_debug(f"Converting SRT file: {current_file}")
-
             # Convert SRT to ASS
             if ".th." in current_file.name:
                 fonts_found.add("Arial")
@@ -148,10 +146,6 @@ class SRTToASSConverter(PostProcessor):
                 if original_path in file_paths:
                     del file_paths[original_path]
 
-                self.write_debug(
-                    f"Updated file mapping: {original_path} -> {new_original}"
-                )
-
         # Also update any other subtitle-related fields in info
         if "requested_subtitles" in info:
             for lang, sub_info in info["requested_subtitles"].items():
@@ -165,9 +159,6 @@ class SRTToASSConverter(PostProcessor):
                     if converted_file.stem != Path(filepath).stem:
                         continue
                     sub_info["filepath"] = str(converted_file)
-                    self.write_debug(
-                        f"Updated requested_subtitles: {filepath} -> {converted_file}"
-                    )
                     break
 
         if converted_files:
@@ -181,7 +172,6 @@ class SRTToASSConverter(PostProcessor):
                         fonts_found = list(set(fonts_found) | set(existing_fonts))
                 with open(fonts_json_path, "w", encoding="utf-8") as f:
                     json.dump(sorted(list(fonts_found)), f, indent=2)
-                self.write_debug(f"Font list saved to {fonts_json_path}")
             except Exception as e:
                 self.report_error(f"Failed to save fonts.json: {e}")
 

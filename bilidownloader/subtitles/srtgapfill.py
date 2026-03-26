@@ -3,7 +3,9 @@
 Fills distracting flicker gaps in SRT subtitle files to improve readability.
 """
 
+import re
 from pathlib import Path
+from re import search as rsearch
 from typing import Dict, List, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
@@ -47,12 +49,12 @@ class SRTGapFiller(PostProcessor):
             # Write back to file
             SubtitleIO.save(subs, srt_path)
 
+            # Extract language code from filename
+            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
+            lang_code = lang_match.group(1) if lang_match else "unknown"
+
             if gaps_filled > 0:
-                self.write_debug(
-                    f"Processed {srt_path.name}: filled {gaps_filled} gap(s)"
-                )
-            else:
-                self.write_debug(f"Processed {srt_path.name}: no gaps filled")
+                self.write_debug(f"  [{lang_code}] filled {gaps_filled} gap(s)")
             return True, gaps_filled
 
         except Exception as e:
@@ -85,8 +87,6 @@ class SRTGapFiller(PostProcessor):
             # Only process SRT files
             if not current_file.suffix.lower() == ".srt":
                 continue
-
-            self.write_debug(f"Processing SRT file: {current_file}")
 
             # Fill gaps
             success, gaps_filled = self._process_srt_file(current_file)
