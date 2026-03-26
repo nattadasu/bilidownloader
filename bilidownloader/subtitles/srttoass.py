@@ -24,18 +24,18 @@ class SRTToASSConverter(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller()
 
-    def _convert_srt_file(self, srt_path: Path) -> Optional[Path]:
+    def _convert_srt_file(self, srt_path: Path) -> Tuple[Optional[Path], int]:
         """Convert a single SRT file to ASS format.
 
         Args:
             srt_path: Path to the SRT file to convert
 
         Returns:
-            Path to the converted ASS file, or None if conversion failed
+            Tuple of (ass_file_path or None, gaps_filled_count)
         """
         if not srt_path.exists():
             self.report_error(f"SRT file not found: {srt_path}")
-            return None
+            return None, 0
 
         ass_path = srt_path.with_suffix(".ass")
 
@@ -45,7 +45,7 @@ class SRTToASSConverter(PostProcessor):
 
             # Apply gap filling
             events = SubtitleIO.extract_events(subs)
-            adjusted_events = self.gap_filler.fill_flicker_gaps(events)
+            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
             SubtitleIO.update_events(subs, adjusted_events)
 
             # Apply styling based on language
@@ -58,19 +58,24 @@ class SRTToASSConverter(PostProcessor):
             # Remove the original SRT file after successful conversion
             try:
                 srt_path.unlink()
-                self.write_debug(
-                    f"Converted {srt_path.name} to {ass_path.name} and removed original SRT file"
-                )
+                if gaps_filled > 0:
+                    self.write_debug(
+                        f"Converted {srt_path.name} to {ass_path.name}, filled {gaps_filled} gap(s), removed SRT"
+                    )
+                else:
+                    self.write_debug(
+                        f"Converted {srt_path.name} to {ass_path.name}, removed SRT"
+                    )
             except Exception as e:
                 self.write_debug(
                     f"Converted {srt_path.name} to {ass_path.name} but failed to remove SRT file: {e}"
                 )
 
-            return ass_path
+            return ass_path, gaps_filled
 
         except Exception as e:
             self.report_error(f"Failed to convert {srt_path}: {e}")
-            return None
+            return None, 0
 
     def run(self, info: Dict) -> Tuple[List, Dict]:
         """Run the SRT to ASS conversion process.
@@ -111,6 +116,7 @@ class SRTToASSConverter(PostProcessor):
 
         converted_files = []
         fonts_found = set()
+        total_gaps_filled = 0
 
         # Create a copy of the items to avoid modifying dict during iteration
         file_paths_items = list(file_paths.items())
@@ -129,9 +135,10 @@ class SRTToASSConverter(PostProcessor):
                 fonts_found.add("Arial")
             else:
                 fonts_found.add("Noto Sans")
-            ass_file = self._convert_srt_file(current_file)
+            ass_file, gaps_filled = self._convert_srt_file(current_file)
             if ass_file:
                 converted_files.append(ass_file)
+                total_gaps_filled += gaps_filled
 
                 # Update file paths in info dict
                 new_original = original_path.replace(".srt", ".ass")
@@ -177,5 +184,9 @@ class SRTToASSConverter(PostProcessor):
                 self.write_debug(f"Font list saved to {fonts_json_path}")
             except Exception as e:
                 self.report_error(f"Failed to save fonts.json: {e}")
+
+            self.to_screen(
+                f"Converted {len(converted_files)} SRT file(s) to ASS, filled {total_gaps_filled} gap(s) total"
+            )
 
         return [], info

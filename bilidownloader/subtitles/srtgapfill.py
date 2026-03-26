@@ -20,18 +20,18 @@ class SRTGapFiller(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller()
 
-    def _process_srt_file(self, srt_path: Path) -> bool:
+    def _process_srt_file(self, srt_path: Path) -> Tuple[bool, int]:
         """Process a single SRT file to fill flicker gaps.
 
         Args:
             srt_path: Path to the SRT file to process
 
         Returns:
-            True if processing was successful, False otherwise
+            Tuple of (success: bool, gaps_filled: int)
         """
         if not srt_path.exists():
             self.report_error(f"SRT file not found: {srt_path}")
-            return False
+            return False, 0
 
         try:
             # Load subtitles
@@ -39,7 +39,7 @@ class SRTGapFiller(PostProcessor):
 
             # Extract events and apply gap filler
             events = SubtitleIO.extract_events(subs)
-            adjusted_events = self.gap_filler.fill_flicker_gaps(events)
+            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
 
             # Update events with adjusted times
             SubtitleIO.update_events(subs, adjusted_events)
@@ -47,12 +47,17 @@ class SRTGapFiller(PostProcessor):
             # Write back to file
             SubtitleIO.save(subs, srt_path)
 
-            self.write_debug(f"Processed {srt_path.name} for flicker gap filling")
-            return True
+            if gaps_filled > 0:
+                self.write_debug(
+                    f"Processed {srt_path.name}: filled {gaps_filled} gap(s)"
+                )
+            else:
+                self.write_debug(f"Processed {srt_path.name}: no gaps filled")
+            return True, gaps_filled
 
         except Exception as e:
             self.report_error(f"Failed to process {srt_path}: {e}")
-            return False
+            return False, 0
 
     def run(self, info: Dict) -> Tuple[List, Dict]:
         """Run the SRT gap filling process.
@@ -63,7 +68,7 @@ class SRTGapFiller(PostProcessor):
         Returns:
             Tuple of (files_to_delete, updated_info)
         """
-        self.to_screen("Filling flicker gaps (1-100ms) in SRT subtitles")
+        self.to_screen("Filling flicker gaps (4 frames @24fps ~167ms) in SRT subtitles")
 
         # Get subtitle file paths from yt-dlp metadata
         file_paths: Dict[str, str] = info.get("__files_to_move", {})
@@ -72,6 +77,7 @@ class SRTGapFiller(PostProcessor):
             return [], info
 
         processed_count = 0
+        total_gaps_filled = 0
 
         for original_path, current_path in file_paths.items():
             current_file = Path(current_path)
@@ -83,12 +89,14 @@ class SRTGapFiller(PostProcessor):
             self.write_debug(f"Processing SRT file: {current_file}")
 
             # Fill gaps
-            if self._process_srt_file(current_file):
+            success, gaps_filled = self._process_srt_file(current_file)
+            if success:
                 processed_count += 1
+                total_gaps_filled += gaps_filled
 
         if processed_count > 0:
             self.to_screen(
-                f"Successfully processed {processed_count} SRT files for flicker gap filling"
+                f"Processed {processed_count} SRT file(s), filled {total_gaps_filled} gap(s) total"
             )
 
         return [], info

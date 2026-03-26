@@ -38,19 +38,21 @@ class FlickerFiller:
 
     def fill_flicker_gaps(
         self, events: List[Tuple[float, float, Any]]
-    ) -> List[Tuple[float, float, Any]]:
+    ) -> tuple[List[Tuple[float, float, Any]], int]:
         """Fill distracting gaps between subtitle lines.
 
         Args:
             events: List of (start_seconds, end_seconds, event_data) tuples.
 
         Returns:
-            List of tuples with adjusted end times for filled gaps.
+            Tuple of (adjusted_events, gaps_filled_count).
         """
         if len(events) <= 1:
-            return list(events)
+            return list(events), 0
 
         adjusted_events = []
+        gaps_filled = 0
+
         for i in range(len(events)):
             current_start, current_end, current_data = events[i]
             new_end = current_end
@@ -61,10 +63,11 @@ class FlickerFiller:
 
                 if 0 < gap_seconds <= self.max_gap_seconds:
                     new_end = next_start
+                    gaps_filled += 1
 
             adjusted_events.append((current_start, new_end, current_data))
 
-        return adjusted_events
+        return adjusted_events, gaps_filled
 
 
 class GenericGapFiller:

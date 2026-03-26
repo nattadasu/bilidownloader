@@ -364,10 +364,12 @@ class SSARescaler(PostProcessor):
             # Process events
             self._process_events(subs, all_fonts_found, used_styles)
 
-            # Fill flicker gaps
-            self.write_debug("Filling flicker gaps (1-100ms) between subtitle lines...")
+             # Fill flicker gaps
+            self.write_debug("Filling flicker gaps (4 frames @24fps ~167ms) between subtitle lines...")
             events = SubtitleIO.extract_events(subs)
-            adjusted_events = self.gap_filler.fill_flicker_gaps(events)
+            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
+            if gaps_filled > 0:
+                self.write_debug(f"  Filled {gaps_filled} gap(s)")
             SubtitleIO.update_events(subs, adjusted_events)
 
             # Rescale styles
