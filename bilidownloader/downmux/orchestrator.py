@@ -13,7 +13,6 @@ from bilidownloader.cli.options import (
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import (
     DEFAULT_WATCHLIST,
-    REINSTALL_ARGS,
 )
 from bilidownloader.commons.ui import (
     prn_error,
@@ -188,9 +187,7 @@ class BiliProcess:
 
                 # Process chapters
                 chapters = self.downloader.get_episode_chapters(data)
-                final = self.chapter_processor.embed_chapters(
-                    chapters, loc, language
-                )
+                final = self.chapter_processor.embed_chapters(chapters, loc, language)
 
                 # Prepare metadata arguments
                 aud_args = self.metadata_editor.add_audio_language(final, language)
@@ -199,9 +196,7 @@ class BiliProcess:
                 if (not self.srt) and (not self.dont_convert):
                     font_json = Path("fonts.json")
                     if font_json.exists():
-                        font_json, font_args = loop_font_lookup(
-                            font_json, font_args
-                        )
+                        font_json, font_args = loop_font_lookup(font_json, font_args)
                         font_json.unlink(True)
 
                 sub_args = self.metadata_editor.set_default_subtitle(

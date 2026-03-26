@@ -26,7 +26,9 @@ class SRTToASSConverter(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller()
 
-    def _convert_srt_file(self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080) -> Tuple[Optional[Path], int]:
+    def _convert_srt_file(
+        self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080
+    ) -> Tuple[Optional[Path], int]:
         """Convert a single SRT file to ASS format.
 
         Args:
@@ -50,7 +52,9 @@ class SRTToASSConverter(PostProcessor):
             # Set script info for ASS file
             if not subs.info:
                 subs.info = {}
-            subs.info["Title"] = f"Modified with github:nattadasu/bilidownloader v{__VERSION__} (converted from SRT)"
+            subs.info["Title"] = (
+                f"Modified with github:nattadasu/bilidownloader v{__VERSION__} (converted from SRT)"
+            )
             subs.info["ScriptType"] = "v4.00+"
             subs.info["WrapStyle"] = "0"
             subs.info["ScaledBorderAndShadow"] = "yes"
@@ -74,7 +78,9 @@ class SRTToASSConverter(PostProcessor):
             try:
                 srt_path.unlink()
                 # Extract language code from filename
-                lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
+                lang_match = rsearch(
+                    r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name
+                )
                 lang_code = lang_match.group(1) if lang_match else "unknown"
                 if gaps_filled > 0:
                     self.write_debug(f"  [{lang_code}] filled {gaps_filled} gap(s)")
@@ -157,7 +163,9 @@ class SRTToASSConverter(PostProcessor):
             else:
                 fonts_found.add("Noto Sans")
                 fonts_found.add("Noto Sans::Bold")  # Default style has bold=True
-            ass_file, gaps_filled = self._convert_srt_file(current_file, play_res_x, play_res_y)
+            ass_file, gaps_filled = self._convert_srt_file(
+                current_file, play_res_x, play_res_y
+            )
             if ass_file:
                 converted_files.append(ass_file)
                 total_gaps_filled += gaps_filled

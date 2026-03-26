@@ -16,7 +16,6 @@ from yt_dlp import YoutubeDL as YDL
 
 from bilidownloader.apis.api import BiliHtml
 from bilidownloader.commons.alias import SERIES_ALIASES
-from bilidownloader.commons.constants import REINSTALL_ARGS
 from bilidownloader.commons.ui import (
     prn_cmd,
     prn_dbg,

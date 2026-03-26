@@ -370,7 +370,9 @@ class SSARescaler(PostProcessor):
 
             # Update title
             if subs.info:
-                subs.info["Title"] = f"Modified with github:nattadasu/bilidownloader v{__VERSION__}"
+                subs.info["Title"] = (
+                    f"Modified with github:nattadasu/bilidownloader v{__VERSION__}"
+                )
 
             used_styles: Set[str] = set()
 

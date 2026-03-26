@@ -3,7 +3,6 @@
 Fills distracting flicker gaps in SRT subtitle files to improve readability.
 """
 
-import re
 from pathlib import Path
 from re import search as rsearch
 from typing import Dict, List, Tuple
