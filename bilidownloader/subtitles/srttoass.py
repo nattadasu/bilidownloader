@@ -25,11 +25,13 @@ class SRTToASSConverter(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller()
 
-    def _convert_srt_file(self, srt_path: Path) -> Tuple[Optional[Path], int]:
+    def _convert_srt_file(self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080) -> Tuple[Optional[Path], int]:
         """Convert a single SRT file to ASS format.
 
         Args:
             srt_path: Path to the SRT file to convert
+            play_res_x: Video width resolution for script info (default: 1920)
+            play_res_y: Video height resolution for script info (default: 1080)
 
         Returns:
             Tuple of (ass_file_path or None, gaps_filled_count)
@@ -43,6 +45,17 @@ class SRTToASSConverter(PostProcessor):
         try:
             # Load SRT
             subs = SubtitleIO.load(srt_path)
+
+            # Set script info for ASS file
+            if not subs.info:
+                subs.info = {}
+            subs.info["Title"] = "Modified with github:nattadasu/bilidownloader (converted from SRT)"
+            subs.info["ScriptType"] = "v4.00+"
+            subs.info["WrapStyle"] = "0"
+            subs.info["ScaledBorderAndShadow"] = "yes"
+            subs.info["YCbCr Matrix"] = "TV.709"
+            subs.info["PlayResX"] = str(play_res_x)
+            subs.info["PlayResY"] = str(play_res_y)
 
             # Apply gap filling
             events = SubtitleIO.extract_events(subs)
@@ -92,6 +105,13 @@ class SRTToASSConverter(PostProcessor):
             self.write_debug("No subtitle files found in metadata")
             return [], info
 
+        # Try to get video resolution from yt-dlp info
+        play_res_x = 1920  # Default width
+        play_res_y = 1080  # Default height
+        if "width" in info and "height" in info and info["width"] and info["height"]:
+            play_res_x = int(info["width"])
+            play_res_y = int(info["height"])
+
         lang_names = []
         has_srt_files = False
         for current_path in file_paths.values():
@@ -128,12 +148,12 @@ class SRTToASSConverter(PostProcessor):
             if not current_file.suffix.lower() == ".srt":
                 continue
 
-            # Convert SRT to ASS
+            # Convert SRT to ASS with resolution info
             if ".th." in current_file.name:
                 fonts_found.add("Arial")
             else:
                 fonts_found.add("Noto Sans")
-            ass_file, gaps_filled = self._convert_srt_file(current_file)
+            ass_file, gaps_filled = self._convert_srt_file(current_file, play_res_x, play_res_y)
             if ass_file:
                 converted_files.append(ass_file)
                 total_gaps_filled += gaps_filled

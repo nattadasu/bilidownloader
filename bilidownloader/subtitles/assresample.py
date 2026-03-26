@@ -284,12 +284,15 @@ class SSARescaler(PostProcessor):
                             f"Event #{event_index + 1}: bold+italic tags found",
                         )
 
-    def _rescale_styles(self, subs: pysubs2.SSAFile, used_styles: Set[str]) -> None:
+    def _rescale_styles(self, subs: pysubs2.SSAFile, used_styles: Set[str]) -> int:
         """Rescale style properties (font size, outline, shadow).
 
         Args:
             subs: SSAFile object
             used_styles: Set of style names in use
+
+        Returns:
+            Number of styles that were rescaled
         """
         styles_to_keep = {}
         for style_name in used_styles:
@@ -300,10 +303,14 @@ class SSARescaler(PostProcessor):
         if unused_styles:
             subs.styles = styles_to_keep
 
+        rescaled_count = 0
         for style in subs.styles.values():
             style.fontsize = int(style.fontsize * self.SIZE_MODIFIER)
             style.outline = style.outline * self.SIZE_MODIFIER
             style.shadow = style.shadow * self.SIZE_MODIFIER
+            rescaled_count += 1
+
+        return rescaled_count
 
     def run(self, info: Dict[str, Any]) -> Tuple[List[Any], Dict[str, Any]]:
         """Process ASS/SSA subtitle files to rescale font sizes, borders, and shadows."""
@@ -345,8 +352,8 @@ class SSARescaler(PostProcessor):
             adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
             SubtitleIO.update_events(subs, adjusted_events)
 
-            # Rescale styles
-            self._rescale_styles(subs, used_styles)
+            # Rescale styles and track changes
+            styles_changed = self._rescale_styles(subs, used_styles)
 
             # Extract language code from filename
             lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.ass$", sub_file)
@@ -355,10 +362,12 @@ class SSARescaler(PostProcessor):
             # Save file
             try:
                 pysubs2.save(subs, sub_file)
+                msg_parts = [f"[{lang_code}]"]
+                if styles_changed:
+                    msg_parts.append(f"styles rescaled ({styles_changed})")
                 if gaps_filled > 0:
-                    self.write_debug(f"  [{lang_code}] rescaled, filled {gaps_filled} gap(s)")
-                else:
-                    self.write_debug(f"  [{lang_code}] rescaled")
+                    msg_parts.append(f"filled {gaps_filled} gap(s)")
+                self.write_debug("  " + ", ".join(msg_parts))
             except Exception as e:
                 self.report_error(f"Failed to save {sub_file}: {e}")
                 continue
