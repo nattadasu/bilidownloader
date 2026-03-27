@@ -116,7 +116,7 @@ class SubtitleStyle:
 
     ARABIC = SSAStyle(
         fontname="Noto Naskh Arabic",
-        fontsize=80,
+        fontsize=120,
         primarycolor="&H00FFFFFF",
         secondarycolor="&H00FFFFFF",
         outlinecolor="&H00000000",
