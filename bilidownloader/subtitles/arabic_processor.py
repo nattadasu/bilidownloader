@@ -32,9 +32,9 @@ class ArabicProcessor:
         ltr_symbols = r"[.,:;!?]+"
 
         # Move leading LTR punctuation to end of line
-        text = re.sub(f"^({ltr_symbols})(\s?)(.*)", r"\3\2\1", text)
-        text = re.sub(f'^"({ltr_symbols})(\s?)(.*)"$', r'"\3\2\1"', text)
-        text = re.sub(f"^'({ltr_symbols})(\s?)(.*)'$", r"'\3\2\1'", text)
+        text = re.sub(rf"^({ltr_symbols})(\s?)(.*)", r"\3\2\1", text)
+        text = re.sub(rf'^"({ltr_symbols})(\s?)(.*)"$', r'"\3\2\1"', text)
+        text = re.sub(rf"^'({ltr_symbols})(\s?)(.*)'$", r"'\3\2\1'", text)
 
         return text
 
@@ -80,9 +80,9 @@ class ArabicProcessor:
         """
         waw = "و"
         # Remove multiple spaces after Waw
-        text = re.sub(f"(\s{waw})\s+", r"\1 ", text)
+        text = re.sub(rf"(\s{waw})\s+", r"\1 ", text)
         # Remove spaces after Waw at line start
-        text = re.sub(f"^({waw})\s+", r"\1", text)
+        text = re.sub(rf"^({waw})\s+", r"\1", text)
         return text
 
     @staticmethod
