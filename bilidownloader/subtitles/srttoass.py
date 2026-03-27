@@ -1,6 +1,6 @@
 """SRT to ASS converter post-processor for yt-dlp.
 
-Converts SRT subtitle files to ASS format with proper styling.
+Converts SRT subtitle files to ASS format with proper styling and language-specific processing.
 """
 
 import json
@@ -14,6 +14,7 @@ from yt_dlp.postprocessor import PostProcessor
 from bilidownloader.commons.metadata import __VERSION__
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import langcode_to_str
+from bilidownloader.subtitles.arabic_processor import ArabicProcessor
 from bilidownloader.subtitles.gap_filler import FlickerFiller
 from bilidownloader.subtitles.subtitle_io import SubtitleIO
 
@@ -46,8 +47,17 @@ class SRTToASSConverter(PostProcessor):
         ass_path = srt_path.with_suffix(".ass")
 
         try:
+            # Extract language code from filename
+            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
+            lang_code = lang_match.group(1) if lang_match else None
+
             # Load SRT
             subs = SubtitleIO.load(srt_path)
+
+            # Apply Arabic RTL processing if needed
+            if lang_code == "ar":
+                for event in subs.events:
+                    event.text = ArabicProcessor.process_arabic_subtitle(event.text)
 
             # Set script info for ASS file
             if not subs.info:
@@ -67,9 +77,8 @@ class SRTToASSConverter(PostProcessor):
             adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
             SubtitleIO.update_events(subs, adjusted_events)
 
-            # Apply styling based on language
-            is_thai = ".th." in srt_path.name
-            SubtitleIO.apply_style(subs, is_thai=is_thai)
+            # Apply styling based on language code
+            SubtitleIO.apply_style(subs, lang_code=lang_code)
 
             # Save as ASS
             SubtitleIO.save(subs, ass_path)
@@ -77,15 +86,11 @@ class SRTToASSConverter(PostProcessor):
             # Remove the original SRT file after successful conversion
             try:
                 srt_path.unlink()
-                # Extract language code from filename
-                lang_match = rsearch(
-                    r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name
-                )
-                lang_code = lang_match.group(1) if lang_match else "unknown"
+                lang_display = lang_code if lang_code else "unknown"
                 if gaps_filled > 0:
-                    self.write_debug(f"  [{lang_code}] filled {gaps_filled} gap(s)")
+                    self.write_debug(f"  [{lang_display}] filled {gaps_filled} gap(s)")
                 else:
-                    self.write_debug(f"  [{lang_code}] converted")
+                    self.write_debug(f"  [{lang_display}] converted")
             except Exception as e:
                 self.write_debug(
                     f"Converted {srt_path.name} to {ass_path.name} but failed to remove SRT file: {e}"
@@ -155,14 +160,25 @@ class SRTToASSConverter(PostProcessor):
             if not current_file.suffix.lower() == ".srt":
                 continue
 
-            # Convert SRT to ASS with resolution info
-            # Note: SubtitleStyle.DEFAULT and THAI both have bold=True
-            if ".th." in current_file.name:
+            # Detect language and collect required fonts
+            lang_match = re.search(
+                r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", current_file.name
+            )
+            lang_code = lang_match.group(1) if lang_match else None
+
+            if lang_code == "ar":
+                fonts_found.add("Noto Naskh Arabic")
+            elif lang_code in ("zh-Hans", "zh"):
+                fonts_found.add("Noto Sans CJK SC")
+            elif lang_code == "zh-Hant":
+                fonts_found.add("Noto Sans CJK TC")
+            elif lang_code == "th":
                 fonts_found.add("Arial")
-                fonts_found.add("Arial::Bold")  # Default-Thai style has bold=True
+                fonts_found.add("Arial::Bold")
             else:
                 fonts_found.add("Noto Sans")
-                fonts_found.add("Noto Sans::Bold")  # Default style has bold=True
+                fonts_found.add("Noto Sans::Bold")
+
             ass_file, gaps_filled = self._convert_srt_file(
                 current_file, play_res_x, play_res_y
             )

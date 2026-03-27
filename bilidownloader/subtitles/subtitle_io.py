@@ -64,6 +64,81 @@ class SubtitleStyle:
         encoding=1,
     )
 
+    ZH_HANS = SSAStyle(
+        fontname="Noto Sans CJK SC",
+        fontsize=80,
+        primarycolor="&H00FFFFFF",
+        secondarycolor="&H00FFFFFF",
+        outlinecolor="&H00000000",
+        backcolor="&H80000000",
+        bold=False,
+        italic=False,
+        underline=False,
+        strikeout=False,
+        scalex=100,
+        scaley=100,
+        spacing=0,
+        angle=0,
+        borderstyle=1,
+        outline=4,
+        shadow=1.2,
+        alignment=2,
+        marginl=153,
+        marginr=153,
+        marginv=64,
+        encoding=1,
+    )
+
+    ZH_HANT = SSAStyle(
+        fontname="Noto Sans CJK TC",
+        fontsize=80,
+        primarycolor="&H00FFFFFF",
+        secondarycolor="&H00FFFFFF",
+        outlinecolor="&H00000000",
+        backcolor="&H80000000",
+        bold=False,
+        italic=False,
+        underline=False,
+        strikeout=False,
+        scalex=100,
+        scaley=100,
+        spacing=0,
+        angle=0,
+        borderstyle=1,
+        outline=4,
+        shadow=1.2,
+        alignment=2,
+        marginl=153,
+        marginr=153,
+        marginv=64,
+        encoding=1,
+    )
+
+    ARABIC = SSAStyle(
+        fontname="Noto Naskh Arabic",
+        fontsize=80,
+        primarycolor="&H00FFFFFF",
+        secondarycolor="&H00FFFFFF",
+        outlinecolor="&H00000000",
+        backcolor="&H80000000",
+        bold=False,
+        italic=False,
+        underline=False,
+        strikeout=False,
+        scalex=100,
+        scaley=100,
+        spacing=0,
+        angle=0,
+        borderstyle=1,
+        outline=4,
+        shadow=1.2,
+        alignment=2,
+        marginl=153,
+        marginr=153,
+        marginv=64,
+        encoding=1,
+    )
+
 
 class SubtitleIO:
     """Unified subtitle file I/O using pysubs2."""
@@ -127,21 +202,47 @@ class SubtitleIO:
         subs: SSAFile,
         style: Optional[SSAStyle] = None,
         is_thai: bool = False,
+        lang_code: Optional[str] = None,
         style_name: Optional[str] = None,
     ) -> None:
         """Apply or update style in subtitle file.
 
         Args:
             subs: SSAFile object to update
-            style: SSAStyle object (uses Thai style if is_thai=True)
-            is_thai: Whether to use Thai style defaults
-            style_name: Override the style name (defaults to "Default" or "Default-Thai")
+            style: SSAStyle object to apply (overrides lang_code)
+            is_thai: Whether to use Thai style defaults (for backwards compatibility)
+            lang_code: Language code (e.g., 'ar', 'zh-Hans', 'zh-Hant', 'th')
+            style_name: Override the style name
         """
         if style is None:
-            style = SubtitleStyle.THAI if is_thai else SubtitleStyle.DEFAULT
+            if lang_code:
+                if lang_code == "ar":
+                    style = SubtitleStyle.ARABIC
+                elif lang_code in ("zh-Hans", "zh"):
+                    style = SubtitleStyle.ZH_HANS
+                elif lang_code == "zh-Hant":
+                    style = SubtitleStyle.ZH_HANT
+                elif lang_code == "th":
+                    style = SubtitleStyle.THAI
+                else:
+                    style = SubtitleStyle.DEFAULT
+            else:
+                style = SubtitleStyle.THAI if is_thai else SubtitleStyle.DEFAULT
 
         if style_name is None:
-            style_name = "Default-Thai" if is_thai else "Default"
+            if lang_code:
+                if lang_code == "ar":
+                    style_name = "Default-Arabic"
+                elif lang_code in ("zh-Hans", "zh"):
+                    style_name = "Default-ZH-Hans"
+                elif lang_code == "zh-Hant":
+                    style_name = "Default-ZH-Hant"
+                elif lang_code == "th":
+                    style_name = "Default-Thai"
+                else:
+                    style_name = "Default"
+            else:
+                style_name = "Default-Thai" if is_thai else "Default"
 
         subs.styles[style_name] = style
 

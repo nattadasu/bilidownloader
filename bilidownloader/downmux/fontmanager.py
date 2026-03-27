@@ -230,10 +230,12 @@ class FontCache:
         return font_mappings
 
 
-# Base URI for Noto Sans font files hosted on jsdelivr CDN
+# Base URIs for font files
 NOTO_URI: str = (
     "https://cdn.jsdelivr.net/gh/notofonts/notofonts.github.io/fonts/NotoSans/full/ttf"
 )
+NOTO_CJK_URI: str = "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/OTF"
+NOTO_ARABIC_URI: str = "https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoNaskhArabic/full/ttf"
 ARIAL_URI: str = "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial"
 
 # Dictionary mapping font names to their download URLs and local storage paths
@@ -253,6 +255,30 @@ NATIVE_FONTS: Dict[str, FontInfo] = {
     "Noto Sans::Bold Italic": {
         "url": f"{NOTO_URI}/NotoSans-BoldItalic.ttf",
         "path": BASE_DIR / "fonts" / "noto-sans-bold-italic.ttf",
+    },
+    "Noto Sans CJK SC": {
+        "url": f"{NOTO_CJK_URI}/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
+        "path": BASE_DIR / "fonts" / "noto-sans-cjk-sc.otf",
+    },
+    "Noto Sans CJK SC::Bold": {
+        "url": f"{NOTO_CJK_URI}/SimplifiedChinese/NotoSansCJKsc-Bold.otf",
+        "path": BASE_DIR / "fonts" / "noto-sans-cjk-sc-bold.otf",
+    },
+    "Noto Sans CJK TC": {
+        "url": f"{NOTO_CJK_URI}/TraditionalChinese/NotoSansCJKtc-Regular.otf",
+        "path": BASE_DIR / "fonts" / "noto-sans-cjk-tc.otf",
+    },
+    "Noto Sans CJK TC::Bold": {
+        "url": f"{NOTO_CJK_URI}/TraditionalChinese/NotoSansCJKtc-Bold.otf",
+        "path": BASE_DIR / "fonts" / "noto-sans-cjk-tc-bold.otf",
+    },
+    "Noto Naskh Arabic": {
+        "url": f"{NOTO_ARABIC_URI}/NotoNaskhArabic-Regular.ttf",
+        "path": BASE_DIR / "fonts" / "noto-naskh-arabic.ttf",
+    },
+    "Noto Naskh Arabic::Bold": {
+        "url": f"{NOTO_ARABIC_URI}/NotoNaskhArabic-Bold.ttf",
+        "path": BASE_DIR / "fonts" / "noto-naskh-arabic-bold.ttf",
     },
     "Arial": {
         "url": f"{ARIAL_URI}@1.0.4/Arial.ttf",
