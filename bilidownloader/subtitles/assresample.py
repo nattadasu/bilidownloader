@@ -193,7 +193,7 @@ class SSARescaler(PostProcessor):
             subs: SSAFile object
             all_fonts_found: Set to collect fonts
         """
-        for style in subs.styles.values():
+        for style_name, style in subs.styles.items():
             if not style.fontname:
                 continue
 
@@ -203,28 +203,38 @@ class SSARescaler(PostProcessor):
             if "Noto Sans" in style.fontname:
                 if style.bold and style.italic:
                     self._add_noto_bold_italic_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is bold+italic"
+                        all_fonts_found, f"Style '{style_name}' is bold+italic"
                     )
                 elif style.bold:
                     self._add_noto_bold_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is bold"
+                        all_fonts_found, f"Style '{style_name}' is bold"
                     )
                 elif style.italic:
                     self._add_noto_italic_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is italic"
+                        all_fonts_found, f"Style '{style_name}' is italic"
                     )
             elif "Arial" in style.fontname:
                 if style.bold and style.italic:
                     self._add_arial_bold_italic_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is bold+italic"
+                        all_fonts_found, f"Style '{style_name}' is bold+italic"
                     )
                 elif style.bold:
                     self._add_arial_bold_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is bold"
+                        all_fonts_found, f"Style '{style_name}' is bold"
                     )
                 elif style.italic:
                     self._add_arial_italic_if_needed(
-                        all_fonts_found, f"Style '{style.name}' is italic"
+                        all_fonts_found, f"Style '{style_name}' is italic"
+                    )
+            elif "Noto Sans CJK SC" in style.fontname or "Noto Sans CJK TC" in style.fontname:
+                if style.bold:
+                    self._add_font_if_new(
+                        f"{style.fontname}::Bold", all_fonts_found, f"Style '{style_name}' is bold"
+                    )
+            elif "Noto Naskh Arabic" in style.fontname:
+                if style.bold:
+                    self._add_font_if_new(
+                        f"{style.fontname}::Bold", all_fonts_found, f"Style '{style_name}' is bold"
                     )
 
     def _process_events(
