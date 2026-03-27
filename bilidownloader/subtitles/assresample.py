@@ -226,15 +226,22 @@ class SSARescaler(PostProcessor):
                     self._add_arial_italic_if_needed(
                         all_fonts_found, f"Style '{style_name}' is italic"
                     )
-            elif "Noto Sans CJK SC" in style.fontname or "Noto Sans CJK TC" in style.fontname:
+            elif (
+                "Noto Sans CJK SC" in style.fontname
+                or "Noto Sans CJK TC" in style.fontname
+            ):
                 if style.bold:
                     self._add_font_if_new(
-                        f"{style.fontname}::Bold", all_fonts_found, f"Style '{style_name}' is bold"
+                        f"{style.fontname}::Bold",
+                        all_fonts_found,
+                        f"Style '{style_name}' is bold",
                     )
             elif "Noto Naskh Arabic" in style.fontname:
                 if style.bold:
                     self._add_font_if_new(
-                        f"{style.fontname}::Bold", all_fonts_found, f"Style '{style_name}' is bold"
+                        f"{style.fontname}::Bold",
+                        all_fonts_found,
+                        f"Style '{style_name}' is bold",
                     )
 
     def _process_events(
@@ -347,10 +354,18 @@ class SSARescaler(PostProcessor):
             subs.styles = styles_to_keep
 
         rescaled_count = 0
+        maroon_color = pysubs2.Color(r=8, g=34, b=0, a=0)
+        black_color = pysubs2.Color(r=0, g=0, b=0, a=0)
+
         for style in subs.styles.values():
             style.fontsize = int(style.fontsize * self.SIZE_MODIFIER)
             style.outline = style.outline * self.SIZE_MODIFIER
             style.shadow = style.shadow * self.SIZE_MODIFIER
+
+            # Fix maroon green outline color to black
+            if style.outlinecolor == maroon_color:
+                style.outlinecolor = black_color
+
             rescaled_count += 1
 
         return rescaled_count
@@ -372,8 +387,8 @@ class SSARescaler(PostProcessor):
                 continue
 
             try:
-                # Load with pysubs2
-                subs = pysubs2.load(sub_file)
+                # Load with SubtitleIO
+                subs = SubtitleIO.load(Path(sub_file))
             except Exception as e:
                 self.report_error(f"Failed to load {sub_file}: {e}")
                 continue
@@ -406,7 +421,7 @@ class SSARescaler(PostProcessor):
 
             # Save file
             try:
-                pysubs2.save(subs, sub_file)
+                SubtitleIO.save(subs, Path(sub_file))
                 msg_parts = [f"[{lang_code}]"]
                 if styles_changed:
                     msg_parts.append(f"styles rescaled ({styles_changed})")
