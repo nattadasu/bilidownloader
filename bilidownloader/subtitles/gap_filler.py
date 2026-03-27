@@ -15,11 +15,12 @@ class FlickerFiller:
 
     Targets gaps up to 4 frames at 24fps (~167ms) and extends subtitle end times
     to eliminate rapid transitions that reduce readability. Preserves 0ms gaps
-    which are often intentional for sentence splitting.
+    which are often intentional for sentence splitting. To ensure the gap is completely
+    filled, an additional 0.5 frame is added.
     """
 
     def __init__(
-        self, max_gap_frames: float = 4.0, fps: float = FRAME_RATE_24FPS
+        self, max_gap_frames: float = 4.5, fps: float = FRAME_RATE_24FPS
     ) -> None:
         """Initialize the FlickerFiller.
 
