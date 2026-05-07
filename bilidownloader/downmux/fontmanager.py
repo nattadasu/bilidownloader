@@ -256,6 +256,18 @@ NATIVE_FONTS: Dict[str, FontInfo] = {
         "url": f"{NOTO_URI}/NotoSans-BoldItalic.ttf",
         "path": BASE_DIR / "fonts" / "noto-sans-bold-italic.ttf",
     },
+    "Noto Sans Light": {
+        "url": f"{NOTO_URI}/NotoSans-Light.ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-light.ttf",
+    },
+    "Noto Sans ExtraLight": {
+        "url": f"{NOTO_URI}/NotoSans-ExtraLight.ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-extralight.ttf",
+    },
+    "Noto Sans Black": {
+        "url": f"{NOTO_URI}/NotoSans-Black.ttf",
+        "path": BASE_DIR / "fonts" / "noto-sans-black.ttf",
+    },
     "Noto Sans CJK SC": {
         "url": f"{NOTO_CJK_URI}/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
         "path": BASE_DIR / "fonts" / "noto-sans-cjk-sc.otf",
