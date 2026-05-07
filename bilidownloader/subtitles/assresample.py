@@ -183,7 +183,10 @@ class SSARescaler(PostProcessor):
         return modified_text
 
     def _collect_fonts_from_styles(
-        self, subs: pysubs2.SSAFile, all_fonts_found: Set[str]
+        self,
+        subs: pysubs2.SSAFile,
+        all_fonts_found: Set[str],
+        used_styles: Set[str] = None,
     ) -> None:
         """Collect font names from all styles in the subtitle file.
 
@@ -192,9 +195,13 @@ class SSARescaler(PostProcessor):
         Args:
             subs: SSAFile object
             all_fonts_found: Set to collect fonts
+            used_styles: Optional set of used style names to filter collection
         """
         for style_name, style in subs.styles.items():
             if not style.fontname:
+                continue
+
+            if used_styles and style_name not in used_styles:
                 continue
 
             self._add_font_if_new(style.fontname, all_fonts_found, "style ")
@@ -401,11 +408,11 @@ class SSARescaler(PostProcessor):
 
             used_styles: Set[str] = set()
 
-            # Collect fonts from styles
-            self._collect_fonts_from_styles(subs, all_fonts_found)
-
-            # Process events
+            # Process events first to populate used_styles
             self._process_events(subs, all_fonts_found, used_styles)
+
+            # Collect fonts from only the used styles
+            self._collect_fonts_from_styles(subs, all_fonts_found, used_styles)
 
             # Fill flicker gaps
             events = SubtitleIO.extract_events(subs)
