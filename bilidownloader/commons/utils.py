@@ -227,6 +227,8 @@ def langcode_to_str(langcode: str) -> str:
     native = get_lang.display_name(langcode)
     if english == native:
         return english
+    elif langcode.lower() in ["may", "ms", "ms-my", "my"]:
+        return "Malay (bahasa Melayu)"
     return f"{english} ({native})"
 
 
