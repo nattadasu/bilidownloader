@@ -24,4 +24,5 @@ SERIES_ALIASES = {
     "2289383": "Dark Moon The Blood Altar",
     "2289667": "Yuukawa",
     "2289875": "Noble Reincarnation",
+    "2414293": "Rich Girl Caretaker",
 }
