@@ -4,6 +4,7 @@ Provides a consistent interface for loading, saving, and manipulating
 subtitle files in various formats (SRT, ASS, SSA, etc.).
 """
 
+import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -153,7 +154,9 @@ class SubtitleIO:
         Returns:
             SSAFile object with loaded subtitles
         """
-        return pysubs2.load(str(filepath))
+        subs = pysubs2.load(str(filepath))
+        SubtitleIO.split_speaker_dialogues(subs)
+        return subs
 
     @staticmethod
     def save(subs: SSAFile, filepath: Path) -> None:
@@ -271,3 +274,18 @@ class SubtitleIO:
             event.style = style_name
 
         return srt_subs
+
+    @staticmethod
+    def split_speaker_dialogues(subs: SSAFile) -> None:
+        """Split lines representing speaker split with a line break (\\N).
+
+        Args:
+            subs: SSAFile object to process
+        """
+        for event in subs.events:
+            if not event.text:
+                continue
+            # Match lines starting with a dash, optionally preceded by ASS style tags/whitespace
+            if re.match(r"^(?:\{[^}]*\}|\s)*-\s*", event.text):
+                # Replace ' - ' (space-dash-space) with '\\N- '
+                event.text = re.sub(r"\s+-\s+", r"\\N- ", event.text)
