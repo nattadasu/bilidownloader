@@ -265,20 +265,58 @@ class MetadataEditor:
         if result.returncode != 0:
             return fail("Failed to get subtitle track number")
 
+        # Reverse map to convert track language (ISO 639-2) to Bilibili ISO 639-1 code
+        rev_lcodex = {v: k for k, v in lcodex.items()}
+        rev_lcodex.update(
+            {
+                "eng": "en",
+                "ind": "id",
+                "may": "ms",
+                "tha": "th",
+                "vie": "vi",
+                "chi": "zh-Hans",
+            }
+        )
+
         set_track: Optional[tuple[str, str]] = None
         unset_track: List[tuple[str, str]] = []
+        track_names: Dict[str, str] = {}
 
         try:
             data = jloads(result.stdout)
             for track in data["tracks"]:
                 if track["type"] == "subtitles":
+                    track_id_str = str(track["id"] + 1)
                     track_lang = track["properties"]["language"]
+                    codec_id = track["properties"].get("codec_id", "")
+
                     if track_lang == "zh" or track_lang == "chi":
                         track_lang = keys[track["id"] - 2]
-                    if track_lang == flang:
-                        set_track = (str(track["id"] + 1), track_lang)
+
+                    # Base name of the language
+                    base_name = langcode_to_str(track_lang)
+
+                    # Determine Bilibili code
+                    bili_code = rev_lcodex.get(track_lang, track_lang)
+                    sub_formats = raw_data.get("subtitles", {}).get(bili_code, [])
+
+                    # If it's ASS now, but didn't have native ASS format on Bilibili, it was converted
+                    has_native_ass = any(f.get("ext") == "ass" for f in sub_formats)
+                    is_converted = (
+                        (codec_id == "S_TEXT/ASS")
+                        and (not has_native_ass)
+                        and len(sub_formats) > 0
+                    )
+
+                    if is_converted:
+                        track_names[track_id_str] = f"{base_name} [Converted from SRT]"
                     else:
-                        unset_track.append((str(track["id"] + 1), track_lang))
+                        track_names[track_id_str] = base_name
+
+                    if track_lang == flang:
+                        set_track = (track_id_str, track_lang)
+                    else:
+                        unset_track.append((track_id_str, track_lang))
         except Exception:
             return fail("Failed to get subtitle track number")
 
@@ -299,7 +337,7 @@ class MetadataEditor:
                     "--set",
                     f"language={track[1]}",
                     "--set",
-                    f"name={langcode_to_str(track[1])}",
+                    f"name={track_names.get(track[0], langcode_to_str(track[1]))}",
                 ]
             return [
                 "--edit",
@@ -309,7 +347,7 @@ class MetadataEditor:
                 "--set",
                 f"language={set_track[1]}",
                 "--set",
-                f"name={langcode_to_str(set_track[1])}",
+                f"name={track_names.get(set_track[0], langcode_to_str(set_track[1]))}",
                 *unset_,
                 *["--verbose" if _verbose else "--quiet"],
             ]
