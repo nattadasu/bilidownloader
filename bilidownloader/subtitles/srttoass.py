@@ -15,6 +15,7 @@ from bilidownloader.commons.metadata import __VERSION__
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import langcode_to_str
 from bilidownloader.subtitles.arabic_processor import ArabicProcessor
+from bilidownloader.subtitles.english_processor import EnglishProcessor
 from bilidownloader.subtitles.gap_filler import FlickerFiller
 from bilidownloader.subtitles.subtitle_io import SubtitleIO
 
@@ -54,10 +55,16 @@ class SRTToASSConverter(PostProcessor):
             # Load SRT
             subs = SubtitleIO.load(srt_path)
 
+            if lang_code and (lang_code == "en" or lang_code.startswith("en-")):
+                subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
+
             # Apply Arabic RTL processing if needed
             if lang_code == "ar":
                 for event in subs.events:
                     event.text = ArabicProcessor.process_arabic_subtitle(event.text)
+            elif lang_code and (lang_code == "en" or lang_code.startswith("en-")):
+                for event in subs.events:
+                    event.text = EnglishProcessor.process_english_subtitle(event.text)
 
             # Set script info for ASS file
             if not subs.info:

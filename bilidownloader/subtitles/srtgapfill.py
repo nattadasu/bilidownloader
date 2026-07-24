@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple
 
 from yt_dlp.postprocessor import PostProcessor
 
+from bilidownloader.subtitles.english_processor import EnglishProcessor
 from bilidownloader.subtitles.gap_filler import FlickerFiller
 from bilidownloader.subtitles.subtitle_io import SubtitleIO
 
@@ -38,6 +39,19 @@ class SRTGapFiller(PostProcessor):
             # Load subtitles
             subs = SubtitleIO.load(srt_path)
 
+            # Extract language code from filename
+            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
+            lang_code = lang_match.group(1) if lang_match else "unknown"
+
+            # Apply EnglishProcessor if English
+            if lang_code == "en" or lang_code.startswith("en-"):
+                subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
+                for event in subs.events:
+                    if event.text:
+                        event.text = EnglishProcessor.process_english_subtitle(
+                            event.text
+                        )
+
             # Extract events and apply gap filler
             events = SubtitleIO.extract_events(subs)
             adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
@@ -47,10 +61,6 @@ class SRTGapFiller(PostProcessor):
 
             # Write back to file
             SubtitleIO.save(subs, srt_path)
-
-            # Extract language code from filename
-            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.srt$", srt_path.name)
-            lang_code = lang_match.group(1) if lang_match else "unknown"
 
             if gaps_filled > 0:
                 self.write_debug(f"  [{lang_code}] filled {gaps_filled} gap(s)")

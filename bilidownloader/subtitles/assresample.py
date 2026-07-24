@@ -18,6 +18,7 @@ from yt_dlp.postprocessor import PostProcessor
 from bilidownloader.commons.metadata import __VERSION__
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.commons.utils import format_log_time
+from bilidownloader.subtitles.english_processor import EnglishProcessor
 from bilidownloader.subtitles.gap_filler import FlickerFiller
 from bilidownloader.subtitles.subtitle_io import SubtitleIO
 
@@ -406,6 +407,19 @@ class SSARescaler(PostProcessor):
                     f"Modified with github:nattadasu/bilidownloader v{__VERSION__}"
                 )
 
+            # Extract language code from filename
+            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.ass$", sub_file)
+            lang_code = lang_match.group(1) if lang_match else "unknown"
+
+            # Apply EnglishProcessor if English
+            if lang_code == "en" or lang_code.startswith("en-"):
+                subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
+                for event in subs.events:
+                    if event.text:
+                        event.text = EnglishProcessor.process_english_subtitle(
+                            event.text
+                        )
+
             used_styles: Set[str] = set()
 
             # Process events first to populate used_styles
@@ -421,10 +435,6 @@ class SSARescaler(PostProcessor):
 
             # Rescale styles and track changes
             styles_changed = self._rescale_styles(subs, used_styles)
-
-            # Extract language code from filename
-            lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.ass$", sub_file)
-            lang_code = lang_match.group(1) if lang_match else "unknown"
 
             # Save file
             try:
