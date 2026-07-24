@@ -528,19 +528,19 @@ class VideoDownloader:
 
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
-                from bilidownloader.subtitles.assresample import SSARescaler
+                from bilidownloader.subtitles.post_processors import SSARescaler
 
                 ydl.add_post_processor(SSARescaler(), when="before_dl")
 
             # Add SRT to ASS converter if needed
             if not self.srt and not self.only_audio and not self.dont_convert:
-                from bilidownloader.subtitles.srttoass import SRTToASSConverter
+                from bilidownloader.subtitles.post_processors import SRTToASSConverter
 
                 ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
 
             # Add SRT gap filler for direct SRT subtitles
             if self.srt and not self.only_audio:
-                from bilidownloader.subtitles.srtgapfill import SRTGapFiller
+                from bilidownloader.subtitles.post_processors import SRTGapFiller
 
                 ydl.add_post_processor(SRTGapFiller(), when="before_dl")
 
