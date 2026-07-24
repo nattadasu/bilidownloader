@@ -6,10 +6,10 @@ subtitle files in various formats (SRT, ASS, SSA, etc.).
 
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import pysubs2
-from pysubs2 import SSAEvent, SSAFile, SSAStyle
+from pysubs2 import SSAFile, SSAStyle
 
 
 class SubtitleStyle:
@@ -167,38 +167,6 @@ class SubtitleIO:
             filepath: Path where to save (format detected from extension)
         """
         subs.save(str(filepath))
-
-    @staticmethod
-    def extract_events(
-        subs: SSAFile,
-    ) -> List[Tuple[float, float, SSAEvent]]:
-        """Extract events as (start_seconds, end_seconds, event) tuples.
-
-        Args:
-            subs: SSAFile object
-
-        Returns:
-            List of (start_s, end_s, event) tuples with times in seconds
-        """
-        return [
-            (event.start / 1000.0, event.end / 1000.0, event) for event in subs.events
-        ]
-
-    @staticmethod
-    def update_events(
-        subs: SSAFile,
-        adjusted_events: List[Tuple[float, float, object]],
-    ) -> None:
-        """Update events with adjusted times.
-
-        Args:
-            subs: SSAFile object to update
-            adjusted_events: List of (start_s, end_s, original_event) tuples
-        """
-        for i, (start_s, end_s, original_event) in enumerate(adjusted_events):
-            if isinstance(original_event, SSAEvent):
-                original_event.start = int(start_s * 1000)
-                original_event.end = int(end_s * 1000)
 
     @staticmethod
     def apply_style(

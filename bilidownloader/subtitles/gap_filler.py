@@ -4,61 +4,79 @@ Provides frame-rate aware gap detection and filling to improve subtitle readabil
 by eliminating distracting rapid transitions between consecutive subtitle lines.
 """
 
-from typing import Any, List, Tuple
-
-# Frame rate constants (in seconds per frame)
-FRAME_RATE_24FPS = 24.0
+from pysubs2 import SSAFile
 
 
 class FlickerFiller:
-    """Fills distracting subtitle flicker gaps while preserving intentional 0ms gaps.
+    """Fills distracting subtitle flicker gaps by aligning adjacent subtitle cues in-place.
 
-    Targets gaps up to 4 frames at 24fps (~167ms) and extends subtitle end times
-    to eliminate rapid transitions that reduce readability. Preserves 0ms gaps
-    which are often intentional for sentence splitting. To ensure the gap is completely
-    filled, an additional 0.5 frame is added.
+    Targets gaps up to 225ms (standard duration for ~5 frames at 24fps)
+    and pushes the start times of the subsequent cues backward to meet the end times of the
+    previous cues.
     """
 
-    def __init__(
-        self, max_gap_frames: float = 4.5, fps: float = FRAME_RATE_24FPS
-    ) -> None:
-        """Initialize the FlickerFiller.
+    MAX_GAP_MS = 225
 
-        Args:
-            max_gap_frames: Maximum gap in frames to fill. Defaults to 4 frames.
-            fps: Frame rate in frames per second. Defaults to 24fps.
-        """
-        self.max_gap_seconds = max_gap_frames / fps
+    def fill_flicker_gaps(self, subs: SSAFile) -> int:
+        """Fill timing gaps in-place on a pysubs2 SSAFile.
 
-    def fill_flicker_gaps(
-        self, events: List[Tuple[float, float, Any]]
-    ) -> tuple[List[Tuple[float, float, Any]], int]:
-        """Fill distracting gaps between subtitle lines.
-
-        Args:
-            events: List of (start_seconds, end_seconds, event_data) tuples.
+        Adjacent cues separated by <= MAX_GAP_MS ms are pushed together so that
+        the start time of the second cue equals the end time of the first.
 
         Returns:
-            Tuple of (adjusted_events, gaps_filled_count).
+            Number of gaps filled.
         """
-        if len(events) <= 1:
-            return list(events), 0
+        if not subs.events or len(subs.events) < 2:
+            return 0
 
-        adjusted_events = []
-        gaps_filled = 0
+        filled = 0
+        sorted_events = sorted(subs.events, key=lambda e: e.start)
 
-        for i in range(len(events)):
-            current_start, current_end, current_data = events[i]
-            new_end = current_end
+        for i in range(len(sorted_events) - 1):
+            curr = sorted_events[i]
+            nxt = sorted_events[i + 1]
 
-            if i < len(events) - 1:
-                next_start = events[i + 1][0]
-                gap_seconds = next_start - current_end
+            gap = nxt.start - curr.end
+            if 0 < gap <= self.MAX_GAP_MS:
+                nxt.start = curr.end
+                filled += 1
 
-                if 0 < gap_seconds <= self.max_gap_seconds:
-                    new_end = next_start
-                    gaps_filled += 1
+        return filled
 
-            adjusted_events.append((current_start, new_end, current_data))
+    def merge_identical_subtitle_lines(
+        self, subs: SSAFile, tolerance_ms: int = 0
+    ) -> int:
+        """Merge consecutive subtitle events with identical text in-place.
 
-        return adjusted_events, gaps_filled
+        Args:
+            subs: The pysubs2 SSAFile object to process.
+            tolerance_ms: Maximum time difference in ms for merging.
+
+        Returns:
+            Number of lines merged.
+        """
+        if not subs.events:
+            return 0
+
+        original_count = len(subs.events)
+        merged_events = []
+
+        for event in subs.events:
+            if not event.text.strip():
+                continue
+
+            if merged_events:
+                prev = merged_events[-1]
+                if (
+                    prev.text.strip() == event.text.strip()
+                    and prev.style == event.style
+                ):
+                    time_diff = abs(event.start - prev.end)
+                    if time_diff <= tolerance_ms:
+                        prev.end = max(prev.end, event.end)
+                        continue
+
+            merged_events.append(event)
+
+        subs.events = merged_events
+        return original_count - len(subs.events)

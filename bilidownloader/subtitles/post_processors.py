@@ -92,10 +92,10 @@ class SRTToASSConverter(PostProcessor):
             subs.info["PlayResX"] = str(play_res_x)
             subs.info["PlayResY"] = str(play_res_y)
 
-            # Apply gap filling
-            events = SubtitleIO.extract_events(subs)
-            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
-            SubtitleIO.update_events(subs, adjusted_events)
+            # Apply gap filling and identical lines merging
+            gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
+            identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
+            merged_count += identical_merged
 
             # Apply styling based on language code
             SubtitleIO.apply_style(subs, lang_code=lang_code)
@@ -254,10 +254,10 @@ class SSARescaler(PostProcessor):
             self._process_events(subs, all_fonts_found, used_styles)
             self._collect_fonts_from_styles(subs, all_fonts_found, used_styles)
 
-            # Fill flicker gaps
-            events = SubtitleIO.extract_events(subs)
-            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
-            SubtitleIO.update_events(subs, adjusted_events)
+            # Fill flicker gaps and merge identical lines
+            gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
+            identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
+            merged_count += identical_merged
 
             # Rescale styles
             styles_changed = self._rescale_styles(subs, used_styles)
@@ -317,10 +317,10 @@ class SRTGapFiller(PostProcessor):
             # Apply language line-splitting & merging
             merged_count, split_count = apply_language_processing(subs, lang_code, self)
 
-            # Extract events and apply gap filler
-            events = SubtitleIO.extract_events(subs)
-            adjusted_events, gaps_filled = self.gap_filler.fill_flicker_gaps(events)
-            SubtitleIO.update_events(subs, adjusted_events)
+            # Fill flicker gaps and merge identical lines
+            gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
+            identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
+            merged_count += identical_merged
 
             # Write back to file
             SubtitleIO.save(subs, srt_path)
