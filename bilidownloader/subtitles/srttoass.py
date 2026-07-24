@@ -55,8 +55,17 @@ class SRTToASSConverter(PostProcessor):
             # Load SRT
             subs = SubtitleIO.load(srt_path)
 
+            merged_count = 0
+            split_count = 0
+
             if lang_code and (lang_code == "en" or lang_code.startswith("en-")):
+                orig_count = len(subs.events)
                 subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
+                merged_count = orig_count - len(subs.events)
+                if merged_count > 0:
+                    self.write_debug(
+                        f"    [{lang_code}] merged {merged_count} continuation line(s)"
+                    )
 
             # Apply Arabic RTL processing if needed
             if lang_code == "ar":
@@ -64,7 +73,15 @@ class SRTToASSConverter(PostProcessor):
                     event.text = ArabicProcessor.process_arabic_subtitle(event.text)
             elif lang_code and (lang_code == "en" or lang_code.startswith("en-")):
                 for event in subs.events:
-                    event.text = EnglishProcessor.process_english_subtitle(event.text)
+                    if event.text:
+                        original = event.text
+                        patched = EnglishProcessor.process_english_subtitle(original)
+                        if patched != original:
+                            split_count += 1
+                            self.write_debug(
+                                f"    [{lang_code}] split: {original!r} -> {patched!r}"
+                            )
+                            event.text = patched
 
             # Set script info for ASS file
             if not subs.info:
@@ -94,8 +111,16 @@ class SRTToASSConverter(PostProcessor):
             try:
                 srt_path.unlink()
                 lang_display = lang_code if lang_code else "unknown"
+                msg_parts = [f"[{lang_display}]"]
                 if gaps_filled > 0:
-                    self.write_debug(f"  [{lang_display}] filled {gaps_filled} gap(s)")
+                    msg_parts.append(f"filled {gaps_filled} gap(s)")
+                if merged_count > 0:
+                    msg_parts.append(f"merged {merged_count} line(s)")
+                if split_count > 0:
+                    msg_parts.append(f"split {split_count} line(s)")
+
+                if len(msg_parts) > 1:
+                    self.write_debug("  " + ", ".join(msg_parts))
                 else:
                     self.write_debug(f"  [{lang_display}] converted")
             except Exception as e:

@@ -411,14 +411,29 @@ class SSARescaler(PostProcessor):
             lang_match = rsearch(r"\.([a-z]{2}(?:-[A-Za-z]+)?)\.ass$", sub_file)
             lang_code = lang_match.group(1) if lang_match else "unknown"
 
+            merged_count = 0
+            split_count = 0
+
             # Apply EnglishProcessor if English
             if lang_code == "en" or lang_code.startswith("en-"):
+                orig_count = len(subs.events)
                 subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
+                merged_count = orig_count - len(subs.events)
+                if merged_count > 0:
+                    self.write_debug(
+                        f"    [{lang_code}] merged {merged_count} continuation line(s)"
+                    )
+
                 for event in subs.events:
                     if event.text:
-                        event.text = EnglishProcessor.process_english_subtitle(
-                            event.text
-                        )
+                        original = event.text
+                        patched = EnglishProcessor.process_english_subtitle(original)
+                        if patched != original:
+                            split_count += 1
+                            self.write_debug(
+                                f"    [{lang_code}] split: {original!r} -> {patched!r}"
+                            )
+                            event.text = patched
 
             used_styles: Set[str] = set()
 
@@ -444,6 +459,10 @@ class SSARescaler(PostProcessor):
                     msg_parts.append(f"styles rescaled ({styles_changed})")
                 if gaps_filled > 0:
                     msg_parts.append(f"filled {gaps_filled} gap(s)")
+                if merged_count > 0:
+                    msg_parts.append(f"merged {merged_count} line(s)")
+                if split_count > 0:
+                    msg_parts.append(f"split {split_count} line(s)")
                 self.write_debug("  " + ", ".join(msg_parts))
             except Exception as e:
                 self.report_error(f"Failed to save {sub_file}: {e}")
