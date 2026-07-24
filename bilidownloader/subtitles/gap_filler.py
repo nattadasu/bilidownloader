@@ -17,10 +17,13 @@ class FlickerFiller:
 
     MAX_GAP_MS = 225
 
+    def __init__(self, is_chinese: bool = False) -> None:
+        self.max_gap_ms = 300 if is_chinese else self.MAX_GAP_MS
+
     def fill_flicker_gaps(self, subs: SSAFile) -> int:
         """Fill timing gaps in-place on a pysubs2 SSAFile.
 
-        Adjacent cues separated by <= MAX_GAP_MS ms are pushed together so that
+        Adjacent cues separated by <= max_gap_ms ms are pushed together so that
         the start time of the second cue equals the end time of the first.
 
         Returns:
@@ -37,7 +40,7 @@ class FlickerFiller:
             nxt = sorted_events[i + 1]
 
             gap = nxt.start - curr.end
-            if 0 < gap <= self.MAX_GAP_MS:
+            if 0 < gap <= self.max_gap_ms:
                 nxt.start = curr.end
                 filled += 1
 

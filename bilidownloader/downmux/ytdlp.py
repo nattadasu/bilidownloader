@@ -526,23 +526,31 @@ class VideoDownloader:
 
                 ydl.add_post_processor(SubtitleReporter(), when="before_dl")
 
+            is_chinese = language == "chi"
+
             # Add ASS rescaler if conditions are met
             if not self.srt and not self.only_audio and not self.dont_rescale:
                 from bilidownloader.subtitles.post_processors import SSARescaler
 
-                ydl.add_post_processor(SSARescaler(), when="before_dl")
+                ydl.add_post_processor(
+                    SSARescaler(is_chinese=is_chinese), when="before_dl"
+                )
 
             # Add SRT to ASS converter if needed
             if not self.srt and not self.only_audio and not self.dont_convert:
                 from bilidownloader.subtitles.post_processors import SRTToASSConverter
 
-                ydl.add_post_processor(SRTToASSConverter(), when="before_dl")
+                ydl.add_post_processor(
+                    SRTToASSConverter(is_chinese=is_chinese), when="before_dl"
+                )
 
             # Add SRT gap filler for direct SRT subtitles
             if self.srt and not self.only_audio:
                 from bilidownloader.subtitles.post_processors import SRTGapFiller
 
-                ydl.add_post_processor(SRTGapFiller(), when="before_dl")
+                ydl.add_post_processor(
+                    SRTGapFiller(is_chinese=is_chinese), when="before_dl"
+                )
 
             if self.mark_downloaded:
                 prn_info("Mark-downloaded mode: Skipping actual download")

@@ -60,9 +60,9 @@ def apply_language_processing(
 class SRTToASSConverter(PostProcessor):
     """A yt-dlp post-processor for converting SRT subtitles to ASS format."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, is_chinese: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller()
+        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
     def _convert_srt_file(
         self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080
@@ -168,9 +168,9 @@ class SSARescaler(PostProcessor):
 
     SIZE_MODIFIER = 0.8
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, is_chinese: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller()
+        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
     def _process_events(
         self, subs, all_fonts_found: Set[str], used_styles: Set[str]
@@ -301,9 +301,9 @@ class SSARescaler(PostProcessor):
 class SRTGapFiller(PostProcessor):
     """A yt-dlp post-processor for filling flicker gaps in SRT subtitles."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, is_chinese: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller()
+        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
     def _process_srt_file(self, srt_path: Path) -> Tuple[bool, int]:
         if not srt_path.exists():
