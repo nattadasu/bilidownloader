@@ -55,5 +55,6 @@ packages = [
 	"bilidownloader.downmux",
 	"bilidownloader.history",
 	"bilidownloader.subtitles",
+	"bilidownloader.subtitles.processors",
 	"bilidownloader.watchlist",
 ]
