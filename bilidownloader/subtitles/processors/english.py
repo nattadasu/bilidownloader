@@ -161,7 +161,17 @@ class EnglishProcessor:
             is_lowercase_continuation = first_alpha and first_alpha.group(0).islower()
 
             # Merge if gap is small (<= 200ms), current is short (<= 30 chars), and next is lowercase continuation
-            if 0 <= gap <= 200 and len(curr_text) <= 30 and is_lowercase_continuation:
+            has_symbols = any(
+                sym in curr_text or sym in next_text
+                for sym in ("...", "…", "♪", "♫", "(", ")", "[", "]", '"', "“", "”")
+            )
+
+            if (
+                0 <= gap <= 200
+                and len(curr_text) <= 30
+                and is_lowercase_continuation
+                and not has_symbols
+            ):
                 curr_clean = curr_text.replace("\\N", " ").strip()
                 next_clean = next_text.replace("\\N", " ").strip()
 
@@ -301,7 +311,14 @@ class EnglishProcessor:
 
                 # 8. Pre-article split penalty: avoid starting the bottom line with an article (e.g. "\Na warmth")
                 if first_w2 in ARTICLES:
-                    syntax_penalty += 15
+                    syntax_penalty += 5
+
+                # 9. Adjective-Noun split penalty: avoid splitting between an adjective and a noun (e.g. "proper\Ntaste")
+                if word_tags and last_w1 in word_tags and first_w2 in word_tags:
+                    if word_tags[last_w1].startswith("JJ") and word_tags[
+                        first_w2
+                    ].startswith("NN"):
+                        syntax_penalty += 30
 
             # Triangle shape: penalize if top line is longer than bottom line (reverse pyramid)
             shape_penalty = 0 if len1 < len2 else 10
