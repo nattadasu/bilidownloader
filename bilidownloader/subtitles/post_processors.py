@@ -137,6 +137,7 @@ class SRTToASSConverter(PostProcessor):
         converted_count = 0
         total_gaps_filled = 0
         new_file_paths = {}
+        requested_subtitles = info.get("requested_subtitles", {})
 
         for original_path, current_path in file_paths.items():
             current_file = Path(current_path)
@@ -148,9 +149,16 @@ class SRTToASSConverter(PostProcessor):
             if ass_path:
                 converted_count += 1
                 total_gaps_filled += gaps_filled
-                new_file_paths[str(Path(original_path).with_suffix(".ass"))] = str(
-                    ass_path
+                new_ass_path_str = str(ass_path)
+                new_file_paths[str(Path(original_path).with_suffix(".ass"))] = (
+                    new_ass_path_str
                 )
+
+                # Update requested_subtitles so yt-dlp's downstream embedder knows about the converted file
+                for sub_lang, sub_info in requested_subtitles.items():
+                    if sub_info.get("filepath") == current_path:
+                        sub_info["filepath"] = new_ass_path_str
+                        sub_info["ext"] = "ass"
             else:
                 new_file_paths[original_path] = current_path
 
