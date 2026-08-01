@@ -126,11 +126,12 @@ class EnglishProcessor:
     """Processes English text to merge continuation lines and add hard line breaks."""
 
     @staticmethod
-    def merge_continuation_lines(events) -> list:
+    def merge_continuation_lines(events, max_chars: int = 40) -> list:
         """Merge consecutive subtitle events if the first is short and the second is a lowercase continuation.
 
         Args:
             events: List of SSAEvent objects
+            max_chars: Maximum character length threshold for single-line text (default: 40)
 
         Returns:
             List of merged SSAEvent objects
@@ -160,6 +161,10 @@ class EnglishProcessor:
             first_alpha = re.search(r"[a-zA-Z]", next_text)
             is_lowercase_continuation = first_alpha and first_alpha.group(0).islower()
 
+            curr_clean = curr_text.replace("\\N", " ").strip()
+            next_clean = next_text.replace("\\N", " ").strip()
+            merged_len = len(f"{curr_clean} {next_clean}")
+
             # Merge if gap is small (<= 200ms), current is short (<= 30 chars), and next is lowercase continuation
             has_symbols = any(
                 sym in curr_text or sym in next_text
@@ -171,10 +176,8 @@ class EnglishProcessor:
                 and len(curr_text) <= 30
                 and is_lowercase_continuation
                 and not has_symbols
+                and merged_len <= 2 * max_chars
             ):
-                curr_clean = curr_text.replace("\\N", " ").strip()
-                next_clean = next_text.replace("\\N", " ").strip()
-
                 curr_ev.text = f"{curr_clean} {next_clean}"
                 curr_ev.end = next_ev.end
 
