@@ -14,7 +14,6 @@ from bilidownloader.cli.options import (
     FileConfig,
     PostProcessingOptions,
 )
-from bilidownloader.downmux.orchestrator import download
 
 
 @app.command(
@@ -39,6 +38,7 @@ def download_url(
     pp_opts: PostProcessingOptions = Depends(PostProcessingOptions),
 ) -> None:
     """Download via direct URL, let the app decide what type of the URL"""
+    from bilidownloader.downmux.orchestrator import download
 
     raise_ffmpeg(bins.ffmpeg_path)
     raise_mkvpropedit(bins.mkvpropedit_path)

@@ -36,7 +36,6 @@ from bilidownloader.commons.constants import (
     bili_format,
 )
 from bilidownloader.commons.ui import prn_error, prn_info
-from bilidownloader.downmux.orchestrator import BiliProcess
 from bilidownloader.watchlist.watchlist import Watchlist
 
 console = Console()
@@ -305,6 +304,8 @@ def watchlist_download(
     raise_ffmpeg(bins.ffmpeg_path)
     raise_mkvpropedit(bins.mkvpropedit_path)
     raise_mkvmerge(bins.mkvmerge_path)
+
+    from bilidownloader.downmux.orchestrator import BiliProcess
 
     bili = BiliProcess(
         file_config=files,
