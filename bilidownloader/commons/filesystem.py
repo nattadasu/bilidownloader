@@ -1,12 +1,11 @@
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from bilidownloader.commons.constants import BASE_DIR
 from bilidownloader.commons.ui import prn_info
 
 
-def find_command(executable: str) -> Optional[Path]:
+def find_command(executable: str) -> Path | None:
     """
     Find the path to an executable in the system.
 

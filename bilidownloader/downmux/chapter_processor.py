@@ -6,7 +6,7 @@ import subprocess as sp
 from io import StringIO
 from pathlib import Path
 from re import search as rsearch
-from typing import List, Literal, Optional, Tuple
+from typing import Literal
 
 from rich.console import Console
 from rich.table import Column, Table, box
@@ -33,8 +33,8 @@ class ChapterProcessor:
 
     def __init__(
         self,
-        mkvpropedit_path: Optional[Path] = None,
-        ffmpeg_path: Optional[Path] = None,
+        mkvpropedit_path: Path | None = None,
+        ffmpeg_path: Path | None = None,
     ):
         self.mkvpropedit_path = mkvpropedit_path
         self.ffmpeg_path = ffmpeg_path
@@ -51,7 +51,7 @@ class ChapterProcessor:
 
     @staticmethod
     def _uses_ident_label(
-        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
     ) -> bool:
         """Whether recap-like logo chapters should be labeled as Idents."""
         return audio_language == "chi"
@@ -60,9 +60,9 @@ class ChapterProcessor:
         self,
         title: str,
         duration: float,
-        next_chapter: Optional[Chapter],
+        next_chapter: Chapter | None,
         part_index: int,
-        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
     ) -> tuple[str, int]:
         """Normalize chapter titles based on timing heuristics and audio language."""
 
@@ -97,9 +97,9 @@ class ChapterProcessor:
         return f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start_ms}\nEND={end_ms}\ntitle={title}\n"
 
     @staticmethod
-    def _deformat_chapter(chapter: List[str] | str) -> List[Chapter]:
+    def _deformat_chapter(chapter: list[str] | str) -> list[Chapter]:
         """Deformat a chapter from FFmpeg metadata format"""
-        chapters: List[Chapter] = []
+        chapters: list[Chapter] = []
         if isinstance(chapter, str):
             chapter = [chapter]
         for ch in chapter:
@@ -112,23 +112,21 @@ class ChapterProcessor:
         return chapters
 
     @staticmethod
-    def _to_mkvmerge_chapter(chapters: List[Chapter]) -> List[str]:
+    def _to_mkvmerge_chapter(chapters: list[Chapter]) -> list[str]:
         """Convert a list of chapters to mkvmerge format"""
-        mkv_chapters: List[str] = []
+        mkv_chapters: list[str] = []
         for i, chapter in enumerate(chapters):
             mkv_chapters.append(
-                (
-                    f"CHAPTER{i + 1:02d}={format_mkvmerge_time(chapter.start_time)}\n"
-                    f"CHAPTER{i + 1:02d}NAME={chapter.title}"
-                )
+                f"CHAPTER{i + 1:02d}={format_mkvmerge_time(chapter.start_time)}\n"
+                f"CHAPTER{i + 1:02d}NAME={chapter.title}"
             )
         return mkv_chapters
 
     def embed_chapters(
         self,
-        chapters: List[Chapter],
+        chapters: list[Chapter],
         video_path: Path,
-        audio_language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]] = None,
+        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
     ) -> Path:
         """Create chapter metadata and merge it into the video file"""
         if not chapters:
@@ -212,7 +210,7 @@ class ChapterProcessor:
         )
 
         # Format and modify chapter information
-        formatted_chapters: List[str] = []
+        formatted_chapters: list[str] = []
         part_index = 1
 
         if len(chapters) == 2:
@@ -220,7 +218,7 @@ class ChapterProcessor:
             chapters[1].title = "Outro"
 
         # Pre-process: merge short brandings into opening
-        merged_chapters: List[Chapter] = []
+        merged_chapters: list[Chapter] = []
         i = 0
         while i < len(chapters):
             chapter = chapters[i]
@@ -309,7 +307,7 @@ class ChapterProcessor:
 
         def fmt_timing(
             title: str, start: float, end: float
-        ) -> Tuple[str, str, str, float, str]:
+        ) -> tuple[str, str, str, float, str]:
             """Format timing for table"""
             dur = end - start
             return (

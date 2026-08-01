@@ -1,6 +1,5 @@
 from datetime import date, datetime
 from re import search as rsearch
-from typing import List, Optional
 
 from pydantic import BaseModel, HttpUrl
 
@@ -25,13 +24,13 @@ class CardItem(BaseModel):
     view: str
     dm: str
     styles: str
-    style_list: Optional[List[str]] = None
+    style_list: list[str] | None = None
     season_id: str
     episode_id: str
     index_show: str
     label: int
     rank_info: None
-    view_history: Optional[ViewHistory] = None
+    view_history: ViewHistory | None = None
     watched: str
     duration: str
     view_at: str
@@ -39,7 +38,7 @@ class CardItem(BaseModel):
     pub_time_ts: int
     is_favored: bool
     unavailable: bool
-    corner_mark: Optional[CornerMark] = None
+    corner_mark: CornerMark | None = None
 
     @property
     def is_available(self) -> bool:
@@ -60,18 +59,18 @@ class DayItem(BaseModel):
     full_day_of_week: str
     # In some cases, especially at the final weeks of the season, the cards are
     # None
-    cards: Optional[List[CardItem]] = None
+    cards: list[CardItem] | None = None
 
 
 class ReturnData(BaseModel):
-    items: List[DayItem]
+    items: list[DayItem]
     current_time: str
     current_time_ts: datetime
 
 
 class FavoriteData(BaseModel):
     has_more: bool
-    cards: Optional[List[CardItem]] = None
+    cards: list[CardItem] | None = None
 
 
 class BiliTvResponse(BaseModel):

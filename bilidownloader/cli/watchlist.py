@@ -1,7 +1,7 @@
 import re
 from html import unescape
 from sys import exit
-from typing import Annotated, List, Optional, Tuple
+from typing import Annotated
 
 import survey
 import typer
@@ -67,7 +67,7 @@ def watchlist_list(
     console.print(table)
 
 
-def _wl_do_proc(serial_url: str, proxy: Optional[str] = None) -> Tuple[str, str]:
+def _wl_do_proc(serial_url: str, proxy: str | None = None) -> tuple[str, str]:
     search = re.search(bili_format, serial_url)
     if search:
         media_id = search.group("media_id")
@@ -103,7 +103,7 @@ def wl_action_msg(action: str) -> str:
 @wl_app.command("ins", help="Add a series to watchlist", hidden=True)
 def watchlist_add(
     series: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             ...,
             help=wl_action_msg("added"),
@@ -116,7 +116,7 @@ def watchlist_add(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
     proxy: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--proxy",
             "-p",
@@ -130,7 +130,7 @@ def watchlist_add(
     wids = {item[0] for item in wl.list}
 
     if series:
-        filt: List[Tuple[str, str]] = []
+        filt: list[tuple[str, str]] = []
         for url in series:
             try:
                 media_id, title = _wl_do_proc(url, proxy=proxy)
@@ -189,7 +189,7 @@ wl_del_help = "Delete series from watchlist"
 @wl_app.command("del", help=wl_del_help, hidden=True)
 def watchlist_delete(
     series: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             ...,
             help=wl_action_msg("deleted"),
@@ -202,7 +202,7 @@ def watchlist_delete(
     file_path: WATCHLIST_OPT = DEFAULT_WATCHLIST,
     cookies: OPTCOOKIE_OPT = DEFAULT_COOKIES,
     proxy: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--proxy",
             "-p",
@@ -213,10 +213,10 @@ def watchlist_delete(
 ) -> None:
     raise_cookie(cookies)
     wl = Watchlist(file_path, cookies)
-    index: Optional[List[int]] = None
+    index: list[int] | None = None
 
     if series:
-        filt: List[Tuple[str, str]] = []
+        filt: list[tuple[str, str]] = []
         for url in series:
             try:
                 media_id, title = _wl_do_proc(url, proxy=proxy)

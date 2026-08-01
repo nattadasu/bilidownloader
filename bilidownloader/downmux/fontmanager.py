@@ -6,9 +6,10 @@ downloading, and lookup operations for yt-dlp integration.
 """
 
 import json
+from collections.abc import Callable
 from json import loads as jloads
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple, TypedDict
+from typing import TypedDict
 
 from bilidownloader.commons.constants import BASE_DIR
 from bilidownloader.commons.ui import prn_dbg, prn_error, prn_info
@@ -37,9 +38,9 @@ class FontCache:
         """
         self.cache_file = cache_file
         # Store mappings as {font_path: {family_name, full_name, subfamily_name}}
-        self._path_to_names: Dict[str, Dict[str, str]] = {}
+        self._path_to_names: dict[str, dict[str, str]] = {}
         # Reverse lookup: {name_lower: font_path}
-        self._name_to_path: Dict[str, Path] = {}
+        self._name_to_path: dict[str, Path] = {}
 
     def load(self) -> bool:
         """Load font cache from disk.
@@ -112,7 +113,7 @@ class FontCache:
                 if combined not in self._name_to_path:
                     self._name_to_path[combined] = font_path
 
-    def update(self, system_fonts_filename: Callable[[], Set[str]]) -> None:
+    def update(self, system_fonts_filename: Callable[[], set[str]]) -> None:
         """Update font cache incrementally by only processing new/changed fonts.
 
         Args:
@@ -154,7 +155,7 @@ class FontCache:
         self._build_reverse_lookup()
         self.save()
 
-    def build_full_cache(self, system_fonts_filename: Callable[[], Set[str]]) -> None:
+    def build_full_cache(self, system_fonts_filename: Callable[[], set[str]]) -> None:
         """Build complete font cache from scratch.
 
         Args:
@@ -169,7 +170,7 @@ class FontCache:
         self._build_reverse_lookup()
         self.save()
 
-    def get_mappings(self) -> Dict[str, Path]:
+    def get_mappings(self) -> dict[str, Path]:
         """Get font name to path mappings.
 
         Returns:
@@ -178,7 +179,7 @@ class FontCache:
         return self._name_to_path
 
     @staticmethod
-    def _scan_font_files(font_paths: Set[str]) -> Dict[str, Dict[str, str]]:
+    def _scan_font_files(font_paths: set[str]) -> dict[str, dict[str, str]]:
         """Scan font files and extract their names.
 
         Args:
@@ -187,7 +188,7 @@ class FontCache:
         Returns:
             Dictionary mapping font paths to their name information.
         """
-        font_mappings: Dict[str, Dict[str, str]] = {}
+        font_mappings: dict[str, dict[str, str]] = {}
 
         try:
             from fontTools import ttLib
@@ -239,7 +240,7 @@ NOTO_ARABIC_URI: str = "https://raw.githubusercontent.com/notofonts/notofonts.gi
 ARIAL_URI: str = "https://cdn.jsdelivr.net/npm/@canvas-fonts/arial"
 
 # Dictionary mapping font names to their download URLs and local storage paths
-NATIVE_FONTS: Dict[str, FontInfo] = {
+NATIVE_FONTS: dict[str, FontInfo] = {
     "Noto Sans": {
         "url": f"{NOTO_URI}/NotoSans-Regular.ttf",
         "path": BASE_DIR / "fonts" / "noto-sans.ttf",
@@ -323,7 +324,7 @@ def download_fonts(font_family: str) -> None:
     Raises:
         No exceptions are raised; errors are logged via prn_error().
     """
-    font_info: Optional[FontInfo] = NATIVE_FONTS.get(font_family)
+    font_info: FontInfo | None = NATIVE_FONTS.get(font_family)
     if not font_info:
         prn_error(f"Font '{font_family}' not found in NATIVE_FONTS.")
         return
@@ -355,8 +356,8 @@ def download_fonts(font_family: str) -> None:
         response.raise_for_status()
 
         # Get content length but don't trust it completely for CDN responses
-        raw_size: Optional[str] = response.headers.get("content-length", None)
-        declared_size: Optional[int] = (
+        raw_size: str | None = response.headers.get("content-length", None)
+        declared_size: int | None = (
             int(raw_size) if raw_size and raw_size.isdigit() else None
         )
 
@@ -400,11 +401,11 @@ def initialize_fonts() -> None:
     Returns:
         None
     """
-    for font_family in NATIVE_FONTS.keys():
+    for font_family in NATIVE_FONTS:
         download_fonts(font_family)
 
 
-def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[str]]:
+def loop_font_lookup(font_json: Path, font_args: list[str]) -> tuple[Path, list[str]]:
     """Process fonts from a JSON file and add them to font arguments list.
 
     This function reads a JSON file containing a list of font names, resolves
@@ -424,7 +425,7 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     """
     # Load font list from JSON file
     try:
-        fonts: List[str] = jloads(font_json.read_text(encoding="utf-8"))
+        fonts: list[str] = jloads(font_json.read_text(encoding="utf-8"))
     except (OSError, ValueError) as e:
         prn_error(f"Failed to read or parse font JSON file '{font_json}': {e}")
         fonts = []
@@ -452,10 +453,10 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     prn_info(f"Detected {len(fonts)} font(s) used in subtitles, attaching to file")
 
     found_fonts = 0
-    seen_paths: Set[Path] = set()
+    seen_paths: set[Path] = set()
 
     for font_name in fonts:
-        font_path: Optional[Path] = None
+        font_path: Path | None = None
 
         prn_dbg(f"Looking up font: {font_name}")
         # First, check if it's a native font we manage
@@ -498,7 +499,7 @@ def loop_font_lookup(font_json: Path, font_args: List[str]) -> Tuple[Path, List[
     return font_json, font_args
 
 
-def _resolve_native_font(font_name: str) -> Optional[Path]:
+def _resolve_native_font(font_name: str) -> Path | None:
     """Resolve a font name to a path from NATIVE_FONTS.
 
     Handles both simple names and variation syntax (e.g., "Noto Sans::Italic").
@@ -522,7 +523,7 @@ def _resolve_native_font(font_name: str) -> Optional[Path]:
     return None
 
 
-def _resolve_system_font(font_name: str, font_cache: Dict[str, Path]) -> Optional[Path]:
+def _resolve_system_font(font_name: str, font_cache: dict[str, Path]) -> Path | None:
     """Resolve a font name to a system font path using font cache.
 
     Args:

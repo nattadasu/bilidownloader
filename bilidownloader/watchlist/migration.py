@@ -2,8 +2,6 @@
 Watchlist migration utility - handles one-time migration from old to new format
 """
 
-from typing import List, Optional, Tuple
-
 from bilidownloader.commons.ui import prn_info
 from bilidownloader.watchlist.repository import WatchlistRepository
 
@@ -42,8 +40,8 @@ class WatchlistMigrator:
             self.repository._write_file_lines(new_data)
 
     def _process_migration_data(
-        self, data: List[str], has_header: bool
-    ) -> Tuple[List[str], bool]:
+        self, data: list[str], has_header: bool
+    ) -> tuple[list[str], bool]:
         """Process data for migration and return new data and migration status"""
         new_data = []
         migrated = False
@@ -68,7 +66,7 @@ class WatchlistMigrator:
 
         return new_data, migrated
 
-    def _process_entry(self, entry: str) -> Tuple[Optional[str], bool]:
+    def _process_entry(self, entry: str) -> tuple[str | None, bool]:
         """Process a single entry and return the processed entry and migration status"""
         if C_SEP in entry and SEP not in entry:
             # Old comma-separated format
@@ -83,7 +81,7 @@ class WatchlistMigrator:
         return None, False
 
     def _should_write_file(
-        self, migrated: bool, has_header: bool, new_data: List[str]
+        self, migrated: bool, has_header: bool, new_data: list[str]
     ) -> bool:
         """Determine if the file should be written"""
         return migrated or (

@@ -1,11 +1,10 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from bilidownloader.commons.constants import (
     DEFAULT_COOKIES,
@@ -52,7 +51,7 @@ optcookie.show_default = True
 optcookie.prompt = False
 COOKIE_OPT = Annotated[Path, cookie_option]
 """Path to Cookie File for the command to download"""
-OPTCOOKIE_OPT = Annotated[Optional[Path], optcookie]
+OPTCOOKIE_OPT = Annotated[Path | None, optcookie]
 """Path to Cookie File for the command to download, optional"""
 WATCHLIST_OPT = Annotated[
     Path,
@@ -176,7 +175,7 @@ DO_NOT_CONVERT_SRT_OPT = Annotated[
 ]
 """Flag to skip SRT to ASS conversion"""
 SUBLANG_OPT = Annotated[
-    Optional[SubtitleLanguage],
+    SubtitleLanguage | None,
     typer.Option(
         "--sub-lang",
         "-l",
@@ -197,7 +196,7 @@ PV_OPT = Annotated[
 ]
 """Flag to download PV"""
 FFMPEG_OPT = Annotated[
-    Optional[Path],
+    Path | None,
     typer.Option(
         "--ffmpeg-path",
         "--ffmpeg",
@@ -207,7 +206,7 @@ FFMPEG_OPT = Annotated[
 ]
 """Path to ffmpeg binary"""
 MKVPROPEX_OPT = Annotated[
-    Optional[Path],
+    Path | None,
     typer.Option(
         "--mkvpropedit-path",
         "--mkvpropedit",
@@ -217,7 +216,7 @@ MKVPROPEX_OPT = Annotated[
 ]
 """Path to mkvpropedit binary"""
 MKVMERGE_OPT = Annotated[
-    Optional[Path],
+    Path | None,
     typer.Option(
         "--mkvmerge-path",
         "--mkvmerge",
@@ -291,7 +290,7 @@ VERBOSE_OPT = Annotated[
 ]
 """Flag to enable verbose output"""
 PROXY_OPT = Annotated[
-    Optional[str],
+    str | None,
     typer.Option(
         "--proxy",
         "-p",
@@ -341,7 +340,7 @@ class FileConfig:
             rich_help_panel="Data Management",
             resolve_path=True,
         ),
-    ] = Path.cwd()
+    ] = field(default_factory=Path.cwd)
 
 
 @dataclass

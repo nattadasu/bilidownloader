@@ -6,7 +6,7 @@ import subprocess as sp
 from io import BytesIO
 from json import loads as jloads
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, cast
+from typing import Any, Literal, cast
 
 import requests as reqs
 from PIL import Image
@@ -28,22 +28,22 @@ class MetadataEditor:
 
     def __init__(
         self,
-        mkvpropedit_path: Optional[Path] = None,
-        mkvmerge_path: Optional[Path] = None,
+        mkvpropedit_path: Path | None = None,
+        mkvmerge_path: Path | None = None,
     ):
         self.mkvpropedit_path = mkvpropedit_path
         self.mkvmerge_path = mkvmerge_path
 
     @staticmethod
-    def _empty_track_counts() -> Dict[str, int]:
+    def _empty_track_counts() -> dict[str, int]:
         return {"video": 0, "audio": 0, "text": 0}
 
     @classmethod
-    def _parse_mediainfo_track_counts(cls, data: Dict[str, Any]) -> Dict[str, int]:
+    def _parse_mediainfo_track_counts(cls, data: dict[str, Any]) -> dict[str, int]:
         """Extract comparable track counts from mediainfo JSON output."""
         counts = cls._empty_track_counts()
-        media = cast(Dict[str, Any], data.get("media", {}))
-        tracks = cast(List[Dict[str, Any]], media.get("track", []))
+        media = cast(dict[str, Any], data.get("media", {}))
+        tracks = cast(list[dict[str, Any]], media.get("track", []))
         for track in tracks:
             track_type = str(track.get("@type", "")).lower()
             if track_type == "video":
@@ -55,10 +55,10 @@ class MetadataEditor:
         return counts
 
     @classmethod
-    def _parse_mkvmerge_track_counts(cls, data: Dict[str, Any]) -> Dict[str, int]:
+    def _parse_mkvmerge_track_counts(cls, data: dict[str, Any]) -> dict[str, int]:
         """Extract comparable track counts from mkvmerge JSON output."""
         counts = cls._empty_track_counts()
-        tracks = cast(List[Dict[str, Any]], data.get("tracks", []))
+        tracks = cast(list[dict[str, Any]], data.get("tracks", []))
         for track in tracks:
             track_type = str(track.get("type", "")).lower()
             if track_type == "video":
@@ -71,7 +71,7 @@ class MetadataEditor:
 
     @staticmethod
     def _mediainfo_is_missing_tracks(
-        mediainfo_counts: Dict[str, int], mkvmerge_counts: Dict[str, int]
+        mediainfo_counts: dict[str, int], mkvmerge_counts: dict[str, int]
     ) -> bool:
         """Return True when mediainfo reports fewer core tracks than mkvmerge."""
         return any(
@@ -79,9 +79,7 @@ class MetadataEditor:
             for track_type in ("video", "audio", "text")
         )
 
-    def _read_mediainfo_track_counts(
-        self, video_path: Path
-    ) -> Optional[Dict[str, int]]:
+    def _read_mediainfo_track_counts(self, video_path: Path) -> dict[str, int] | None:
         """Read video/audio/text track counts from mediainfo."""
         mediainfo = find_command("mediainfo")
         if not mediainfo:
@@ -106,9 +104,9 @@ class MetadataEditor:
             )
             return self._empty_track_counts()
 
-        return self._parse_mediainfo_track_counts(cast(Dict[str, Any], data))
+        return self._parse_mediainfo_track_counts(cast(dict[str, Any], data))
 
-    def _read_mkvmerge_track_counts(self, video_path: Path) -> Dict[str, int]:
+    def _read_mkvmerge_track_counts(self, video_path: Path) -> dict[str, int]:
         """Read video/audio/text track counts from mkvmerge."""
         mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
         if not mkvmerge:
@@ -129,7 +127,7 @@ class MetadataEditor:
                 f"Failed to parse mkvmerge output for {video_path.name}: {err}"
             ) from err
 
-        return self._parse_mkvmerge_track_counts(cast(Dict[str, Any], data))
+        return self._parse_mkvmerge_track_counts(cast(dict[str, Any], data))
 
     def _repair_tracks_with_mkvmerge(self, video_path: Path) -> Path:
         """Remux a file in place to repair track metadata issues."""
@@ -195,8 +193,8 @@ class MetadataEditor:
     def add_audio_language(
         self,
         video_path: Path,
-        language: Optional[Literal["ind", "jpn", "chi", "tha", "und"]],
-    ) -> List[str]:
+        language: Literal["ind", "jpn", "chi", "tha", "und"] | None,
+    ) -> list[str]:
         """Add audio language to the video file"""
         prn_dbg(
             f"Preparing audio language metadata: '{language}' for {video_path.name}"
@@ -221,10 +219,10 @@ class MetadataEditor:
 
     def set_default_subtitle(
         self,
-        raw_data: Dict[str, Any],
+        raw_data: dict[str, Any],
         video_path: Path,
-        language: Optional[SubtitleLanguage] = None,
-    ) -> List[str]:
+        language: SubtitleLanguage | None = None,
+    ) -> list[str]:
         """Set the default subtitle for the video file"""
         language = language or SubtitleLanguage.en
         lcodex = {
@@ -238,7 +236,7 @@ class MetadataEditor:
         }
         flang = lcodex.get(language.value, "eng")
 
-        def fail(msg: str) -> List[str]:
+        def fail(msg: str) -> list[str]:
             prn_dbg(msg)
             return []
 
@@ -278,9 +276,9 @@ class MetadataEditor:
             }
         )
 
-        set_track: Optional[tuple[str, str]] = None
-        unset_track: List[tuple[str, str]] = []
-        track_names: Dict[str, str] = {}
+        set_track: tuple[str, str] | None = None
+        unset_track: list[tuple[str, str]] = []
+        track_names: dict[str, str] = {}
 
         try:
             data = jloads(result.stdout)
@@ -327,7 +325,7 @@ class MetadataEditor:
             set_track = unset_track.pop(0)
 
         if set_track:
-            unset_: List[str] = []
+            unset_: list[str] = []
             for track in unset_track:
                 unset_ += [
                     "--edit",
@@ -392,7 +390,7 @@ class MetadataEditor:
             prn_error(f"Failed to resize thumbnail: {e}")
             return image_data
 
-    def insert_thumbnail(self, raw_info: Dict[str, Any]) -> List[str]:
+    def insert_thumbnail(self, raw_info: dict[str, Any]) -> list[str]:
         """Insert a thumbnail into the video file"""
         thumbnail = raw_info.get("thumbnail")
         if not thumbnail:
@@ -414,17 +412,17 @@ class MetadataEditor:
             str(thumbnail_path),
         ]
 
-    def delete_title_and_desc(self) -> List[str]:
+    def delete_title_and_desc(self) -> list[str]:
         """Delete title and description from the video file"""
         return ["--delete", "title", "--tags", "global:"]
 
     def execute_mkvpropedit(
         self,
         video_path: Path,
-        audio_args: List[str],
-        sub_args: List[str],
-        font_args: List[str],
-        attachment_args: List[str],
+        audio_args: list[str],
+        sub_args: list[str],
+        font_args: list[str],
+        attachment_args: list[str],
         delete_metadata: bool = True,
     ) -> Path:
         """Execute mkvpropedit on the video file"""

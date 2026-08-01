@@ -1,8 +1,8 @@
 from rich.console import Console
 
-import bilidownloader.cli.download  # noqa
-import bilidownloader.cli.schedule  # noqa
-import bilidownloader.cli.today  # noqa
+import bilidownloader.cli.download
+import bilidownloader.cli.schedule
+import bilidownloader.cli.today
 import bilidownloader.cli.userdir  # noqa
 from bilidownloader.cli.application import app, hi_app, wl_app
 from bilidownloader.commons.metadata import __VERSION__

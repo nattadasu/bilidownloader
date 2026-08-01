@@ -1,6 +1,6 @@
 from http.cookiejar import MozillaCookieJar as MozCookie
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple, Union
+from typing import Literal
 
 import requests as req
 
@@ -18,8 +18,8 @@ class BiliApi:
     def __init__(
         self,
         api_url: str = WEB_API_URL,
-        cookie_path: Union[str, Path, None] = None,
-        proxy: Optional[str] = None,
+        cookie_path: str | Path | None = None,
+        proxy: str | None = None,
     ):
         self.api_url = api_url
         self.unified_params = {
@@ -74,7 +74,7 @@ class BiliApi:
         return BiliFavoritesListResponse(**resp.json())
 
     def post_favorite(
-        self, action: Literal["add", "del"], show_id: Union[int, str]
+        self, action: Literal["add", "del"], show_id: int | str
     ) -> BiliFavoriteResponse:
         """Add or remove a show from favorites
 
@@ -104,7 +104,7 @@ class BiliApi:
         resp.raise_for_status()
         return BiliFavoriteResponse(**resp.json())
 
-    def get_today_schedule(self) -> List[CardItem]:
+    def get_today_schedule(self) -> list[CardItem]:
         """
         Get today's schedule
 
@@ -112,13 +112,13 @@ class BiliApi:
             List[CardItem]: List of CardItem
         """
         data = self.get_anime_timeline()
-        final: List[CardItem] = []
+        final: list[CardItem] = []
         for day in data.data.items:
             if day.is_today and day.cards:
                 final.extend(day.cards)
         return final
 
-    def get_all_available_shows(self) -> List[CardItem]:
+    def get_all_available_shows(self) -> list[CardItem]:
         """
         Get all available shows
 
@@ -126,7 +126,7 @@ class BiliApi:
             List[CardItem]: List of CardItem
         """
         data = self.get_anime_timeline()
-        final: List[CardItem] = []
+        final: list[CardItem] = []
         for day in data.data.items:
             if not day.cards:
                 continue
@@ -136,7 +136,7 @@ class BiliApi:
                 final.append(card)
         return final
 
-    def get_all_shows_simple(self) -> List[Tuple[str, str]]:
+    def get_all_shows_simple(self) -> list[tuple[str, str]]:
         """
         Get all available shows in a simple list
 
@@ -166,9 +166,9 @@ class BiliApi:
 class BiliHtml:
     def __init__(
         self,
-        cookie_path: Union[str, Path, None] = None,
-        user_agent: Optional[str] = None,
-        proxy: Optional[str] = None,
+        cookie_path: str | Path | None = None,
+        user_agent: str | None = None,
+        proxy: str | None = None,
     ):
         self.cookie = cookie_path
         self.user_agent = (

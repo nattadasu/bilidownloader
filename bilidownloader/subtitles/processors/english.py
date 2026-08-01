@@ -65,7 +65,7 @@ FALLBACK_VERBS = {
     "won't", "wouldn't", "shouldn't", "mustn't", "go", "went", "gone", "make", "makes", 
     "made", "like", "likes", "liked", "want", "wants", "wanted", "think", "thinks", 
     "thought", "say", "says", "said", "report", "reports", "reported", "convey", 
-    "conveys", "conveyed", "help", "helps", "helped", "do", "does", "did", "done",
+    "conveys", "conveyed", "help", "helps", "helped", "done",
     "appear", "appears", "appeared", "destroy", "destroys", "destroyed", "spark", "sparks", "sparked",
     "planning", "plan", "plans", "planned", "seem", "seems", "seemed", "try", "tries", "tried", "trying",
     "mean", "means", "meant", "feel", "feels", "felt", "rising", "rise", "rises", "rose", "risen"
@@ -93,7 +93,7 @@ def is_verb(word: str, word_tags: dict) -> bool:
         return tag.startswith("VB") or tag == "MD"
 
     # Fallback to offline rule-based heuristic
-    if w.endswith("ed") or w.endswith("ing"):
+    if w.endswith(("ed", "ing")):
         return True
     return w in FALLBACK_VERBS
 
@@ -292,9 +292,8 @@ class EnglishProcessor:
                     "due",
                     "close",
                     "far",
-                ):
-                    if first_w2 in ("of", "to", "from"):
-                        syntax_penalty += 40
+                ) and first_w2 in ("of", "to", "from"):
+                    syntax_penalty += 40
 
                 # 4. Infinitive splits: avoid splitting before a verb if preceding word is "to" (e.g. "to\Nreport")
                 if last_w1 == "to" and is_verb(first_w2, word_tags):
@@ -317,11 +316,14 @@ class EnglishProcessor:
                     syntax_penalty += 5
 
                 # 9. Adjective-Noun split penalty: avoid splitting between an adjective and a noun (e.g. "proper\Ntaste")
-                if word_tags and last_w1 in word_tags and first_w2 in word_tags:
-                    if word_tags[last_w1].startswith("JJ") and word_tags[
-                        first_w2
-                    ].startswith("NN"):
-                        syntax_penalty += 30
+                if (
+                    word_tags
+                    and last_w1 in word_tags
+                    and first_w2 in word_tags
+                    and word_tags[last_w1].startswith("JJ")
+                    and word_tags[first_w2].startswith("NN")
+                ):
+                    syntax_penalty += 30
 
             # Triangle shape: penalize if top line is longer than bottom line (reverse pyramid)
             shape_penalty = 0 if len1 < len2 else 10

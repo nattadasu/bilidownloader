@@ -71,8 +71,7 @@ def _get_user_shell() -> list[str]:
 
         # Remove common suffixes
         for suffix in [".exe", "-bin"]:
-            if parent_name.endswith(suffix):
-                parent_name = parent_name[: -len(suffix)]
+            parent_name = parent_name.removesuffix(suffix)
 
         # Check if parent is a known shell
         known_shells = [

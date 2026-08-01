@@ -1,6 +1,5 @@
 from pathlib import Path
 from sys import exit
-from typing import List
 
 import survey
 from typer_di import Depends
@@ -30,7 +29,7 @@ from bilidownloader.watchlist.watchlist import Watchlist
 
 
 def _cards_selector(
-    cards: List[CardItem],
+    cards: list[CardItem],
     watchlist_file: Path,
     files: FileConfig,
     bins: BinaryPaths,

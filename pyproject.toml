@@ -58,3 +58,15 @@ packages = [
 	"bilidownloader.subtitles.processors",
 	"bilidownloader.watchlist",
 ]
+
+[tool.ruff.lint]
+ignore = [
+	"BLE001",  # Do not catch blind exception
+	"DTZ005",  # datetime.datetime.now() without tz
+	"DTZ006",  # datetime.datetime.fromtimestamp() without tz
+	"DTZ007",  # datetime.datetime.strptime() without tz
+	"S110",    # try-except-pass
+	"B008",    # function call in argument defaults (typer depends)
+	"PLW1510", # subprocess.run without check
+	"S112",    # try-except-continue
+]

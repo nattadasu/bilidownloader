@@ -2,7 +2,6 @@ import re
 from enum import Enum
 from importlib.util import find_spec
 from time import time
-from typing import Optional, Union
 
 from langcodes import Language as Lang
 from pydantic import BaseModel
@@ -78,7 +77,7 @@ def check_package(pkg_name: str) -> bool:
     return find_spec(pkg_name) is not None
 
 
-def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> str:
+def pluralize(n: float, word: str, plural: str | None = None) -> str:
     """
     Pluralize a word based on a count.
 
@@ -101,7 +100,7 @@ def pluralize(n: Union[int, float], word: str, plural: Optional[str] = None) -> 
     return f"{n} {word}s"
 
 
-def secs_to_proper(seconds: Union[int, float]) -> tuple[int, int, int, int, int]:
+def secs_to_proper(seconds: float) -> tuple[int, int, int, int, int]:
     """
     Convert seconds to proper time format.
 

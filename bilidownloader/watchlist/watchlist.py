@@ -1,5 +1,6 @@
+import builtins
 from pathlib import Path
-from typing import List, Literal, Optional, Tuple, Union
+from typing import Literal
 
 from bilidownloader.apis.api import BiliApi
 from bilidownloader.commons.alias import SERIES_ALIASES
@@ -16,11 +17,11 @@ class Watchlist:
     def __init__(
         self,
         path: Path = DEFAULT_WATCHLIST,
-        cookie_path: Optional[Path] = None,
+        cookie_path: Path | None = None,
         add_header: bool = True,
     ):
         self.repo = WatchlistRepository(path, add_header)
-        self.cookie: Optional[Path] = None
+        self.cookie: Path | None = None
         self.repo.ensure_file_exists()
 
         if cookie_path:
@@ -41,11 +42,11 @@ class Watchlist:
         self.repo.path = value
 
     @property
-    def list(self) -> List[Tuple[str, str]]:
+    def list(self) -> list[tuple[str, str]]:
         """Get the watchlist list"""
         return self.repo.list
 
-    def read_watchlist(self) -> List[Tuple[str, str]]:
+    def read_watchlist(self) -> builtins.list[tuple[str, str]]:
         """Reads the watchlist from the specified file path.
 
         Returns:
@@ -55,9 +56,9 @@ class Watchlist:
 
     def search_watchlist(
         self,
-        season_id: Optional[str] = None,
-        title: Optional[str] = None,
-    ) -> Optional[Tuple[str, str]]:
+        season_id: str | None = None,
+        title: str | None = None,
+    ) -> tuple[str, str] | None:
         """
         Searches for a show in the watchlist.
 
@@ -76,7 +77,7 @@ class Watchlist:
         return None
 
     def _remote_update(
-        self, season_id: Union[str, int], action: Literal["add", "del"]
+        self, season_id: str | int, action: Literal["add", "del"]
     ) -> None:
         """
         Update watchlist on Bilibili's server
@@ -107,7 +108,7 @@ class Watchlist:
             prn_error(f"Remote update failed: {e}")
             raise
 
-    def _prn_rw(self, action: str, season_id: Union[str, int], title: str) -> None:
+    def _prn_rw(self, action: str, season_id: str | int, title: str) -> None:
         """
         Prints the action to the console
 
@@ -123,15 +124,15 @@ class Watchlist:
         past_ = act[action][0]
         ft = act[action][1]
         prn_done(
-            f"{title} ({season_id}) has been {past_} {ft} watchlist on: {str(self.path)}"
+            f"{title} ({season_id}) has been {past_} {ft} watchlist on: {self.path!s}"
         )
 
     def add_watchlist(
         self,
-        season_id: Union[str, int],
+        season_id: str | int,
         title: str,
         remote_update: bool = False,
-    ) -> List[Tuple[str, str]]:
+    ) -> builtins.list[tuple[str, str]]:
         """
         Writes a season ID to the watchlist, raises an error if it already exists.
 
@@ -167,8 +168,8 @@ class Watchlist:
         return self.list
 
     def delete_from_watchlist(
-        self, season_id: Union[str, int], remote_update: bool = False
-    ) -> List[Tuple[str, str]]:
+        self, season_id: str | int, remote_update: bool = False
+    ) -> builtins.list[tuple[str, str]]:
         """
         Deletes a season ID from the watchlist. Raises an error if the season ID is not found.
 

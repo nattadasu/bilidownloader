@@ -1,7 +1,6 @@
 import os
 import shlex
 from pathlib import Path
-from typing import Optional
 
 from notifypy import Notify
 from rich.console import Console
@@ -126,7 +125,7 @@ def prn_cmd(command: list[str]) -> None:
         console.print(f"[reverse bright_black] CMD [/] [dim]{escape(cmd_str)}[/dim]")
 
 
-def push_notification(title: str, index: str, path: Optional[Path] = None) -> None:
+def push_notification(title: str, index: str, path: Path | None = None) -> None:
     """
     Send native notification for Windows, Linux, and macOS, exclusively used
     for episode download.

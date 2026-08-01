@@ -1,6 +1,6 @@
 from pathlib import Path
 from sys import exit
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 import typer
 from rich import box
@@ -174,7 +174,7 @@ def history_clear(
     yes: ASSUMEYES_OPT = False,
     file_path: HISTORY_OPT = DEFAULT_HISTORY,
     by_series: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--by-series",
             "-s",
@@ -182,7 +182,7 @@ def history_clear(
         ),
     ] = None,
     by_date: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--by-date",
             "-d",
@@ -190,7 +190,7 @@ def history_clear(
         ),
     ] = None,
     by_episode: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Option(
             "--by-episode",
             "-e",

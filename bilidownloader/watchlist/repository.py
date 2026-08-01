@@ -3,7 +3,6 @@ Watchlist data access layer - handles file I/O and basic CRUD operations
 """
 
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import DEFAULT_WATCHLIST
@@ -19,7 +18,7 @@ class WatchlistRepository:
 
     def __init__(self, path: Path = DEFAULT_WATCHLIST, add_header: bool = True):
         self.path = path
-        self.list: List[Tuple[str, str]] = []
+        self.list: list[tuple[str, str]] = []
         self.add_header = add_header
 
     def ensure_file_exists(self) -> None:
@@ -34,24 +33,24 @@ class WatchlistRepository:
             with open(self.path, "w", encoding="utf8") as file:
                 file.write(f"{HEAD}\n")
 
-    def _read_file_lines(self) -> List[str]:
+    def _read_file_lines(self) -> list[str]:
         """Read and return file lines"""
         with open(self.path, "r", encoding="utf8") as file:
             return file.read().splitlines()
 
-    def _write_file_lines(self, lines: List[str]) -> None:
+    def _write_file_lines(self, lines: list[str]) -> None:
         """Write lines to file"""
         with open(self.path, "w", encoding="utf8") as file:
             file.write("\n".join(lines) + "\n")
 
-    def has_header(self, lines: List[str]) -> bool:
+    def has_header(self, lines: list[str]) -> bool:
         """Check if the file has a header line"""
         if not lines:
             return False
         first_line = lines[0].strip().lower()
         return first_line in ("id\ttitle", "id\ttitle\n")
 
-    def is_old_format(self, lines: List[str]) -> bool:
+    def is_old_format(self, lines: list[str]) -> bool:
         """Check if the file is in old comma-separated format"""
         if not lines or self.has_header(lines):
             return False
@@ -61,7 +60,7 @@ class WatchlistRepository:
                 return True
         return False
 
-    def read(self) -> List[Tuple[str, str]]:
+    def read(self) -> list[tuple[str, str]]:
         """Read the watchlist from file"""
         self.list = []
 
@@ -84,7 +83,7 @@ class WatchlistRepository:
 
         return self.list
 
-    def _parse_entry(self, entry: str) -> Optional[Tuple[str, str]]:
+    def _parse_entry(self, entry: str) -> tuple[str, str] | None:
         """Parse a single watchlist entry"""
         if not entry.strip():
             return None
@@ -96,7 +95,7 @@ class WatchlistRepository:
 
         return None
 
-    def write(self, entries: List[Tuple[str, str]]) -> None:
+    def write(self, entries: list[tuple[str, str]]) -> None:
         """Write entries to file in TSV format"""
         lines = []
         if self.add_header:
@@ -106,7 +105,7 @@ class WatchlistRepository:
 
         self._write_file_lines(lines)
 
-    def add_entry(self, season_id: str, title: str) -> Tuple[str, str]:
+    def add_entry(self, season_id: str, title: str) -> tuple[str, str]:
         """Add a new entry to watchlist"""
         entry = (season_id, title.strip())
         self.list.append(entry)

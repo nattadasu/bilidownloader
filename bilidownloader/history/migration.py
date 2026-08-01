@@ -7,7 +7,6 @@ from html import unescape
 from re import search as rsearch
 from re import sub as rsub
 from time import sleep
-from typing import Dict, List
 
 from bilidownloader.cli.options import (
     BinaryPaths,
@@ -62,7 +61,7 @@ class HistoryMigrator:
             new_data = [HEAD] + data
             self.repository._write_file_lines(new_data)
 
-    def _convert_old_format_to_tsv(self, urls: List[str]) -> List[str]:
+    def _convert_old_format_to_tsv(self, urls: list[str]) -> list[str]:
         """Convert old URL-only format to TSV format with metadata"""
         from alive_progress import alive_bar
 
@@ -149,7 +148,7 @@ class HistoryMigrator:
 
         return new_data
 
-    def _extract_series_title(self, info: Dict, url: str, extractor) -> str:
+    def _extract_series_title(self, info: dict, url: str, extractor) -> str:
         """Extract series title from metadata"""
         series_title = info.get("series", None)
         if not series_title or series_title == "":
@@ -204,8 +203,8 @@ class HistoryMigrator:
 
     def _handle_failed_entries(
         self,
-        failed_entries: List[Dict],
-        new_data: List[str],
+        failed_entries: list[dict],
+        new_data: list[str],
         extractor,
         use_ytdlp: bool,
     ) -> None:
@@ -236,8 +235,8 @@ class HistoryMigrator:
 
     def _retry_failed_entries(
         self,
-        failed_entries: List[Dict],
-        new_data: List[str],
+        failed_entries: list[dict],
+        new_data: list[str],
         extractor,
         use_ytdlp: bool,
     ) -> None:
@@ -264,7 +263,7 @@ class HistoryMigrator:
                     prn_done(f"Successfully fetched: {series_title}")
                     sleep(0.5)
                 except Exception as e:
-                    prn_error(f"Retry failed: {str(e)}")
+                    prn_error(f"Retry failed: {e!s}")
                     sleep(0.5)
 
             if entry["series_id"] in SERIES_ALIASES:
@@ -279,7 +278,7 @@ class HistoryMigrator:
             )
 
     def _manually_update_entries(
-        self, failed_entries: List[Dict], new_data: List[str]
+        self, failed_entries: list[dict], new_data: list[str]
     ) -> None:
         """Manually update series titles for failed entries"""
         import survey
@@ -313,7 +312,7 @@ class HistoryMigrator:
 
     def _update_entry_in_data(
         self,
-        new_data: List[str],
+        new_data: list[str],
         series_id: str,
         episode_id: str,
         series_title: str,

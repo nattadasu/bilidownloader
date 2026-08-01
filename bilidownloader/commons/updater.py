@@ -2,7 +2,6 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from tomllib import loads as tloads
-from typing import Optional, Tuple
 
 import platformdirs
 import requests as req
@@ -21,7 +20,7 @@ CACHE_DURATION = timedelta(hours=12)
 console = Console()
 
 
-def _read_cache() -> Optional[Tuple[datetime, Version]]:
+def _read_cache() -> tuple[datetime, Version] | None:
     """Reads the version cache file."""
     if not VERSION_CACHE_FILE.exists():
         return None
@@ -92,7 +91,7 @@ def _is_pipxu_install() -> bool:
     return "pipxu" in str(venv_path)
 
 
-def _get_git_repo_url() -> Optional[str]:
+def _get_git_repo_url() -> str | None:
     """Get the git repository URL from package metadata."""
     from importlib.metadata import distribution
 

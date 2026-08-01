@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich import box
@@ -55,7 +55,7 @@ class DayOfWeek(str, Enum):
 def schedule(
     show_url: SHOWURL_OPT = False,
     day: Annotated[
-        Optional[DayOfWeek],
+        DayOfWeek | None,
         typer.Option(
             "--day",
             "-d",
@@ -66,7 +66,7 @@ def schedule(
         ),
     ] = None,
     proxy: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(
             "--proxy",
             "-p",
@@ -136,11 +136,7 @@ def schedule(
             time = tmat.group(0) if tmat else ""
             emat = epat.search(item.index_show)
             eps = emat.group(0) if emat else ""
-            title = (
-                SERIES_ALIASES[item.season_id]
-                if item.season_id in SERIES_ALIASES
-                else item.title
-            )
+            title = SERIES_ALIASES.get(item.season_id, item.title)
             ent = [time, item.season_id, title, eps]
             if show_url:
                 ent.append(

@@ -6,7 +6,6 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Dict, List, Optional, Tuple
 
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import DEFAULT_HISTORY
@@ -33,7 +32,7 @@ class HistoryRepository:
 
     def __init__(self, path: Path = DEFAULT_HISTORY):
         self.path = path
-        self.list: List[Tuple[int, str, str, str, str]] = []
+        self.list: list[tuple[int, str, str, str, str]] = []
 
     def ensure_file_exists(self) -> None:
         """Create the history file with header if it doesn't exist"""
@@ -46,31 +45,31 @@ class HistoryRepository:
         with open(self.path, "w", encoding="utf8") as file:
             file.write(f"{HEAD}\n")
 
-    def _read_file_lines(self) -> List[str]:
+    def _read_file_lines(self) -> list[str]:
         """Read and return file lines"""
         with open(self.path, "r", encoding="utf8") as file:
             return file.read().splitlines()
 
-    def _write_file_lines(self, lines: List[str]) -> None:
+    def _write_file_lines(self, lines: list[str]) -> None:
         """Write lines to file"""
         with open(self.path, "w", encoding="utf8") as file:
             file.write("\n".join(lines) + "\n")
 
-    def has_header(self, lines: List[str]) -> bool:
+    def has_header(self, lines: list[str]) -> bool:
         """Check if the file has a header line"""
         if not lines:
             return False
         first_line = lines[0].strip().lower()
         return first_line.startswith("timestamp")
 
-    def is_old_format(self, lines: List[str]) -> bool:
+    def is_old_format(self, lines: list[str]) -> bool:
         """Check if the file is in old URL-only format"""
         if not lines or self.has_header(lines):
             return False
         first_line = lines[0].strip()
         return bool(re.match(r"https?://", first_line))
 
-    def read(self) -> List[Tuple[int, str, str, str, str]]:
+    def read(self) -> list[tuple[int, str, str, str, str]]:
         """Read the history from file"""
         self.list = []
 
@@ -97,7 +96,7 @@ class HistoryRepository:
 
         return self.list
 
-    def _parse_entry(self, entry: str) -> Optional[Tuple[int, str, str, str, str]]:
+    def _parse_entry(self, entry: str) -> tuple[int, str, str, str, str] | None:
         """Parse a single history entry"""
         if not entry.strip():
             return None
@@ -127,7 +126,7 @@ class HistoryRepository:
 
         return None
 
-    def write(self, entries: List[Tuple[int, str, str, str, str]]) -> None:
+    def write(self, entries: list[tuple[int, str, str, str, str]]) -> None:
         """Write entries to file in TSV format"""
         lines = [HEAD]
         for timestamp, series_id, series_title, episode_idx, episode_id in entries:
@@ -142,8 +141,8 @@ class HistoryRepository:
         series_title: str,
         episode_id: str,
         episode_idx: str = "",
-        timestamp: Optional[int] = None,
-    ) -> Tuple[int, str, str, str, str]:
+        timestamp: int | None = None,
+    ) -> tuple[int, str, str, str, str]:
         """Add a new entry to history"""
         if timestamp is None:
             timestamp = int(time())
@@ -158,7 +157,7 @@ class HistoryRepository:
         """Merge entries from another history file into the current history."""
         source_repo = HistoryRepository(source_path)
         imported_entries = source_repo.read()
-        merged_entries: Dict[str, Tuple[int, str, str, str, str]] = {
+        merged_entries: dict[str, tuple[int, str, str, str, str]] = {
             entry[4]: entry for entry in self.list
         }
         added = 0
@@ -194,8 +193,8 @@ class HistoryRepository:
 
     @staticmethod
     def _should_replace_entry(
-        current: Tuple[int, str, str, str, str],
-        candidate: Tuple[int, str, str, str, str],
+        current: tuple[int, str, str, str, str],
+        candidate: tuple[int, str, str, str, str],
     ) -> bool:
         """Choose the better duplicate using timestamp as the primary tiebreaker."""
         current_timestamp = current[0]
@@ -210,9 +209,7 @@ class HistoryRepository:
 
         if not current[3] and candidate[3]:
             return True
-        if not current[2] and candidate[2]:
-            return True
-        return False
+        return bool(not current[2] and candidate[2])
 
     def check_exists(self, series_id: str, episode_id: str) -> bool:
         """Check if an episode exists in history"""
@@ -221,7 +218,7 @@ class HistoryRepository:
                 return True
         return False
 
-    def remove_entries(self, entries: List[Tuple[int, str, str, str, str]]) -> int:
+    def remove_entries(self, entries: list[tuple[int, str, str, str, str]]) -> int:
         """Remove specific entries from history"""
         original_count = len(self.list)
         self.list = [entry for entry in self.list if entry not in entries]

@@ -9,7 +9,7 @@ from pathlib import Path
 from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal
 
 from fake_useragent import UserAgent
 from yt_dlp import YoutubeDL as YDL
@@ -83,18 +83,18 @@ class VideoDownloader:
         resolution: int = 1080,
         is_avc: bool = False,
         download_pv: bool = False,
-        ffmpeg_path: Optional[Path] = None,
-        mkvmerge_path: Optional[Path] = None,
+        ffmpeg_path: Path | None = None,
+        mkvmerge_path: Path | None = None,
         notification: bool = False,
         srt: bool = False,
         dont_rescale: bool = False,
         dont_convert: bool = False,
         subtitle_lang: SubtitleLanguage = SubtitleLanguage.en,
         only_audio: bool = False,
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
         verbose: bool = False,
         skip_no_subtitle: bool = False,
-        proxy: Optional[str] = None,
+        proxy: str | None = None,
         mark_downloaded: bool = False,
     ):
         self.cookie = cookie
@@ -118,7 +118,7 @@ class VideoDownloader:
 
     @staticmethod
     def _get_download_description(
-        filename: str, info_dict: Optional[Dict[str, Any]] = None
+        filename: str, info_dict: dict[str, Any] | None = None
     ) -> str:
         """Generate a descriptive title for the download based on filename and metadata"""
         import re
@@ -183,7 +183,7 @@ class VideoDownloader:
         # Fallback to truncated filename
         return stem[:35]
 
-    def _progress_hook(self, d: Dict[str, Any]) -> None:
+    def _progress_hook(self, d: dict[str, Any]) -> None:
         """Progress hook for yt-dlp to display download status with alive-progress"""
         if d["status"] == "downloading":
             filename = d.get("filename", "")
@@ -265,7 +265,7 @@ class VideoDownloader:
 
     def get_video_info(
         self, episode_url: str, simulate: bool = True
-    ) -> Union[Any, Dict[str, Any], None]:
+    ) -> Any | dict[str, Any] | None:
         """Get video information from yt-dlp"""
         prn_dbg(f"Extracting video info from {episode_url} (simulate={simulate})")
         ydl_opts = {
@@ -295,7 +295,7 @@ class VideoDownloader:
             return ydl.extract_info(episode_url, download=False)
 
     @staticmethod
-    def get_episode_chapters(raw_info: Dict[str, Any]) -> List[Chapter]:
+    def get_episode_chapters(raw_info: dict[str, Any]) -> list[Chapter]:
         """Get chapters from video metadata"""
         try:
             return [Chapter(**chs) for chs in raw_info["chapters"]]
@@ -305,7 +305,7 @@ class VideoDownloader:
     def download_episode(
         self,
         episode_url: str,
-    ) -> Tuple[Path, Any, Optional[Literal["ind", "jpn", "chi", "tha"]]]:
+    ) -> tuple[Path, Any, Literal["ind", "jpn", "chi", "tha"] | None]:
         """Download episode from Bilibili with yt-dlp"""
         prn_info("Resolving some metadata information of the link, may take a while")
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent, proxy=self.proxy)
@@ -330,7 +330,7 @@ class VideoDownloader:
             title = sanitize_filename(SERIES_ALIASES[series_id])
 
         # Determine audio language
-        language: Optional[Literal["ind", "jpn", "chi", "tha"]] = None
+        language: Literal["ind", "jpn", "chi", "tha"] | None = None
         language = "chi" if "Chinese Mainland" in resp.text else language
         if language is None:
             language = "jpn" if "Japan" in resp.text else language
@@ -393,9 +393,7 @@ class VideoDownloader:
             "outtmpl": {
                 "default": str(
                     self.output_dir
-                    / "[%(extractor)s] {inp} - E%(episode_number)s [%(resolution)s, {codec}].%(ext)s".format(
-                        inp=title, codec=hcodec
-                    )
+                    / f"[%(extractor)s] {title} - E%(episode_number)s [%(resolution)s, {hcodec}].%(ext)s"
                 )
             },
             "postprocessors": [],
@@ -504,11 +502,7 @@ class VideoDownloader:
                         prn_info(f"  Audio: {acodec}")
 
             ydl.params["outtmpl"]["default"] = (  # type: ignore
-                "[%(extractor)s] {inp} - {ep} [%(resolution)s, {codec}].%(ext)s".format(  # type: ignore
-                    inp=title,
-                    ep=ep_num,
-                    codec=hcodec,
-                )
+                f"[%(extractor)s] {title} - {ep_num} [%(resolution)s, {hcodec}].%(ext)s"
             )
             final_path = ydl.prepare_filename(metadata)
             ydl.params["quiet"] = not self.verbose

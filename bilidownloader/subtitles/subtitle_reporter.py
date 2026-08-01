@@ -3,7 +3,7 @@ Subtitle reporter - displays found subtitles during download
 """
 
 from io import StringIO
-from typing import Any, Dict, List
+from typing import Any
 
 from rich.console import Console
 from rich.table import Table, box
@@ -22,7 +22,7 @@ class SubtitleReporter(PostProcessor):
         super().__init__(downloader)
         self._reported = False
 
-    def run(self, info: Dict[str, Any]) -> tuple[List[str], Dict[str, Any]]:
+    def run(self, info: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
         """Report subtitles if available"""
         if self._reported:
             return [], info
@@ -54,7 +54,7 @@ class SubtitleReporter(PostProcessor):
             sub_list = subtitles[lang_code]
 
             # Get available formats
-            formats: List[str] = []
+            formats: list[str] = []
             if isinstance(sub_list, list):
                 formats = [sub.get("ext", "unknown") for sub in sub_list]
             formats_str = ", ".join(sorted(set(formats))) if formats else "unknown"

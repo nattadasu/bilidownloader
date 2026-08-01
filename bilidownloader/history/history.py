@@ -1,7 +1,7 @@
+import builtins
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from thefuzz import fuzz
 
@@ -46,15 +46,17 @@ class History:
         self.repo.path = value
 
     @property
-    def list(self) -> List[Tuple[int, str, str, str, str]]:
+    def list(self) -> list[tuple[int, str, str, str, str]]:
         """Get the history list"""
         return self.repo.list
 
-    def read_history(self) -> List[Tuple[int, str, str, str, str]]:
+    def read_history(self) -> builtins.list[tuple[int, str, str, str, str]]:
         """Read the history from the file"""
         return self.repo.read()
 
-    def check_history(self, episode_url: str) -> List[Tuple[int, str, str, str, str]]:
+    def check_history(
+        self, episode_url: str
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Check if the episode was in the history
 
@@ -85,11 +87,11 @@ class History:
     def write_history(
         self,
         episode_url: str,
-        series_id: Optional[str] = None,
-        series_title: Optional[str] = None,
-        episode_idx: Optional[str] = None,
-        episode_id: Optional[str] = None,
-    ) -> List[Tuple[int, str, str, str, str]]:
+        series_id: str | None = None,
+        series_title: str | None = None,
+        episode_idx: str | None = None,
+        episode_id: str | None = None,
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Write an episode to the history with metadata
 
@@ -145,11 +147,11 @@ class History:
 
     def search_history(
         self,
-        series_id: Optional[str] = None,
-        series_title: Optional[str] = None,
-        episode_id: Optional[str] = None,
+        series_id: str | None = None,
+        series_title: str | None = None,
+        episode_id: str | None = None,
         fuzzy_threshold: int = 70,
-    ) -> List[Tuple[int, str, str, str, str]]:
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Search history by series ID, title, or episode ID.
 
@@ -187,7 +189,7 @@ class History:
         series_id_or_title: str,
         interactive: bool = False,
         fuzzy_threshold: int = 70,
-    ) -> List[Tuple[int, str, str, str, str]]:
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Purge history entries by series ID or title (with fuzzy matching)
 
@@ -226,8 +228,8 @@ class History:
         return self.list
 
     def purge_by_episode_id(
-        self, episode_ids: List[str]
-    ) -> List[Tuple[int, str, str, str, str]]:
+        self, episode_ids: builtins.list[str]
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Purge history entries by episode ID(s)
 
@@ -252,8 +254,8 @@ class History:
         return self.list
 
     def purge_by_date(
-        self, date_input: Union[int, str]
-    ) -> List[Tuple[int, str, str, str, str]]:
+        self, date_input: int | str
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Purge entries older than specified date
 
@@ -290,7 +292,9 @@ class History:
 
         return self.list
 
-    def purge_all(self, confirm: bool = True) -> List[Tuple[int, str, str, str, str]]:
+    def purge_all(
+        self, confirm: bool = True
+    ) -> builtins.list[tuple[int, str, str, str, str]]:
         """
         Clear entire history
 
@@ -332,7 +336,7 @@ class History:
 
     def get_statistics(
         self,
-    ) -> Dict[str, Union[int, str, float, List[Tuple[str, int]]]]:
+    ) -> dict[str, int | str | float | builtins.list[tuple[str, int]]]:
         """Get statistics about the history.
 
         Returns:
@@ -353,11 +357,11 @@ class History:
                 "most_active_day_count": 0,
             }
 
-        unique_series = set(s_id for _, s_id, _, _, _ in self.list)
+        unique_series = {s_id for _, s_id, _, _, _ in self.list}
         timestamps = [ts for ts, _, _, _, _ in self.list if ts > 0]
 
         # Series download counts
-        series_counts: Dict[str, Tuple[str, int]] = {}
+        series_counts: dict[str, tuple[str, int]] = {}
         for _, series_id, series_title, _, _ in self.list:
             if series_id not in series_counts:
                 series_counts[series_id] = (series_title, 0)
@@ -372,7 +376,7 @@ class History:
         )[:5]
 
         # Count downloads by day
-        day_counts: Dict[str, int] = {}
+        day_counts: dict[str, int] = {}
         for ts in timestamps:
             day = datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
             day_counts[day] = day_counts.get(day, 0) + 1

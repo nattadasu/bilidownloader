@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 import pysubs2
 from yt_dlp.postprocessor import PostProcessor
@@ -26,7 +26,7 @@ def extract_lang_code(file_path: Path) -> str:
 
 def apply_language_processing(
     subs, lang_code: str, pp: PostProcessor
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """Apply clausal splitting and line merging to subtitles based on language."""
     merged_count = 0
     split_count = 0
@@ -66,7 +66,7 @@ class SRTToASSConverter(PostProcessor):
 
     def _convert_srt_file(
         self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080
-    ) -> Tuple[Path, int]:
+    ) -> tuple[Path, int]:
         if not srt_path.exists():
             self.report_error(f"SRT file not found: {srt_path}")
             return None, 0
@@ -127,7 +127,7 @@ class SRTToASSConverter(PostProcessor):
             self.report_error(f"Failed to convert {srt_path}: {e}")
             return None, 0
 
-    def run(self, info: Dict) -> Tuple[List, Dict]:
+    def run(self, info: dict) -> tuple[list, dict]:
         self.to_screen("Converting SRT subtitles to ASS format")
         file_paths = info.get("__files_to_move", {})
         if not file_paths:
@@ -155,7 +155,7 @@ class SRTToASSConverter(PostProcessor):
                 )
 
                 # Update requested_subtitles so yt-dlp's downstream embedder knows about the converted file
-                for sub_lang, sub_info in requested_subtitles.items():
+                for sub_info in requested_subtitles.values():
                     if sub_info.get("filepath") == current_path:
                         sub_info["filepath"] = new_ass_path_str
                         sub_info["ext"] = "ass"
@@ -181,7 +181,7 @@ class SSARescaler(PostProcessor):
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
     def _process_events(
-        self, subs, all_fonts_found: Set[str], used_styles: Set[str]
+        self, subs, all_fonts_found: set[str], used_styles: set[str]
     ) -> None:
         for event in subs.events:
             if not event.text:
@@ -198,7 +198,7 @@ class SSARescaler(PostProcessor):
                     all_fonts_found.add(f"{style.fontname}::Bold")
 
     def _collect_fonts_from_styles(
-        self, subs, all_fonts_found: Set[str], used_styles: Set[str]
+        self, subs, all_fonts_found: set[str], used_styles: set[str]
     ) -> None:
         for style_name, style in subs.styles.items():
             if style_name in used_styles:
@@ -206,7 +206,7 @@ class SSARescaler(PostProcessor):
                 if style.bold:
                     all_fonts_found.add(f"{style.fontname}::Bold")
 
-    def _rescale_styles(self, subs, used_styles: Set[str]) -> int:
+    def _rescale_styles(self, subs, used_styles: set[str]) -> int:
         styles_to_keep = {
             name: style for name, style in subs.styles.items() if name in used_styles
         }
@@ -229,16 +229,16 @@ class SSARescaler(PostProcessor):
 
         return rescaled_count
 
-    def run(self, info: Dict[str, Any]) -> Tuple[List[Any], Dict[str, Any]]:
+    def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen("Rescaling ASS/SSA subtitles (fontsize, border, shadow) by 0.8x")
         file_paths = info.get("__files_to_move", {})
         if not file_paths:
             self.write_debug("No subtitle files found in metadata")
             return [], info
 
-        all_fonts_found: Set[str] = set()
+        all_fonts_found: set[str] = set()
 
-        for _, sub_file in file_paths.items():
+        for sub_file in file_paths.values():
             if not sub_file.endswith(".ass"):
                 continue
 
@@ -258,7 +258,7 @@ class SSARescaler(PostProcessor):
             # Apply language line-splitting & merging
             merged_count, split_count = apply_language_processing(subs, lang_code, self)
 
-            used_styles: Set[str] = set()
+            used_styles: set[str] = set()
             self._process_events(subs, all_fonts_found, used_styles)
             self._collect_fonts_from_styles(subs, all_fonts_found, used_styles)
 
@@ -295,7 +295,7 @@ class SSARescaler(PostProcessor):
                         all_fonts_found = set(all_fonts_found) | set(existing_fonts)
 
                 with open(fonts_json_path, "w", encoding="utf-8") as f:
-                    json.dump(sorted(list(all_fonts_found)), f, indent=2)
+                    json.dump(sorted(all_fonts_found), f, indent=2)
                 self.write_debug(f"Font list saved to {fonts_json_path}")
                 prn_info(f"Collected {len(all_fonts_found)} fonts")
                 for font in sorted(all_fonts_found):
@@ -313,7 +313,7 @@ class SRTGapFiller(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
-    def _process_srt_file(self, srt_path: Path) -> Tuple[bool, int]:
+    def _process_srt_file(self, srt_path: Path) -> tuple[bool, int]:
         if not srt_path.exists():
             self.report_error(f"SRT file not found: {srt_path}")
             return False, 0
@@ -348,7 +348,7 @@ class SRTGapFiller(PostProcessor):
             self.report_error(f"Failed to process {srt_path}: {e}")
             return False, 0
 
-    def run(self, info: Dict) -> Tuple[List, Dict]:
+    def run(self, info: dict) -> tuple[list, dict]:
         self.to_screen("Filling flicker gaps (4 frames @24fps ~167ms) in SRT subtitles")
         file_paths = info.get("__files_to_move", {})
         if not file_paths:
@@ -358,7 +358,7 @@ class SRTGapFiller(PostProcessor):
         processed_count = 0
         total_gaps_filled = 0
 
-        for original_path, current_path in file_paths.items():
+        for current_path in file_paths.values():
             current_file = Path(current_path)
             if current_file.suffix.lower() != ".srt":
                 continue

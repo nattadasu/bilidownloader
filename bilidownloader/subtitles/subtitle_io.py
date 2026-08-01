@@ -6,7 +6,6 @@ subtitle files in various formats (SRT, ASS, SSA, etc.).
 
 import re
 from pathlib import Path
-from typing import Optional
 
 import pysubs2
 from pysubs2 import SSAFile, SSAStyle
@@ -171,10 +170,10 @@ class SubtitleIO:
     @staticmethod
     def apply_style(
         subs: SSAFile,
-        style: Optional[SSAStyle] = None,
+        style: SSAStyle | None = None,
         is_thai: bool = False,
-        lang_code: Optional[str] = None,
-        style_name: Optional[str] = None,
+        lang_code: str | None = None,
+        style_name: str | None = None,
     ) -> None:
         """Apply or update style in subtitle file.
 

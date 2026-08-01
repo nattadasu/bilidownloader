@@ -1,7 +1,7 @@
+import sys
 import traceback
 from pathlib import Path
 from re import search as rsearch
-from typing import List, Optional, Union
 
 from bilidownloader.apis.api import BiliApi
 from bilidownloader.cli.options import (
@@ -109,10 +109,10 @@ class BiliProcess:
             "Please try again later, change your IP address, or make sure you "
             "are not currently watching on another device"
         )
-        exit(1)
+        sys.exit(1)
 
     @staticmethod
-    def ep_url(season_id: Union[int, str], episode_id: Union[int, str]) -> str:
+    def ep_url(season_id: int | str, episode_id: int | str) -> str:
         """Convert known IDs into proper, English episode URL"""
         return f"https://www.bilibili.tv/en/play/{season_id}/{episode_id}"
 
@@ -120,7 +120,7 @@ class BiliProcess:
         """Delegate to VideoDownloader"""
         return self.downloader.get_video_info(episode_url)
 
-    def process_episode(self, episode_url: str, forced: bool = False) -> Optional[Path]:
+    def process_episode(self, episode_url: str, forced: bool = False) -> Path | None:
         """Process episode from Bilibili"""
         clock = BenchClock()
         tries = 0
@@ -192,7 +192,7 @@ class BiliProcess:
                 # Prepare metadata arguments
                 aud_args = self.metadata_editor.add_audio_language(final, language)
 
-                font_args: List[str] = []
+                font_args: list[str] = []
                 if (not self.srt) and (not self.dont_convert):
                     font_json = Path("fonts.json")
                     if font_json.exists():
@@ -266,14 +266,14 @@ class BiliProcess:
             except (KeyboardInterrupt, SystemExit):
                 print()
                 prn_error("Interrupt signal received, stopping process")
-                exit(1)
+                sys.exit(1)
             except Exception:
                 prn_error("An exception has been thrown:")
                 prn_error(traceback.format_exc())
                 prn_info("Retrying...")
                 tries += 1
 
-    def process_playlist(self, playlist_url: str, forced: bool = False) -> List[Path]:
+    def process_playlist(self, playlist_url: str, forced: bool = False) -> list[Path]:
         """Process playlist from Bilibili"""
         clock = BenchClock()
         try:
@@ -285,7 +285,7 @@ class BiliProcess:
         if data is None:
             raise ValueError(f"We cannot process {playlist_url} at the moment!")
 
-        final: List[Optional[Path]] = []
+        final: list[Path | None] = []
         total = len(data["entries"])
         for entry in data["entries"]:
             prn_info(f"Processing {len(final) + 1}/{total}")
@@ -302,9 +302,9 @@ class BiliProcess:
         clock.echo_format(f"Downloaded {pluralize(flen, 'episode')} from playlist")
         return nnfinal
 
-    def process_watchlist(self, forced: bool = False) -> List[Path]:
+    def process_watchlist(self, forced: bool = False) -> list[Path]:
         """Process watchlist from Bilibili"""
-        final: List[Path] = []
+        final: list[Path] = []
         wl = Watchlist(self.watchlist)
         api = BiliApi(proxy=self.proxy)
         clock = BenchClock()
