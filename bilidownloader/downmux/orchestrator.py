@@ -13,6 +13,7 @@ from bilidownloader.cli.options import (
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import (
     DEFAULT_WATCHLIST,
+    bili_format,
 )
 from bilidownloader.commons.ui import (
     prn_error,
@@ -344,3 +345,16 @@ class BiliProcess:
             f"Downloaded {pluralize(flen, 'episode')} from watchlist queue"
         )
         return nnfinal
+
+    def download(self, url: str, forced: bool = False) -> Path | list[Path] | None:
+        """Auto-detects URL type (episode/playlist) and downloads it."""
+        matches = rsearch(bili_format, url)
+        if not matches:
+            raise ValueError("Link is not a valid Bilibili.tv URL")
+
+        if matches.group("episode_id"):
+            prn_info("URL is an episode")
+            return self.process_episode(url, forced)
+        else:
+            prn_info("URL is a playlist")
+            return self.process_playlist(url, forced)

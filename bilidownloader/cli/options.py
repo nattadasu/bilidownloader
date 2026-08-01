@@ -14,8 +14,6 @@ from bilidownloader.commons.constants import (
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.utils import SubtitleLanguage
 
-bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
-
 
 class HistorySortBy(str, Enum):
     """Sort options for history list and query commands"""

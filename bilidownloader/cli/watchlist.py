@@ -29,9 +29,12 @@ from bilidownloader.cli.options import (
     DownloadOptions,
     FileConfig,
     PostProcessingOptions,
+)
+from bilidownloader.commons.constants import (
+    DEFAULT_COOKIES,
+    DEFAULT_WATCHLIST,
     bili_format,
 )
-from bilidownloader.commons.constants import DEFAULT_COOKIES, DEFAULT_WATCHLIST
 from bilidownloader.commons.ui import prn_error, prn_info
 from bilidownloader.downmux.orchestrator import BiliProcess
 from bilidownloader.watchlist.watchlist import Watchlist

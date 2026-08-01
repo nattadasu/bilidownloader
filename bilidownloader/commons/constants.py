@@ -10,6 +10,8 @@ DEFAULT_HISTORY = BASE_DIR / "history.v2.tsv"
 DEFAULT_WATCHLIST = BASE_DIR / "watchlist.txt"
 REINSTALL_ARGS = 'pipx install "bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownloader.git"'
 
+bili_format = r"https:\/\/(?:www\.)?bilibili\.tv\/(?:[a-z]{2}\/)?(?:play|media)\/(?P<media_id>\d+)(?:\/(?P<episode_id>\d+))?"
+
 
 class VideoResolution(str, Enum):
     """Available resolutions on Bstation, 4K was skipped"""
