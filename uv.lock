@@ -48,7 +48,7 @@ wheels = [
 
 [[package]]
 name = "bilidownloader"
-version = "5.2.3"
+version = "5.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "alive-progress" },
