@@ -89,6 +89,7 @@ class VideoDownloader:
         srt: bool = False,
         dont_rescale: bool = False,
         dont_convert: bool = False,
+        no_mods: bool = False,
         subtitle_lang: SubtitleLanguage = SubtitleLanguage.en,
         only_audio: bool = False,
         output_dir: Path | None = None,
@@ -107,6 +108,7 @@ class VideoDownloader:
         self.srt = srt
         self.dont_rescale = dont_rescale
         self.dont_convert = dont_convert
+        self.no_mods = no_mods
         self.subtitle_lang = subtitle_lang
         self.only_audio = only_audio
         self.output_dir = output_dir or Path.cwd()
@@ -527,7 +529,8 @@ class VideoDownloader:
                 from bilidownloader.subtitles.post_processors import SSARescaler
 
                 ydl.add_post_processor(
-                    SSARescaler(is_chinese=is_chinese), when="before_dl"
+                    SSARescaler(is_chinese=is_chinese, no_mods=self.no_mods),
+                    when="before_dl",
                 )
 
             # Add SRT to ASS converter if needed
@@ -535,7 +538,8 @@ class VideoDownloader:
                 from bilidownloader.subtitles.post_processors import SRTToASSConverter
 
                 ydl.add_post_processor(
-                    SRTToASSConverter(is_chinese=is_chinese), when="before_dl"
+                    SRTToASSConverter(is_chinese=is_chinese, no_mods=self.no_mods),
+                    when="before_dl",
                 )
 
             # Add SRT gap filler for direct SRT subtitles
@@ -543,7 +547,8 @@ class VideoDownloader:
                 from bilidownloader.subtitles.post_processors import SRTGapFiller
 
                 ydl.add_post_processor(
-                    SRTGapFiller(is_chinese=is_chinese), when="before_dl"
+                    SRTGapFiller(is_chinese=is_chinese, no_mods=self.no_mods),
+                    when="before_dl",
                 )
 
             if self.mark_downloaded:

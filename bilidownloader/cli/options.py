@@ -362,6 +362,21 @@ class DownloadOptions:
     mark_downloaded: MARK_DOWNLOADED_OPT = False
 
 
+NO_MODS_OPT = Annotated[
+    bool,
+    typer.Option(
+        "--no-mods",
+        "-M",
+        help=(
+            "Disable all opinionated subtitle post-processing modifications "
+            "(e.g., clausal splitting and line merging). Affects English "
+            "and Arabic subtitles by default."
+        ),
+        rich_help_panel="Post-Processing",
+    ),
+]
+
+
 @dataclass
 class PostProcessingOptions:
     """Post-processing options dependency"""
@@ -372,3 +387,4 @@ class PostProcessingOptions:
     no_thumbnail: DO_NOT_ATTACH_THUMBNAIL_OPT = False
     no_convert: DO_NOT_CONVERT_SRT_OPT = False
     audio_only: AUDIO_OPT = False
+    no_mods: NO_MODS_OPT = False

@@ -31,10 +31,12 @@ def apply_language_processing(
     merged_count = 0
     split_count = 0
 
-    if lang_code == "ar":
+    no_mods = getattr(pp, "no_mods", False)
+
+    if lang_code == "ar" and not no_mods:
         for event in subs.events:
             event.text = ArabicProcessor.process_arabic_subtitle(event.text)
-    elif lang_code == "en" or lang_code.startswith("en-"):
+    elif (lang_code == "en" or lang_code.startswith("en-")) and not no_mods:
         orig_count = len(subs.events)
         subs.events = EnglishProcessor.merge_continuation_lines(subs.events)
         merged_count = orig_count - len(subs.events)
@@ -60,9 +62,12 @@ def apply_language_processing(
 class SRTToASSConverter(PostProcessor):
     """A yt-dlp post-processor for converting SRT subtitles to ASS format."""
 
-    def __init__(self, *args, is_chinese: bool = False, **kwargs):
+    def __init__(
+        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
+        self.no_mods = no_mods
 
     def _convert_srt_file(
         self, srt_path: Path, play_res_x: int = 1920, play_res_y: int = 1080
@@ -176,9 +181,12 @@ class SSARescaler(PostProcessor):
 
     SIZE_MODIFIER = 0.8
 
-    def __init__(self, *args, is_chinese: bool = False, **kwargs):
+    def __init__(
+        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
+        self.no_mods = no_mods
 
     def _process_events(
         self, subs, all_fonts_found: set[str], used_styles: set[str]
@@ -309,9 +317,12 @@ class SSARescaler(PostProcessor):
 class SRTGapFiller(PostProcessor):
     """A yt-dlp post-processor for filling flicker gaps in SRT subtitles."""
 
-    def __init__(self, *args, is_chinese: bool = False, **kwargs):
+    def __init__(
+        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
+        self.no_mods = no_mods
 
     def _process_srt_file(self, srt_path: Path) -> tuple[bool, int]:
         if not srt_path.exists():

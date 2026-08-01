@@ -78,6 +78,7 @@ class BiliProcess:
             srt=download_options.srtonly,
             dont_rescale=post_processing_options.no_rescale,
             dont_convert=post_processing_options.no_convert,
+            no_mods=post_processing_options.no_mods,
             subtitle_lang=post_processing_options.sub_lang or SubtitleLanguage.en,
             only_audio=post_processing_options.audio_only,
             output_dir=file_config.output_dir,
