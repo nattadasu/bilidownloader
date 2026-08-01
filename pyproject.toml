@@ -9,7 +9,7 @@ authors = [
 ]
 version = "5.3.0"
 description = "Assist you in ripping episode from BiliIntl"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.15"
 license = { text = "GPL-3.0-or-later" }
 classifiers = [
 	"Topic :: Multipedia :: Video"
