@@ -1,5 +1,5 @@
+import importlib
 
-from . import apis, cli, commons, downmux, history, subtitles, watchlist
 __all__ = [
     "apis",
     "cli",
@@ -10,3 +10,12 @@ __all__ = [
     "subtitles",
     "watchlist",
 ]
+
+
+def __getattr__(name: str):
+    if name in __all__:
+        if name == "download":
+            mod = importlib.import_module(".downmux.orchestrator", __name__)
+            return mod.download
+        return importlib.import_module(f".{name}", __name__)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

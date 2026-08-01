@@ -12,7 +12,10 @@ from bilidownloader.cli.options import (
 )
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.constants import (
+    DEFAULT_COOKIES,
+    DEFAULT_HISTORY,
     DEFAULT_WATCHLIST,
+    VideoResolution,
     bili_format,
 )
 from bilidownloader.commons.ui import (
@@ -358,3 +361,75 @@ class BiliProcess:
         else:
             prn_info("URL is a playlist")
             return self.process_playlist(url, forced)
+
+
+def download(
+    url: str,
+    output_dir: Path | str | None = None,
+    resolution: str = "1080",
+    is_avc: bool = False,
+    forced: bool = False,
+    verbose: bool = False,
+    skip_no_subtitle: bool = False,
+    proxy: str | None = None,
+    no_thumbnail: bool = True,
+    no_mods: bool = True,
+    notification: bool = False,
+    cookie_path: Path | str | None = None,
+    history_path: Path | str | None = None,
+    ffmpeg_path: Path | str | None = None,
+    mkvpropedit_path: Path | str | None = None,
+    mkvmerge_path: Path | str | None = None,
+) -> Path | list[Path] | None:
+    """Downloads an episode or playlist from Bilibili using resolved configs."""
+    from bilidownloader.cli.options import (
+        BinaryPaths,
+        DownloadOptions,
+        FileConfig,
+        PostProcessingOptions,
+    )
+
+    try:
+        reso = VideoResolution(resolution)
+    except ValueError:
+        reso = VideoResolution.P1080
+
+    file_config = FileConfig(
+        cookie=Path(cookie_path) if cookie_path is not None else DEFAULT_COOKIES,
+        history_file=Path(history_path)
+        if history_path is not None
+        else DEFAULT_HISTORY,
+        output_dir=Path(output_dir) if output_dir is not None else None,
+    )
+    file_config.__post_init__()
+
+    download_options = DownloadOptions(
+        resolution=reso,
+        is_avc=is_avc,
+        forced=forced,
+        verbose=verbose,
+        skip_no_subtitle=skip_no_subtitle,
+        proxy=proxy,
+    )
+
+    post_processing_options = PostProcessingOptions(
+        no_thumbnail=no_thumbnail,
+        no_mods=no_mods,
+        notification=notification,
+    )
+
+    binary_paths = BinaryPaths()
+    if ffmpeg_path is not None:
+        binary_paths.ffmpeg_path = Path(ffmpeg_path)
+    if mkvpropedit_path is not None:
+        binary_paths.mkvpropedit_path = Path(mkvpropedit_path)
+    if mkvmerge_path is not None:
+        binary_paths.mkvmerge_path = Path(mkvmerge_path)
+
+    bili = BiliProcess(
+        file_config=file_config,
+        download_options=download_options,
+        post_processing_options=post_processing_options,
+        binary_paths=binary_paths,
+    )
+    return bili.download(url, forced=forced)

@@ -8,7 +8,6 @@ from thefuzz import fuzz
 from bilidownloader.commons.constants import DEFAULT_HISTORY
 from bilidownloader.commons.ui import prn_dbg, prn_done, prn_info
 from bilidownloader.commons.utils import DataExistError
-from bilidownloader.history.migration import HistoryMigrator
 from bilidownloader.history.repository import HistoryImportResult, HistoryRepository
 
 
@@ -16,6 +15,8 @@ class History:
     """Main interface for history management"""
 
     def __init__(self, path: Path = DEFAULT_HISTORY):
+        from bilidownloader.history.migration import HistoryMigrator
+
         self.repo = HistoryRepository(path)
         self.repo.ensure_file_exists()
 

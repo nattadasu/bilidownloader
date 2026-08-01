@@ -1,7 +1,5 @@
-from . import history, migration, repository
+from .history import History
 
 __all__ = [
-    "history",
-    "migration",
-    "repository",
+    "History",
 ]

@@ -6,21 +6,37 @@ grammatical cues, syntactic Part-of-Speech tagging, and length constraints.
 
 import re
 
-# Silent initialization of NLTK datasets on first import
-USE_NLTK = False
-try:
-    import nltk
+# Globals for lazy-loaded NLTK
+_NLTK_INITIALIZED = False
+_NLTK_AVAILABLE = False
+_nltk_module = None
+
+
+def ensure_nltk() -> bool:
+    """Lazily import and initialize NLTK on first use."""
+    global _NLTK_INITIALIZED, _NLTK_AVAILABLE, _nltk_module
+    if _NLTK_INITIALIZED:
+        return _NLTK_AVAILABLE
 
     try:
-        nltk.data.find("taggers/averaged_perceptron_tagger_eng")
-        nltk.data.find("tokenizers/punkt_tab")
-    except LookupError:
-        # Download silently to keep CLI output clean
-        nltk.download("averaged_perceptron_tagger_eng", quiet=True)
-        nltk.download("punkt_tab", quiet=True)
-    USE_NLTK = True
-except Exception:
-    USE_NLTK = False
+        import nltk as imported_nltk
+
+        _nltk_module = imported_nltk
+
+        try:
+            _nltk_module.data.find("taggers/averaged_perceptron_tagger_eng")
+            _nltk_module.data.find("tokenizers/punkt_tab")
+        except LookupError:
+            # Download silently to keep CLI output clean
+            _nltk_module.download("averaged_perceptron_tagger_eng", quiet=True)
+            _nltk_module.download("punkt_tab", quiet=True)
+        _NLTK_AVAILABLE = True
+    except Exception:
+        _NLTK_AVAILABLE = False
+
+    _NLTK_INITIALIZED = True
+    return _NLTK_AVAILABLE
+
 
 # fmt: off
 # Grammatically correct words that are excellent points for a line break.
@@ -75,11 +91,11 @@ FALLBACK_VERBS = {
 
 def get_word_tags(text: str) -> dict:
     """Tokenize and tag text with NLTK POS tags."""
-    if not USE_NLTK:
+    if not ensure_nltk():
         return {}
     try:
-        tokens = nltk.word_tokenize(text)
-        return {word.lower(): tag for word, tag in nltk.pos_tag(tokens)}
+        tokens = _nltk_module.word_tokenize(text)
+        return {word.lower(): tag for word, tag in _nltk_module.pos_tag(tokens)}
     except Exception:
         return {}
 

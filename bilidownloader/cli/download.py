@@ -14,7 +14,7 @@ from bilidownloader.cli.options import (
     FileConfig,
     PostProcessingOptions,
 )
-from bilidownloader.downmux.orchestrator import BiliProcess
+from bilidownloader.downmux.orchestrator import download
 
 
 @app.command(
@@ -45,10 +45,23 @@ def download_url(
     raise_mkvmerge(bins.mkvmerge_path)
     raise_cookie(files.cookie)
 
-    bili = BiliProcess(
-        file_config=files,
-        download_options=dl_opts,
-        post_processing_options=pp_opts,
-        binary_paths=bins,
+    download(
+        url=url,
+        output_dir=files.output_dir,
+        resolution=str(dl_opts.resolution.value)
+        if hasattr(dl_opts.resolution, "value")
+        else str(dl_opts.resolution),
+        is_avc=dl_opts.is_avc,
+        forced=dl_opts.forced,
+        verbose=dl_opts.verbose,
+        skip_no_subtitle=dl_opts.skip_no_subtitle,
+        proxy=dl_opts.proxy,
+        no_thumbnail=pp_opts.no_thumbnail,
+        no_mods=pp_opts.no_mods,
+        notification=pp_opts.notification,
+        cookie_path=files.cookie,
+        history_path=files.history_file,
+        ffmpeg_path=bins.ffmpeg_path,
+        mkvpropedit_path=bins.mkvpropedit_path,
+        mkvmerge_path=bins.mkvmerge_path,
     )
-    bili.download(url, dl_opts.forced)

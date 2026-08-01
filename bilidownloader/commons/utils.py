@@ -3,7 +3,6 @@ from enum import Enum
 from importlib.util import find_spec
 from time import time
 
-from langcodes import Language as Lang
 from pydantic import BaseModel
 
 from bilidownloader.commons.ui import prn_done
@@ -221,6 +220,8 @@ class BenchClock:
 
 def langcode_to_str(langcode: str) -> str:
     """Convert language codes into readable"""
+    from langcodes import Language as Lang
+
     get_lang = Lang.get(langcode)
     english = get_lang.display_name("en")
     native = get_lang.display_name(langcode)
