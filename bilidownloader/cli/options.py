@@ -1,5 +1,5 @@
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -331,7 +331,7 @@ class FileConfig:
     cookie: COOKIE_OPT = DEFAULT_COOKIES
     history_file: HISTORY_OPT = DEFAULT_HISTORY
     output_dir: Annotated[
-        Path,
+        Path | None,
         typer.Option(
             "--output-dir",
             "--output",
@@ -340,7 +340,11 @@ class FileConfig:
             rich_help_panel="Data Management",
             resolve_path=True,
         ),
-    ] = field(default_factory=Path.cwd)
+    ] = None
+
+    def __post_init__(self) -> None:
+        if self.output_dir is None:
+            self.output_dir = Path.cwd()
 
 
 @dataclass
