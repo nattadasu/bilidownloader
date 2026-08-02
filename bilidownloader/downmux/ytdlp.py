@@ -524,15 +524,6 @@ class VideoDownloader:
 
             is_chinese = language == "chi"
 
-            # Add ASS rescaler if conditions are met
-            if not self.srt and not self.only_audio and not self.dont_rescale:
-                from bilidownloader.subtitles.post_processors import SSARescaler
-
-                ydl.add_post_processor(
-                    SSARescaler(is_chinese=is_chinese, no_mods=self.no_mods),
-                    when="before_dl",
-                )
-
             # Add SRT to ASS converter if needed
             if not self.srt and not self.only_audio and not self.dont_convert:
                 from bilidownloader.subtitles.post_processors import SRTToASSConverter
@@ -542,12 +533,57 @@ class VideoDownloader:
                     when="before_dl",
                 )
 
+            # Add ASS modifier for language processing and metadata updates
+            if not self.srt and not self.only_audio:
+                from bilidownloader.subtitles.post_processors import ASSModifier
+
+                ydl.add_post_processor(
+                    ASSModifier(no_mods=self.no_mods),
+                    when="before_dl",
+                )
+
+            # Add ASS gap filler for flicker gaps
+            if not self.srt and not self.only_audio:
+                from bilidownloader.subtitles.post_processors import ASSGapFiller
+
+                ydl.add_post_processor(
+                    ASSGapFiller(is_chinese=is_chinese),
+                    when="before_dl",
+                )
+
+            # Add ASS rescaler if conditions are met
+            if not self.srt and not self.only_audio and not self.dont_rescale:
+                from bilidownloader.subtitles.post_processors import SSARescaler
+
+                ydl.add_post_processor(
+                    SSARescaler(),
+                    when="before_dl",
+                )
+
+            # Add FontCollector to gather fonts for ASS/SSA subtitle attachments
+            if not self.srt and not self.only_audio:
+                from bilidownloader.subtitles.post_processors import FontCollector
+
+                ydl.add_post_processor(
+                    FontCollector(),
+                    when="before_dl",
+                )
+
+            # Add SRT modifier for language processing
+            if self.srt and not self.only_audio:
+                from bilidownloader.subtitles.post_processors import SRTModifier
+
+                ydl.add_post_processor(
+                    SRTModifier(no_mods=self.no_mods),
+                    when="before_dl",
+                )
+
             # Add SRT gap filler for direct SRT subtitles
             if self.srt and not self.only_audio:
                 from bilidownloader.subtitles.post_processors import SRTGapFiller
 
                 ydl.add_post_processor(
-                    SRTGapFiller(is_chinese=is_chinese, no_mods=self.no_mods),
+                    SRTGapFiller(is_chinese=is_chinese),
                     when="before_dl",
                 )
 

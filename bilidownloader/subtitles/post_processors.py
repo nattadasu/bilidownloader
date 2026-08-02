@@ -181,39 +181,6 @@ class SSARescaler(PostProcessor):
 
     SIZE_MODIFIER = 0.8
 
-    def __init__(
-        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
-        self.no_mods = no_mods
-
-    def _process_events(
-        self, subs, all_fonts_found: set[str], used_styles: set[str]
-    ) -> None:
-        for event in subs.events:
-            if not event.text:
-                continue
-            used_styles.add(event.style)
-            # Find fonts used directly in override tags
-            font_tags = re.findall(r"\\fn([^\\}]+)", event.text)
-            for font in font_tags:
-                all_fonts_found.add(font.strip())
-            # Find bold override tags to map to Bold fonts
-            if "\\b1" in event.text or "\\b700" in event.text:
-                style = subs.styles.get(event.style)
-                if style:
-                    all_fonts_found.add(f"{style.fontname}::Bold")
-
-    def _collect_fonts_from_styles(
-        self, subs, all_fonts_found: set[str], used_styles: set[str]
-    ) -> None:
-        for style_name, style in subs.styles.items():
-            if style_name in used_styles:
-                all_fonts_found.add(style.fontname)
-                if style.bold:
-                    all_fonts_found.add(f"{style.fontname}::Bold")
-
     def _rescale_styles(self, subs, used_styles: set[str]) -> int:
         styles_to_keep = {
             name: style for name, style in subs.styles.items() if name in used_styles
@@ -244,7 +211,51 @@ class SSARescaler(PostProcessor):
             self.write_debug("No subtitle files found in metadata")
             return [], info
 
-        all_fonts_found: set[str] = set()
+        for sub_file in file_paths.values():
+            if not sub_file.endswith(".ass"):
+                continue
+
+            try:
+                subs = SubtitleIO.load(Path(sub_file))
+            except Exception as e:
+                self.report_error(f"Failed to load {sub_file}: {e}")
+                continue
+
+            used_styles: set[str] = {event.style for event in subs.events if event.text}
+
+            # Rescale styles
+            styles_changed = self._rescale_styles(subs, used_styles)
+
+            try:
+                SubtitleIO.save(subs, Path(sub_file))
+                msg_parts = [f"[{extract_lang_code(Path(sub_file))}]"]
+                if styles_changed:
+                    msg_parts.append(f"styles rescaled ({styles_changed})")
+                if len(msg_parts) > 1:
+                    self.write_debug("  " + ", ".join(msg_parts))
+            except Exception as e:
+                self.report_error(f"Failed to save {sub_file}: {e}")
+                continue
+
+        return [], info
+
+
+class ASSProcessor(PostProcessor):
+    """A yt-dlp post-processor for processing ASS/SSA subtitles (metadata, gap filling, merging/splitting)."""
+
+    def __init__(
+        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
+        self.no_mods = no_mods
+
+    def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+        self.to_screen("Processing ASS/SSA subtitles (gap filling, line optimization)")
+        file_paths = info.get("__files_to_move", {})
+        if not file_paths:
+            self.write_debug("No subtitle files found in metadata")
+            return [], info
 
         for sub_file in file_paths.values():
             if not sub_file.endswith(".ass"):
@@ -266,33 +277,71 @@ class SSARescaler(PostProcessor):
             # Apply language line-splitting & merging
             merged_count, split_count = apply_language_processing(subs, lang_code, self)
 
-            used_styles: set[str] = set()
-            self._process_events(subs, all_fonts_found, used_styles)
-            self._collect_fonts_from_styles(subs, all_fonts_found, used_styles)
-
             # Fill flicker gaps and merge identical lines
             gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
             identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
             merged_count += identical_merged
 
-            # Rescale styles
-            styles_changed = self._rescale_styles(subs, used_styles)
-
             try:
                 SubtitleIO.save(subs, Path(sub_file))
                 msg_parts = [f"[{lang_code}]"]
-                if styles_changed:
-                    msg_parts.append(f"styles rescaled ({styles_changed})")
                 if gaps_filled > 0:
                     msg_parts.append(f"filled {gaps_filled} gap(s)")
                 if merged_count > 0:
                     msg_parts.append(f"merged {merged_count} line(s)")
                 if split_count > 0:
                     msg_parts.append(f"split {split_count} line(s)")
-                self.write_debug("  " + ", ".join(msg_parts))
+                if len(msg_parts) > 1:
+                    self.write_debug("  " + ", ".join(msg_parts))
             except Exception as e:
                 self.report_error(f"Failed to save {sub_file}: {e}")
                 continue
+
+        return [], info
+
+
+class FontCollector(PostProcessor):
+    """A yt-dlp post-processor for collecting fonts used in ASS/SSA subtitle files."""
+
+    def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+        self.to_screen("Collecting fonts used in ASS/SSA subtitles")
+        file_paths = info.get("__files_to_move", {})
+        if not file_paths:
+            self.write_debug("No subtitle files found in metadata")
+            return [], info
+
+        all_fonts_found: set[str] = set()
+
+        for sub_file in file_paths.values():
+            if not sub_file.endswith(".ass"):
+                continue
+
+            try:
+                subs = SubtitleIO.load(Path(sub_file))
+            except Exception as e:
+                self.report_error(f"Failed to load {sub_file}: {e}")
+                continue
+
+            used_styles: set[str] = set()
+            for event in subs.events:
+                if not event.text:
+                    continue
+                used_styles.add(event.style)
+                # Find fonts used directly in override tags
+                font_tags = re.findall(r"\\fn([^\\}]+)", event.text)
+                for font in font_tags:
+                    all_fonts_found.add(font.strip())
+                # Find bold override tags to map to Bold fonts
+                if "\\b1" in event.text or "\\b700" in event.text:
+                    style = subs.styles.get(event.style)
+                    if style:
+                        all_fonts_found.add(f"{style.fontname}::Bold")
+
+            for style_name, style in subs.styles.items():
+                if style_name in used_styles:
+                    all_fonts_found.add(style.fontname)
+                    if style.bold:
+                        all_fonts_found.add(f"{style.fontname}::Bold")
 
         if all_fonts_found:
             fonts_json_path = "fonts.json"
@@ -314,56 +363,56 @@ class SSARescaler(PostProcessor):
         return [], info
 
 
+class SRTModifier(PostProcessor):
+    """A yt-dlp post-processor for applying language-specific split/merge modifications to SRT subtitles."""
+
+    def __init__(self, *args, no_mods: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.no_mods = no_mods
+
+    def run(self, info: dict) -> tuple[list, dict]:
+        self.to_screen("Applying language processing to SRT subtitles")
+        file_paths = info.get("__files_to_move", {})
+        if not file_paths:
+            return [], info
+
+        for current_path in file_paths.values():
+            current_file = Path(current_path)
+            if current_file.suffix.lower() != ".srt":
+                continue
+
+            try:
+                subs = SubtitleIO.load(current_file)
+                lang_code = extract_lang_code(current_file)
+                merged_count, split_count = apply_language_processing(
+                    subs, lang_code, self
+                )
+                SubtitleIO.save(subs, current_file)
+
+                msg_parts = [f"[{lang_code}]"]
+                if merged_count > 0:
+                    msg_parts.append(f"merged {merged_count} line(s)")
+                if split_count > 0:
+                    msg_parts.append(f"split {split_count} line(s)")
+                if len(msg_parts) > 1:
+                    self.write_debug("  " + ", ".join(msg_parts))
+            except Exception as e:
+                self.report_error(f"Failed to process {current_file}: {e}")
+
+        return [], info
+
+
 class SRTGapFiller(PostProcessor):
     """A yt-dlp post-processor for filling flicker gaps in SRT subtitles."""
 
-    def __init__(
-        self, *args, is_chinese: bool = False, no_mods: bool = False, **kwargs
-    ):
+    def __init__(self, *args, is_chinese: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
-        self.no_mods = no_mods
-
-    def _process_srt_file(self, srt_path: Path) -> tuple[bool, int]:
-        if not srt_path.exists():
-            self.report_error(f"SRT file not found: {srt_path}")
-            return False, 0
-
-        try:
-            subs = SubtitleIO.load(srt_path)
-            lang_code = extract_lang_code(srt_path)
-
-            # Apply language line-splitting & merging
-            merged_count, split_count = apply_language_processing(subs, lang_code, self)
-
-            # Fill flicker gaps and merge identical lines
-            gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
-            identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
-            merged_count += identical_merged
-
-            # Write back to file
-            SubtitleIO.save(subs, srt_path)
-
-            msg_parts = [f"[{lang_code}]"]
-            if gaps_filled > 0:
-                msg_parts.append(f"filled {gaps_filled} gap(s)")
-            if merged_count > 0:
-                msg_parts.append(f"merged {merged_count} line(s)")
-            if split_count > 0:
-                msg_parts.append(f"split {split_count} line(s)")
-
-            if len(msg_parts) > 1:
-                self.write_debug("  " + ", ".join(msg_parts))
-            return True, gaps_filled
-        except Exception as e:
-            self.report_error(f"Failed to process {srt_path}: {e}")
-            return False, 0
 
     def run(self, info: dict) -> tuple[list, dict]:
-        self.to_screen("Filling flicker gaps (4 frames @24fps ~167ms) in SRT subtitles")
+        self.to_screen("Filling flicker gaps in SRT subtitles")
         file_paths = info.get("__files_to_move", {})
         if not file_paths:
-            self.write_debug("No subtitle files found in metadata")
             return [], info
 
         processed_count = 0
@@ -374,14 +423,128 @@ class SRTGapFiller(PostProcessor):
             if current_file.suffix.lower() != ".srt":
                 continue
 
-            success, gaps_filled = self._process_srt_file(current_file)
-            if success:
-                processed_count += 1
-                total_gaps_filled += gaps_filled
+            try:
+                subs = SubtitleIO.load(current_file)
+                lang_code = extract_lang_code(current_file)
+                gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
+                identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
+                SubtitleIO.save(subs, current_file)
+
+                if gaps_filled > 0 or identical_merged > 0:
+                    processed_count += 1
+                    total_gaps_filled += gaps_filled
+                    msg_parts = [f"[{lang_code}]"]
+                    if gaps_filled > 0:
+                        msg_parts.append(f"filled {gaps_filled} gap(s)")
+                    if identical_merged > 0:
+                        msg_parts.append(f"merged {identical_merged} identical line(s)")
+                    self.write_debug("  " + ", ".join(msg_parts))
+            except Exception as e:
+                self.report_error(f"Failed to process {current_file}: {e}")
 
         if processed_count > 0:
             self.to_screen(
                 f"Processed {processed_count} SRT file(s), filled {total_gaps_filled} gap(s) total"
+            )
+
+        return [], info
+
+
+class ASSModifier(PostProcessor):
+    """A yt-dlp post-processor for applying language modifications and setting title metadata in ASS/SSA subtitles."""
+
+    def __init__(self, *args, no_mods: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.no_mods = no_mods
+
+    def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+        self.to_screen(
+            "Applying language processing and metadata updates to ASS/SSA subtitles"
+        )
+        file_paths = info.get("__files_to_move", {})
+        if not file_paths:
+            return [], info
+
+        for sub_file in file_paths.values():
+            if not sub_file.endswith(".ass"):
+                continue
+
+            try:
+                subs = SubtitleIO.load(Path(sub_file))
+            except Exception as e:
+                self.report_error(f"Failed to load {sub_file}: {e}")
+                continue
+
+            if subs.info:
+                subs.info["Title"] = (
+                    f"Modified with github:nattadasu/bilidownloader v{__VERSION__}"
+                )
+
+            lang_code = extract_lang_code(Path(sub_file))
+            merged_count, split_count = apply_language_processing(subs, lang_code, self)
+
+            try:
+                SubtitleIO.save(subs, Path(sub_file))
+                msg_parts = [f"[{lang_code}]"]
+                if merged_count > 0:
+                    msg_parts.append(f"merged {merged_count} line(s)")
+                if split_count > 0:
+                    msg_parts.append(f"split {split_count} line(s)")
+                if len(msg_parts) > 1:
+                    self.write_debug("  " + ", ".join(msg_parts))
+            except Exception as e:
+                self.report_error(f"Failed to save {sub_file}: {e}")
+
+        return [], info
+
+
+class ASSGapFiller(PostProcessor):
+    """A yt-dlp post-processor for filling flicker gaps in ASS/SSA subtitles."""
+
+    def __init__(self, *args, is_chinese: bool = False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gap_filler = FlickerFiller(is_chinese=is_chinese)
+
+    def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
+        self.to_screen("Filling flicker gaps in ASS/SSA subtitles")
+        file_paths = info.get("__files_to_move", {})
+        if not file_paths:
+            return [], info
+
+        processed_count = 0
+        total_gaps_filled = 0
+
+        for sub_file in file_paths.values():
+            if not sub_file.endswith(".ass"):
+                continue
+
+            try:
+                subs = SubtitleIO.load(Path(sub_file))
+            except Exception as e:
+                self.report_error(f"Failed to load {sub_file}: {e}")
+                continue
+
+            lang_code = extract_lang_code(Path(sub_file))
+            gaps_filled = self.gap_filler.fill_flicker_gaps(subs)
+            identical_merged = self.gap_filler.merge_identical_subtitle_lines(subs)
+
+            try:
+                SubtitleIO.save(subs, Path(sub_file))
+                if gaps_filled > 0 or identical_merged > 0:
+                    processed_count += 1
+                    total_gaps_filled += gaps_filled
+                    msg_parts = [f"[{lang_code}]"]
+                    if gaps_filled > 0:
+                        msg_parts.append(f"filled {gaps_filled} gap(s)")
+                    if identical_merged > 0:
+                        msg_parts.append(f"merged {identical_merged} identical line(s)")
+                    self.write_debug("  " + ", ".join(msg_parts))
+            except Exception as e:
+                self.report_error(f"Failed to save {sub_file}: {e}")
+
+        if processed_count > 0:
+            self.to_screen(
+                f"Processed {processed_count} ASS file(s), filled {total_gaps_filled} gap(s) total"
             )
 
         return [], info
