@@ -164,6 +164,11 @@ class SRTToASSConverter(PostProcessor):
                     if sub_info.get("filepath") == current_path:
                         sub_info["filepath"] = new_ass_path_str
                         sub_info["ext"] = "ass"
+
+                # Track converted files to avoid rescaling later
+                if "__converted_from_srt" not in info:
+                    info["__converted_from_srt"] = set()
+                info["__converted_from_srt"].add(new_ass_path_str)
             else:
                 new_file_paths[original_path] = current_path
 
@@ -219,6 +224,13 @@ class SSARescaler(PostProcessor):
                 subs = SubtitleIO.load(Path(sub_file))
             except Exception as e:
                 self.report_error(f"Failed to load {sub_file}: {e}")
+                continue
+
+            # Skip rescaling for subtitles converted from SRT
+            if sub_file in info.get("__converted_from_srt", set()):
+                self.write_debug(
+                    f"  [{extract_lang_code(Path(sub_file))}] skipped rescaling"
+                )
                 continue
 
             used_styles: set[str] = {event.style for event in subs.events if event.text}
