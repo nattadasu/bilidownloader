@@ -1,7 +1,9 @@
 """yt-dlp Post-processors for subtitle processing (rescaling, conversion, and gap filling)."""
 
+import html
 import json
 import re
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -24,14 +26,165 @@ def extract_lang_code(file_path: Path) -> str:
     return lang_match.group(1) if lang_match else "unknown"
 
 
+class ASSHTMLSanitizer(HTMLParser):
+    """A syntactical HTML parser that converts HTML tags to ASS override tags or strips them."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.result: list[str] = []
+        self.tag_stack: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag_lower = tag.lower()
+        if tag_lower in ("i", "em"):
+            self.result.append(r"{\i1}")
+            self.tag_stack.append("i")
+        elif tag_lower in ("b", "strong"):
+            self.result.append(r"{\b1}")
+            self.tag_stack.append("b")
+        elif tag_lower in ("u", "ins"):
+            self.result.append(r"{\u1}")
+            self.tag_stack.append("u")
+        elif tag_lower in ("s", "strike", "del"):
+            self.result.append(r"{\s1}")
+            self.tag_stack.append("s")
+        elif tag_lower == "br":
+            self.result.append(r"\N")
+        elif tag_lower == "font":
+            self.tag_stack.append("font")
+            attr_dict = {k.lower(): (v or "") for k, v in attrs}
+            color = attr_dict.get("color")
+            if color:
+                ass_color = self._parse_html_color(color)
+                if ass_color:
+                    self.result.append(rf"{{\c{ass_color}}}")
+                else:
+                    self.result.append(r"{\c}")
+            else:
+                self.result.append(r"{\c}")
+        else:
+            self.tag_stack.append(tag_lower)
+
+    def handle_endtag(self, tag: str) -> None:
+        tag_lower = tag.lower()
+        if tag_lower in ("i", "em"):
+            self.result.append(r"{\i0}")
+            if "i" in self.tag_stack:
+                self.tag_stack.remove("i")
+        elif tag_lower in ("b", "strong"):
+            self.result.append(r"{\b0}")
+            if "b" in self.tag_stack:
+                self.tag_stack.remove("b")
+        elif tag_lower in ("u", "ins"):
+            self.result.append(r"{\u0}")
+            if "u" in self.tag_stack:
+                self.tag_stack.remove("u")
+        elif tag_lower in ("s", "strike", "del"):
+            self.result.append(r"{\s0}")
+            if "s" in self.tag_stack:
+                self.tag_stack.remove("s")
+        elif tag_lower == "font":
+            self.result.append(r"{\c}")
+            if "font" in self.tag_stack:
+                self.tag_stack.remove("font")
+        else:
+            if tag_lower in self.tag_stack:
+                self.tag_stack.remove(tag_lower)
+
+    def handle_data(self, data: str) -> None:
+        self.result.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.result.append(html.unescape(f"&{name};"))
+
+    def handle_charref(self, name: str) -> None:
+        self.result.append(html.unescape(f"&#{name};"))
+
+    @staticmethod
+    def _parse_html_color(color_str: str) -> str | None:
+        """Convert HTML color (#RRGGBB or #RGB) to ASS BGR hex format (&HBBGGRR&)."""
+        color_str = color_str.strip().lstrip("#")
+        if len(color_str) == 3:
+            color_str = "".join(c * 2 for c in color_str)
+        if len(color_str) == 6 and all(
+            c in "0123456789abcdefABCDEF" for c in color_str
+        ):
+            r, g, b = color_str[0:2], color_str[2:4], color_str[4:6]
+            return f"&H{b.upper()}{g.upper()}{r.upper()}&"
+        return None
+
+
+def sanitize_html(text: str) -> str:
+    """Syntactically parse and dynamically convert/sanitize HTML tags in subtitle text into ASS format.
+
+    Preserves native ASS override tags (e.g. {\\i1}, {\\pos(...)}) while properly parsing HTML
+    structures (including nested tags, HTML entities, font colors, linebreaks, and malformed tags).
+    """
+    if not text:
+        return text
+
+    # Unescape HTML entities (e.g., &amp;, &lt;, &gt;, &quot;, &#39;, &nbsp;)
+    text = html.unescape(text)
+
+    # Tokenize text into ASS override tag blocks {...} and non-ASS segments
+    # Match any {...} block vs text outside
+    tokens = re.split(r"(\{[^}]*\})", text)
+    processed_parts = []
+
+    for token in tokens:
+        if token.startswith("{") and token.endswith("}"):
+            # Preserve native ASS tag block intact
+            processed_parts.append(token)
+        elif "<" in token or ">" in token or "&" in token:
+            try:
+                parser = ASSHTMLSanitizer()
+                parser.feed(token)
+                processed_parts.append("".join(parser.result))
+            except Exception:
+                # Fallback: strip any remaining HTML angle brackets if parsing fails
+                processed_parts.append(re.sub(r"</?[a-zA-Z][^>]*>", "", token))
+        else:
+            processed_parts.append(token)
+
+    result = "".join(processed_parts)
+    # Clean up redundant empty ASS override tags like {}
+    result = re.sub(r"\{\}", "", result)
+
+    # Whitespace sanitization:
+    # 1. Normalize horizontal whitespace (multiple spaces/tabs -> single space) per line
+    # 2. Strip leading and trailing whitespace around ASS linebreaks (\N) and text boundaries
+    # 3. Strip whitespace immediately inside ASS formatting tag boundaries (e.g., {\i1} text {\i0} -> {\i1}text{\i0})
+    lines = result.split(r"\N")
+    cleaned_lines = []
+    for line in lines:
+        # Collapse multiple spaces or tabs into a single space
+        line = re.sub(r"[ \t]+", " ", line)
+        # Strip trailing space right after start tag and leading space right before end tag
+        line = re.sub(r"(\{\\[a-zA-Z0-9]+\})\s+", r"\1", line)
+        line = re.sub(r"\s+(\{\\[a-zA-Z0-9]+0\})", r"\1", line)
+        cleaned_lines.append(line.strip())
+
+    result = r"\N".join(cleaned_lines)
+    # Collapse multiple consecutive linebreaks (\N\N -> \N)
+    result = re.sub(r"(\\N)+", r"\\N", result)
+
+    return result
+
+
 def apply_language_processing(
-    subs, lang_code: str, pp: PostProcessor
+    subs, lang_code: str, pp: PostProcessor, is_ass: bool = True
 ) -> tuple[int, int]:
-    """Apply clausal splitting and line merging to subtitles based on language."""
+    """Apply language processing (and HTML sanitization for ASS format) to subtitles."""
     merged_count = 0
     split_count = 0
 
     no_mods = getattr(pp, "no_mods", False)
+
+    # Exclusively sanitize HTML tags for ASS subtitles
+    if is_ass:
+        for event in subs.events:
+            if event.text:
+                event.text = sanitize_html(event.text)
 
     if lang_code == "ar" and not no_mods:
         for event in subs.events:
@@ -397,7 +550,7 @@ class SRTModifier(PostProcessor):
                 subs = SubtitleIO.load(current_file)
                 lang_code = extract_lang_code(current_file)
                 merged_count, split_count = apply_language_processing(
-                    subs, lang_code, self
+                    subs, lang_code, self, is_ass=False
                 )
                 SubtitleIO.save(subs, current_file)
 
