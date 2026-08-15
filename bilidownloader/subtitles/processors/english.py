@@ -278,6 +278,18 @@ class EnglishProcessor:
             if len(words1) <= 1 or len(words2) <= 1:
                 single_word_penalty = 150
 
+            # Forfeit mid-sentence line break if a period/sentence-ending punctuation (. ! ?)
+            # occurs within 1-3 words in part2, preferring to split at that period instead.
+            short_to_period_penalty = 0
+            if not is_boundary:
+                # Find words in part2 up to the first sentence boundary (. ! ?)
+                m_end = re.search(r"[.!?]", part2)
+                if m_end:
+                    text_before_end = part2[: m_end.end()]
+                    words_before_end = text_before_end.split()
+                    if 1 <= len(words_before_end) <= 3:
+                        short_to_period_penalty = 100
+
             len1, len2 = len(part1), len(part2)
 
             # Penalty for lines that are extremely short (less than 12 characters)
@@ -341,6 +353,10 @@ class EnglishProcessor:
                 ):
                     syntax_penalty += 30
 
+                # 10. Modifier/Cognate penalty: avoid splitting 'royal {noun}' (e.g. "royal\Nship", "royal\Npalace")
+                if last_w1 == "royal":
+                    syntax_penalty += 45
+
             # Triangle shape: penalize if top line is longer than bottom line (reverse pyramid)
             shape_penalty = 0 if len1 < len2 else 10
 
@@ -361,6 +377,7 @@ class EnglishProcessor:
                 + single_word_penalty
                 + short_line_penalty
                 + syntax_penalty
+                + short_to_period_penalty
                 + boundary_bonus
                 + grammar_bonus
                 + fallback_penalty
