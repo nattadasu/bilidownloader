@@ -130,6 +130,20 @@ SKIP_NO_SUBTITLE_OPT = Annotated[
     ),
 ]
 """Flag to skip episodes without subtitles"""
+ENSURE_SUB_OPT = Annotated[
+    list[str] | None,
+    typer.Option(
+        "--ensure-sub",
+        help=(
+            "Skip downloading if none of the specified subtitle languages are available. "
+            "Accepts ISO 639-1 (2-letter) or ISO 639-3 (3-letter) codes, e.g., en, eng, id, ind, zh-Hans. "
+            "Can be repeated (--ensure-sub en --ensure-sub id) or comma-separated (--ensure-sub en,id). "
+            "Episode is skipped if none of the requested languages match available subtitles."
+        ),
+        rich_help_panel="Filtering & Selection",
+    ),
+]
+"""List of subtitle languages that must be present; skip if none match"""
 AUDIO_OPT = Annotated[
     bool,
     typer.Option(
@@ -356,6 +370,7 @@ class DownloadOptions:
     download_pv: PV_OPT = False
     verbose: VERBOSE_OPT = False
     skip_no_subtitle: SKIP_NO_SUBTITLE_OPT = False
+    ensure_sub: ENSURE_SUB_OPT = None
     proxy: PROXY_OPT = None
     mark_downloaded: MARK_DOWNLOADED_OPT = False
 

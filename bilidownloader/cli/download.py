@@ -55,6 +55,7 @@ def download_url(
         forced=dl_opts.forced,
         verbose=dl_opts.verbose,
         skip_no_subtitle=dl_opts.skip_no_subtitle,
+        ensure_sub=dl_opts.ensure_sub,
         proxy=dl_opts.proxy,
         no_thumbnail=pp_opts.no_thumbnail,
         no_mods=pp_opts.no_mods,

@@ -34,6 +34,99 @@ ua = UserAgent()
 uagent = ua.chrome
 
 
+def _normalize_tag(code: str) -> str:
+    """Normalize language code via langcodes to a comparable tag (lowercase)."""
+    try:
+        from langcodes import Language
+
+        return Language.get(code.strip()).to_tag().lower()
+    except Exception:
+        return code.strip().lower()
+
+
+def _parse_ensure_subs(raw: list[str] | None) -> list[str] | None:
+    """Flatten ensure-sub input (support repeat and comma-separated)."""
+    if not raw:
+        return None
+    flat: list[str] = []
+    for entry in raw:
+        if entry is None:
+            continue
+        # entry might be comma-separated
+        for part in str(entry).split(","):
+            part = part.strip()
+            if part:
+                flat.append(part)
+    # deduplicate preserving order (case-insensitive)
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for code in flat:
+        lower = code.lower()
+        if lower not in seen:
+            seen.add(lower)
+            deduped.append(code)
+    return deduped if deduped else None
+
+
+def _has_required_subtitle(
+    subtitles: dict[str, list[Any]], ensure_subs: list[str]
+) -> bool:
+    """
+    Return True if at least one of ensure_subs matches a key in subtitles.
+
+    Matching is done with ISO 639-1/3 awareness via langcodes:
+    - Exact normalized tag match wins (e.g., eng -> en, zh-Hans -> zh-hans).
+    - If requested code has no script/region (no '-' or '_'), fall back to
+      base language comparison (so 'en' matches 'en', 'eng' matches 'en',
+      'zh' matches 'zh-Hans', etc.).
+    """
+    if not subtitles or not ensure_subs:
+        return False
+
+    avail_keys = list(subtitles.keys())
+
+    # Pre-normalize available keys
+    avail_tags = {k: _normalize_tag(k) for k in avail_keys}
+    # Also map base language for fallback
+    try:
+        from langcodes import Language
+
+        avail_langs: dict[str, str | None] = {}
+        for k in avail_keys:
+            try:
+                avail_langs[k] = Language.get(k).language
+            except Exception:
+                avail_langs[k] = None
+    except ImportError:
+        avail_langs = {}
+
+    for req in ensure_subs:
+        req_tag = _normalize_tag(req)
+        has_script = "-" in req or "_" in req
+        # exact tag match
+        for avail_tag in avail_tags.values():
+            if req_tag == avail_tag:
+                return True
+        # fallback base language match if req has no script
+        if not has_script:
+            try:
+                from langcodes import Language
+
+                req_lang = Language.get(req).language
+                if req_lang:
+                    for avail_lang in avail_langs.values():
+                        if avail_lang and req_lang.lower() == avail_lang.lower():
+                            return True
+            except Exception:
+                # fallback: compare prefix before '-'/'_'
+                req_base = req_tag.split("-")[0].split("_")[0]
+                for avail_tag in avail_tags.values():
+                    avail_base = avail_tag.split("-")[0].split("_")[0]
+                    if req_base == avail_base:
+                        return True
+    return False
+
+
 class YtDlpLogger:
     def debug(self, msg):
         if "412" in msg and "Precondition Failed" in msg:
@@ -95,6 +188,7 @@ class VideoDownloader:
         output_dir: Path | None = None,
         verbose: bool = False,
         skip_no_subtitle: bool = False,
+        ensure_sub: list[str] | None = None,
         proxy: str | None = None,
         mark_downloaded: bool = False,
     ):
@@ -114,6 +208,7 @@ class VideoDownloader:
         self.output_dir = output_dir or Path.cwd()
         self.verbose = verbose
         self.skip_no_subtitle = skip_no_subtitle
+        self.ensure_sub = _parse_ensure_subs(ensure_sub)
         self.proxy = proxy
         self.mark_downloaded = mark_downloaded
         self._progress_bars = {}
@@ -441,17 +536,34 @@ class VideoDownloader:
         if self.mkvmerge_path:
             ydl_opts["mkvmerge_path"] = str(self.mkvmerge_path)
 
-        # Check for subtitles if skip_no_subtitle is True
-        if self.skip_no_subtitle and not self.only_audio:
-            # Use get_video_info to simulate and get metadata with subtitle info
+        # Check for subtitles if skip_no_subtitle or ensure_sub is set
+        if (self.skip_no_subtitle or self.ensure_sub) and not self.only_audio:
             metadata_for_sub_check = self.get_video_info(episode_url, simulate=True)
-            if not metadata_for_sub_check or not metadata_for_sub_check.get(
-                "subtitles"
-            ):
+            subtitles_dict = (
+                metadata_for_sub_check.get("subtitles")
+                if metadata_for_sub_check
+                else None
+            )
+            if self.skip_no_subtitle and not subtitles_dict:
                 prn_info(
                     f"Skipping {episode_url}: No subtitles found and --skip-no-subtitle is enabled."
                 )
                 return None, None, None  # Indicate skipped download
+            if self.ensure_sub and (
+                not subtitles_dict
+                or not _has_required_subtitle(subtitles_dict, self.ensure_sub)
+            ):
+                available = (
+                    ", ".join(sorted(subtitles_dict.keys()))
+                    if subtitles_dict
+                    else "none"
+                )
+                prn_info(
+                    f"Skipping {episode_url}: None of the required subtitles "
+                    f"({', '.join(self.ensure_sub)}) found. Available: {available} "
+                    f"and --ensure-sub is enabled."
+                )
+                return None, None, None
 
         with YDL(ydl_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True

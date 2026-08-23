@@ -88,6 +88,7 @@ class BiliProcess:
             output_dir=file_config.output_dir,
             verbose=download_options.verbose,
             skip_no_subtitle=download_options.skip_no_subtitle,
+            ensure_sub=download_options.ensure_sub,
             proxy=download_options.proxy,
             mark_downloaded=download_options.mark_downloaded,
         )
@@ -371,6 +372,7 @@ def download(
     forced: bool = False,
     verbose: bool = False,
     skip_no_subtitle: bool = False,
+    ensure_sub: list[str] | str | None = None,
     proxy: str | None = None,
     no_thumbnail: bool = True,
     no_mods: bool = True,
@@ -403,12 +405,15 @@ def download(
     )
     file_config.__post_init__()
 
+    if isinstance(ensure_sub, str):
+        ensure_sub = [ensure_sub]
     download_options = DownloadOptions(
         resolution=reso,
         is_avc=is_avc,
         forced=forced,
         verbose=verbose,
         skip_no_subtitle=skip_no_subtitle,
+        ensure_sub=ensure_sub,
         proxy=proxy,
     )
 
