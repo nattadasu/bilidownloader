@@ -30,7 +30,7 @@ def _read_cache() -> tuple[datetime, Version] | None:
         cached_time = datetime.fromisoformat(cache_data["timestamp"])
         cached_version = Version.parse(cache_data["version"])
         return cached_time, cached_version
-    except (json.JSONDecodeError, KeyError, ValueError):
+    except json.JSONDecodeError, KeyError, ValueError:
         # Cache file is corrupted or invalid, delete it
         VERSION_CACHE_FILE.unlink(missing_ok=True)
         return None

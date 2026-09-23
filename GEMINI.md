@@ -4,7 +4,7 @@
 
 This project, `BiliDownloader`, is a Python-based command-line tool designed to download videos from the international version of BiliBili.tv. It acts as a wrapper around the popular `yt-dlp` library, extending its functionality with features tailored for BiliBili. These include managing a watchlist of series, tracking release schedules, and maintaining a history of downloaded episodes.
 
-The application is built using `typer` for its command-line interface, `requests` for interacting with the BiliBili API, `survey` for interactive prompts, and `rich` for enhanced terminal output. It requires Python 3.11 or higher, as well as the external tools `ffmpeg` and `mkvpropedit`.
+The application is built using `typer` for its command-line interface, `requests` for interacting with the BiliBili API, `survey` for interactive prompts, and `rich` for enhanced terminal output. It requires Python 3.14 or higher, as well as the external tools `mkvmerge` and `mkvpropedit` (MKVToolNix).
 
 ## Building and Running
 

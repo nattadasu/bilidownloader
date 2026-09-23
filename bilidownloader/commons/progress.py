@@ -4,8 +4,6 @@ Replaces alive-progress throughout the codebase. Rendering is disabled
 when headless (see commons.ui.is_headless), so journals stay clean.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any

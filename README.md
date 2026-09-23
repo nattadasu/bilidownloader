@@ -56,13 +56,12 @@ to assist you in ripping episode
 
 Ensure the following libraries/programs are installed before using this tool:
 
-* Python 3.11 or later (up to 3.13)
+* Python 3.14 or later
 * `git` for cloning the repository
 * `pipx` or `pipxu` (install via `pip install pipx` or `pip install pipxu`)
   * Note: `pipxu` uses `uv` under the hood for faster installation
-* The latest version of FFmpeg, available in your system's PATH
 * MKVToolNix (non-containerized versions only, such as Flatpak or Snap are not
-  supported), with `mkvpropedit` accessible from the bundle
+  supported), with `mkvmerge` and `mkvpropedit` accessible from the bundle
 
 Additionally, you must obtain your own `cookie.txt` from BiliIntl, and ensure
 that Premium is activated.
@@ -108,7 +107,7 @@ pipxu install 'bilidownloader[ass] @ git+https://github.com/nattadasu/bilidownlo
 ```bash
 # Install required packages
 pkg install x11-repo
-pkg install busybox ffmpeg git mkvtoolnix openssl python python-pip rust
+pkg install busybox git mkvtoolnix openssl python python-pip rust
 
 # Install pipx
 pip install pipx

@@ -1,11 +1,18 @@
 import re
 from enum import Enum
 from importlib.util import find_spec
-from time import time
+from time import monotonic
+from typing import Literal
 
 from pydantic import BaseModel
 
 from bilidownloader.commons.ui import prn_done
+
+type DubLanguage = Literal["ind", "jpn", "chi", "tha"]
+"""Audio language detected for an episode (Bilibili dub codes)."""
+
+type AudioLanguage = DubLanguage | Literal["und"] | None
+"""Track language accepted by MKV tooling; None/"und" means undetermined."""
 
 
 class DataExistError(Exception):
@@ -171,17 +178,17 @@ class BenchClock:
     """A simple class to measure the time taken to perform a task."""
 
     def __init__(self) -> None:
-        self.start = time()
+        self.start = monotonic()
         self.stop_ = 0.0
 
     def stop(self) -> float:
         """Stop the clock and return the time taken."""
-        self.stop_ = time() if not self.stop_ else self.stop_
+        self.stop_ = monotonic() if not self.stop_ else self.stop_
         return self.stop_ - self.start
 
     def reset(self) -> None:
         """Reset the clock."""
-        self.start = time()
+        self.start = monotonic()
         self.stop_ = 0.0
 
     @property

@@ -6,7 +6,7 @@ import subprocess as sp
 from io import BytesIO
 from json import loads as jloads
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, cast
 
 import requests as reqs
 from PIL import Image
@@ -20,7 +20,11 @@ from bilidownloader.commons.ui import (
     prn_error,
     prn_info,
 )
-from bilidownloader.commons.utils import SubtitleLanguage, langcode_to_str
+from bilidownloader.commons.utils import (
+    AudioLanguage,
+    SubtitleLanguage,
+    langcode_to_str,
+)
 
 
 class MetadataEditor:
@@ -193,7 +197,7 @@ class MetadataEditor:
     def add_audio_language(
         self,
         video_path: Path,
-        language: Literal["ind", "jpn", "chi", "tha", "und"] | None,
+        language: AudioLanguage,
     ) -> list[str]:
         """Add audio language to the video file"""
         prn_dbg(

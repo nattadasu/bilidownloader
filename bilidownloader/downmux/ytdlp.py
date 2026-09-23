@@ -12,7 +12,7 @@ from pathlib import Path
 from re import IGNORECASE
 from re import search as rsearch
 from re import sub as rsub
-from typing import Any, Literal
+from typing import Any
 
 from fake_useragent import UserAgent
 from langcodes import Language
@@ -30,6 +30,7 @@ from bilidownloader.commons.ui import (
 )
 from bilidownloader.commons.utils import (
     Chapter,
+    DubLanguage,
     RateLimitError,
     SubtitleLanguage,
     sanitize_filename,
@@ -107,7 +108,9 @@ def _has_required_subtitle(
         except Exception:
             req_base = ""
         req_base = req_base or req_tag.split("-")[0].split("_")[0]
-        for avail_tag, avail_lang in zip(avail_tags.values(), avail_langs.values()):
+        for avail_tag, avail_lang in zip(
+            avail_tags.values(), avail_langs.values(), strict=True
+        ):
             if req_base and req_base in (
                 (avail_lang or "").lower(),
                 avail_tag.split("-")[0].split("_")[0],
@@ -397,7 +400,7 @@ class VideoDownloader:
     def download_episode(
         self,
         episode_url: str,
-    ) -> tuple[Path, Any, Literal["ind", "jpn", "chi", "tha"] | None]:
+    ) -> tuple[Path, Any, DubLanguage | None]:
         """Download episode tracks separately, then remux with mkvmerge.
 
         Returns (final_path, metadata, audio_language). Intermediate
@@ -426,7 +429,7 @@ class VideoDownloader:
             title = sanitize_filename(SERIES_ALIASES[series_id])
 
         # Determine audio language
-        language: Literal["ind", "jpn", "chi", "tha"] | None = None
+        language: DubLanguage | None = None
         language = "chi" if "Chinese Mainland" in resp.text else language
         if language is None:
             language = "jpn" if "Japan" in resp.text else language
@@ -495,7 +498,7 @@ class VideoDownloader:
             raise ReferenceError(
                 f"{episode_url} does not have preferred resolution of {self.resolution}"
             )
-        except (TypeError, NameError):
+        except TypeError, NameError:
             raise NameError(
                 f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
             )

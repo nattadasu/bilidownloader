@@ -2,7 +2,7 @@
 Subtitle reporter - displays found subtitles during download
 """
 
-from typing import Any
+from typing import Any, override
 
 from rich.table import Table, box
 from yt_dlp.postprocessor import PostProcessor
@@ -18,6 +18,7 @@ class SubtitleReporter(PostProcessor):
         super().__init__(downloader)
         self._reported = False
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
         """Report subtitles if available"""
         if self._reported:

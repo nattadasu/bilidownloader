@@ -277,7 +277,7 @@ class BiliProcess:
                     "Delete the entry through history command if necessary."
                 )
                 break
-            except (KeyboardInterrupt, SystemExit):
+            except KeyboardInterrupt, SystemExit:
                 print()
                 prn_error("Interrupt signal received, stopping process")
                 sys.exit(1)

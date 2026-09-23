@@ -6,7 +6,6 @@ import subprocess as sp
 from json import loads as jloads
 from pathlib import Path
 from re import search as rsearch
-from typing import Literal
 
 from rich.table import Column, Table, box
 
@@ -21,6 +20,7 @@ from bilidownloader.commons.ui import (
     prn_info,
 )
 from bilidownloader.commons.utils import (
+    AudioLanguage,
     Chapter,
     format_human_time,
     format_mkvmerge_time,
@@ -93,7 +93,7 @@ class ChapterProcessor:
 
     @staticmethod
     def _uses_ident_label(
-        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
+        audio_language: AudioLanguage = None,
     ) -> bool:
         """Whether recap-like logo chapters should be labeled as Idents."""
         return audio_language == "chi"
@@ -104,7 +104,7 @@ class ChapterProcessor:
         duration: float,
         next_chapter: Chapter | None,
         part_index: int,
-        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
+        audio_language: AudioLanguage = None,
     ) -> tuple[str, int]:
         """Normalize chapter titles based on timing heuristics and audio language."""
 
@@ -168,7 +168,7 @@ class ChapterProcessor:
         self,
         chapters: list[Chapter],
         video_path: Path,
-        audio_language: Literal["ind", "jpn", "chi", "tha", "und"] | None = None,
+        audio_language: AudioLanguage = None,
     ) -> Path:
         """Create chapter metadata and merge it into the video file"""
         if not chapters:

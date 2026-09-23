@@ -97,7 +97,7 @@ def _get_user_shell() -> list[str]:
             shell_path = shutil.which(parent_name)
             if shell_path:
                 return [parent_name]
-    except (ImportError, Exception):
+    except ImportError, Exception:
         # psutil not available or failed, continue with fallbacks
         pass
 

@@ -5,7 +5,7 @@ import json
 import re
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 import pysubs2
 from yt_dlp.postprocessor import PostProcessor
@@ -34,6 +34,7 @@ class ASSHTMLSanitizer(HTMLParser):
         self.result: list[str] = []
         self.tag_stack: list[str] = []
 
+    @override
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("i", "em"):
@@ -65,6 +66,7 @@ class ASSHTMLSanitizer(HTMLParser):
         else:
             self.tag_stack.append(tag_lower)
 
+    @override
     def handle_endtag(self, tag: str) -> None:
         tag_lower = tag.lower()
         if tag_lower in ("i", "em"):
@@ -91,12 +93,15 @@ class ASSHTMLSanitizer(HTMLParser):
             if tag_lower in self.tag_stack:
                 self.tag_stack.remove(tag_lower)
 
+    @override
     def handle_data(self, data: str) -> None:
         self.result.append(data)
 
+    @override
     def handle_entityref(self, name: str) -> None:
         self.result.append(html.unescape(f"&{name};"))
 
+    @override
     def handle_charref(self, name: str) -> None:
         self.result.append(html.unescape(f"&#{name};"))
 
@@ -285,6 +290,7 @@ class SRTToASSConverter(PostProcessor):
             self.report_error(f"Failed to convert {srt_path}: {e}")
             return None, 0
 
+    @override
     def run(self, info: dict) -> tuple[list, dict]:
         self.to_screen("Converting SRT subtitles to ASS format")
         file_paths = info.get("__files_to_move", {})
@@ -362,6 +368,7 @@ class SSARescaler(PostProcessor):
 
         return rescaled_count
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen("Rescaling ASS/SSA subtitles (fontsize, border, shadow) by 0.8x")
         file_paths = info.get("__files_to_move", {})
@@ -415,6 +422,7 @@ class ASSProcessor(PostProcessor):
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
         self.no_mods = no_mods
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen("Processing ASS/SSA subtitles (gap filling, line optimization)")
         file_paths = info.get("__files_to_move", {})
@@ -468,6 +476,7 @@ class ASSProcessor(PostProcessor):
 class FontCollector(PostProcessor):
     """A yt-dlp post-processor for collecting fonts used in ASS/SSA subtitle files."""
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen("Collecting fonts used in ASS/SSA subtitles")
         file_paths = info.get("__files_to_move", {})
@@ -535,6 +544,7 @@ class SRTModifier(PostProcessor):
         super().__init__(*args, **kwargs)
         self.no_mods = no_mods
 
+    @override
     def run(self, info: dict) -> tuple[list, dict]:
         self.to_screen("Applying language processing to SRT subtitles")
         file_paths = info.get("__files_to_move", {})
@@ -574,6 +584,7 @@ class SRTGapFiller(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
+    @override
     def run(self, info: dict) -> tuple[list, dict]:
         self.to_screen("Filling flicker gaps in SRT subtitles")
         file_paths = info.get("__files_to_move", {})
@@ -622,6 +633,7 @@ class ASSModifier(PostProcessor):
         super().__init__(*args, **kwargs)
         self.no_mods = no_mods
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen(
             "Applying language processing and metadata updates to ASS/SSA subtitles"
@@ -670,6 +682,7 @@ class ASSGapFiller(PostProcessor):
         super().__init__(*args, **kwargs)
         self.gap_filler = FlickerFiller(is_chinese=is_chinese)
 
+    @override
     def run(self, info: dict[str, Any]) -> tuple[list[Any], dict[str, Any]]:
         self.to_screen("Filling flicker gaps in ASS/SSA subtitles")
         file_paths = info.get("__files_to_move", {})

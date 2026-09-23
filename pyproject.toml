@@ -9,9 +9,10 @@ authors = [
 ]
 version = "5.5.0"
 description = "Assist you in ripping episode from BiliIntl"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.14,<3.16"
 license = { text = "GPL-3.0-or-later" }
 classifiers = [
+	"Programming Language :: Python :: 3.14",
 	"Topic :: Multipedia :: Video"
 ]
 keywords = ["anime"]
@@ -58,6 +59,9 @@ packages = [
 	"bilidownloader.subtitles.processors",
 	"bilidownloader.watchlist",
 ]
+
+[tool.ruff]
+target-version = "py314"
 
 [tool.ruff.lint]
 ignore = [
