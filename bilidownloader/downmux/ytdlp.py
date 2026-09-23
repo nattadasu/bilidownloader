@@ -634,6 +634,8 @@ class VideoDownloader:
             # Remux video + audio + subtitles with mkvmerge.
             from bilidownloader.downmux.metadata_editor import MetadataEditor
 
+            # Downloads are done; freeze the display before the noisy remux.
+            self._progress.suspend()
             MetadataEditor(mkvmerge_path=self.mkvmerge_path).remux_tracks(
                 video_track=video_track,
                 audio_track=audio_track,

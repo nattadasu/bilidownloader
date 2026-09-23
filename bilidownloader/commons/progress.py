@@ -59,6 +59,7 @@ def make_progress() -> Progress:
         TimeRemainingColumn(),
         TimeElapsedColumn(),
         console=console,
+        transient=True,
         disable=is_headless(),
     )
 
@@ -162,8 +163,12 @@ class YtDlpProgress:
             if task_id is not None:
                 self._progress.stop_task(task_id)
 
-    def close(self) -> None:
-        self._purge_transients()
+    def suspend(self) -> None:
+        """Stop live rendering while keeping tasks (e.g. before remuxing)."""
         if self._started:
             self._progress.stop()
             self._started = False
+
+    def close(self) -> None:
+        self._purge_transients()
+        self.suspend()
