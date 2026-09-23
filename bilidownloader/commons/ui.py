@@ -1,6 +1,5 @@
 import os
 import shlex
-import sys
 from io import StringIO
 from pathlib import Path
 
@@ -18,26 +17,20 @@ _notification_disabled = os.getenv("DISPLAY") is None and os.name != "nt"
 def is_headless() -> bool:
     """Return True when output should avoid ANSI colors/bars.
 
-    Covers non-TTY stdout (pipes, systemd/journalctl), NO_COLOR,
-    TERM=dumb, and systemd journal environments.
+    This is exactly rich's own terminal detection (non-TTY stdout as in
+    pipes/systemd-journal, NO_COLOR, TERM=dumb). Deliberately nothing more:
+    systemd env vars like INVOCATION_ID leak into desktop sessions, so they
+    must not force headless mode on real terminals.
     """
-    if os.getenv("NO_COLOR"):
-        return True
-    if os.getenv("TERM") == "dumb":
-        return True
-    if os.getenv("JOURNAL_STREAM") or os.getenv("INVOCATION_ID"):
-        return True
-    try:
-        return not sys.stdout.isatty()
-    except Exception:
-        return True
+    return not console.is_terminal
 
 
 def print_table(table: Table, width: int = 70, indent: str = "       ") -> None:
     """Print a rich Table indented, without colors when headless.
 
-    Tables were previously rendered with force_terminal=True, leaking ANSI
-    escapes into journals. Color is now only used on real terminals.
+    The table is rendered to a buffer first for indentation. Since a buffer
+    is never a TTY, color must be forced explicitly in head mode — otherwise
+    rich strips it everywhere, not just in journals.
     """
     headless = is_headless()
     buf = StringIO()
@@ -46,12 +39,14 @@ def print_table(table: Table, width: int = 70, indent: str = "       ") -> None:
         highlight=False,
         emoji=False,
         width=width,
+        force_terminal=not headless,
         no_color=headless,
-        force_terminal=False,
     ).print(table)
-    out = print if headless else console.print
     for line in buf.getvalue().splitlines():
-        out(f"{indent}{line}")
+        if headless:
+            print(f"{indent}{line}")
+        else:
+            console.print(f"{indent}{line}", markup=False)
 
 
 def set_verbose(verbose: bool) -> None:
