@@ -539,4 +539,9 @@ def _resolve_system_font(font_name: str, font_cache: dict[str, Path]) -> Path | 
     if font_path and font_path.exists():
         return font_path
 
+    # FontCollector emits style variants as "Family::Bold", but the cache
+    # keys them as "Family Bold" (combined) / "FamilyBold" (full name).
+    if "::" in font_name:
+        return _resolve_system_font(font_name.replace("::", " "), font_cache)
+
     return None
