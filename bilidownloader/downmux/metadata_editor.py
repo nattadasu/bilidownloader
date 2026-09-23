@@ -6,7 +6,7 @@ import subprocess as sp
 from io import BytesIO
 from json import loads as jloads
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import requests as reqs
 from PIL import Image
@@ -25,10 +25,26 @@ from bilidownloader.commons.utils import (
     SubtitleLanguage,
     langcode_to_str,
 )
+from bilidownloader.subtitles.post_processors import extract_lang_code
 
 
 class MetadataEditor:
     """Handles MKV metadata editing operations"""
+
+    # Bilibili subtitle code -> language tag written at mux time.
+    # Tags are the canonical forms mkvmerge keeps in the file (it normalizes
+    # e.g. zh-Hans/zh-Hant to chi and msa to may), so downstream matching is
+    # exact. Hans/Hant share the chi tag and are told apart by mux order.
+    SUBTITLE_MUX_LANGS: ClassVar[dict[str, str]] = {
+        "en": "eng",
+        "th": "tha",
+        "vi": "vie",
+        "id": "ind",
+        "ms": "may",
+        "zh-Hans": "chi",
+        "zh-Hant": "chi",
+        "ar": "ara",
+    }
 
     def __init__(
         self,
@@ -227,33 +243,25 @@ class MetadataEditor:
         video_path: Path,
         language: SubtitleLanguage | None = None,
     ) -> list[str]:
-        """Set the default subtitle for the video file"""
+        """Flag the preferred subtitle track as default and name all tracks.
+
+        Matches tracks by the language tags written at mux time
+        (see SUBTITLE_MUX_LANGS), so no positional guessing is needed.
+        """
         language = language or SubtitleLanguage.en
-        lcodex = {
-            "en": "eng",
-            "id": "ind",
-            "ms": "may",
-            "th": "tha",
-            "vi": "vie",
-            "zh-Hans": "chi",
-            "zh-Hant": "chi",
-        }
-        flang = lcodex.get(language.value, "eng")
+        want = self.SUBTITLE_MUX_LANGS.get(language.value, "eng")
+        # zh-Hans and zh-Hant share the chi tag in the file. They mux in
+        # sorted-filename order (Hans first), so disambiguate by occurrence
+        # — but only when the full pair is verifiably present.
+        want_chi_variant = (
+            language.value if language.value in ("zh-Hans", "zh-Hant") else None
+        )
 
         def fail(msg: str) -> list[str]:
             prn_dbg(msg)
             return []
 
-        try:
-            keys = list(raw_data.get("subtitles", {}).keys())
-        except Exception:
-            keys = []
-        if not keys:
-            return fail(
-                "Failed to get subtitle index from yt-dlp. Does the video have subtitles?"
-            )
-
-        prn_dbg(f"Setting default subtitle to '{flang}' for {video_path.name}")
+        prn_dbg(f"Setting default subtitle to '{want}' for {video_path.name}")
         mkvmerge = self.mkvmerge_path or find_command("mkvmerge")
         if not mkvmerge:
             return fail(
@@ -263,98 +271,87 @@ class MetadataEditor:
         mkvmerge_cmd = [str(mkvmerge), "-J", str(video_path)]
         prn_cmd(mkvmerge_cmd)
         result = sp.run(mkvmerge_cmd, capture_output=True, text=True)
-
         if result.returncode != 0:
             return fail("Failed to get subtitle track number")
 
-        # Reverse map to convert track language (ISO 639-2) to Bilibili ISO 639-1 code
-        rev_lcodex = {v: k for k, v in lcodex.items()}
-        rev_lcodex.update(
-            {
-                "eng": "en",
-                "ind": "id",
-                "may": "ms",
-                "tha": "th",
-                "vie": "vi",
-                "chi": "zh-Hans",
-            }
+        try:
+            tracks = [
+                track
+                for track in jloads(result.stdout)["tracks"]
+                if track["type"] == "subtitles"
+            ]
+        except Exception:
+            return fail("Failed to parse subtitle track data")
+        if not tracks:
+            return fail("No subtitle tracks found in the video file")
+
+        # Mux-time tag -> Bilibili code, to detect SRT-converted tracks.
+        rev_langs = {tag: code for code, tag in self.SUBTITLE_MUX_LANGS.items()}
+        available = (raw_data or {}).get("subtitles", {})
+        pair_intact = (
+            len(tracks) == len(available)
+            and "zh-Hans" in available
+            and "zh-Hant" in available
+            and sum(1 for t in tracks if t["properties"].get("language") == "chi") == 2
         )
 
-        set_track: tuple[str, str] | None = None
-        unset_track: list[tuple[str, str]] = []
-        track_names: dict[str, str] = {}
-
-        try:
-            data = jloads(result.stdout)
-            for track in data["tracks"]:
-                if track["type"] == "subtitles":
-                    track_id_str = str(track["id"] + 1)
-                    track_lang = track["properties"]["language"]
-                    codec_id = track["properties"].get("codec_id", "")
-
-                    if track_lang == "zh" or track_lang == "chi":
-                        track_lang = keys[track["id"] - 2]
-
-                    # Base name of the language
-                    base_name = langcode_to_str(track_lang)
-
-                    # Determine Bilibili code
-                    bili_code = rev_lcodex.get(track_lang, track_lang)
-                    sub_formats = raw_data.get("subtitles", {}).get(bili_code, [])
-
-                    # If it's ASS now, but didn't have native ASS format on Bilibili, it was converted
-                    has_native_ass = any(f.get("ext") == "ass" for f in sub_formats)
-                    is_converted = (
-                        (codec_id == "S_TEXT/ASS")
-                        and (not has_native_ass)
-                        and len(sub_formats) > 0
-                    )
-
-                    if is_converted:
-                        track_names[track_id_str] = f"{base_name} [Converted from SRT]"
-                    else:
-                        track_names[track_id_str] = base_name
-
-                    if track_lang == flang:
-                        set_track = (track_id_str, track_lang)
-                    else:
-                        unset_track.append((track_id_str, track_lang))
-        except Exception:
-            return fail("Failed to get subtitle track number")
-
-        if not set_track and len(unset_track) > 0:
-            prn_error(
-                f"Subtitle track for '{flang}' not found, using the first subtitle track as default"
+        default: tuple[str, str] | None = None
+        others: list[tuple[str, str]] = []
+        names: dict[str, str] = {}
+        chi_seen = 0
+        for track in tracks:
+            num = str(track["id"] + 1)
+            tag = track["properties"].get("language") or "und"
+            if tag == "chi" and pair_intact:
+                variant = "zh-Hans" if chi_seen == 0 else "zh-Hant"
+                chi_seen += 1
+            else:
+                variant = rev_langs.get(tag, tag)
+            sub_formats = available.get(variant, [])
+            converted = (
+                track["properties"].get("codec_id") == "S_TEXT/ASS"
+                and sub_formats
+                and not any(f.get("ext") == "ass" for f in sub_formats)
             )
-            set_track = unset_track.pop(0)
+            base = langcode_to_str(variant if pair_intact and tag == "chi" else tag)
+            names[num] = f"{base} [Converted from SRT]" if converted else base
+            is_wanted = tag == want and (
+                tag != "chi" or not pair_intact or variant == want_chi_variant
+            )
+            if is_wanted and default is None:
+                default = (num, tag)
+            else:
+                others.append((num, tag))
 
-        if set_track:
-            unset_: list[str] = []
-            for track in unset_track:
-                unset_ += [
-                    "--edit",
-                    f"track:{track[0]}",
-                    "--set",
-                    "flag-default=0",
-                    "--set",
-                    f"language={track[1]}",
-                    "--set",
-                    f"name={track_names.get(track[0], langcode_to_str(track[1]))}",
-                ]
-            return [
+        if default is None:
+            prn_error(
+                f"Subtitle track for '{want}' not found, using the first subtitle track as default"
+            )
+            default = others.pop(0)
+
+        args = [
+            "--edit",
+            f"track:{default[0]}",
+            "--set",
+            "flag-default=1",
+            "--set",
+            f"language={default[1]}",
+            "--set",
+            f"name={names[default[0]]}",
+        ]
+        for num, tag in others:
+            args += [
                 "--edit",
-                f"track:{set_track[0]}",
+                f"track:{num}",
                 "--set",
-                "flag-default=1",
+                "flag-default=0",
                 "--set",
-                f"language={set_track[1]}",
+                f"language={tag}",
                 "--set",
-                f"name={track_names.get(set_track[0], langcode_to_str(set_track[1]))}",
-                *unset_,
-                *["--verbose" if _verbose else "--quiet"],
+                f"name={names[num]}",
             ]
-        else:
-            return fail("Failed to set subtitle track as default")
+        args.append("--verbose" if _verbose else "--quiet")
+        return args
 
     @staticmethod
     def resize_thumbnail_for_mkv(image_data: bytes) -> bytes:
@@ -432,8 +429,9 @@ class MetadataEditor:
 
         This replaces the old ffmpeg-based merging (FFmpegMergerPP +
         FFmpegEmbedSubtitle). Tracks are passed through without re-encoding.
-        Subtitle languages/default flags are refined later via mkvpropedit,
-        so this step only establishes track order: video, audio, subtitles.
+        Each subtitle file gets its `--language` from its filename so later
+        metadata passes can match tracks exactly. Order in the output is
+        video, audio, then subtitles sorted by filename.
         """
         mkvmerge = str(self.mkvmerge_path) if self.mkvmerge_path else "mkvmerge"
         if not video_track.exists():
@@ -448,16 +446,14 @@ class MetadataEditor:
         if output_path.exists():
             output_path.unlink()
 
-        # Order matters: video first, then audio, then subtitles in sorted order
         cmd: list[str] = [mkvmerge, "-o", str(output_path)]
-        if _verbose:
-            cmd.append("--verbose")
-        else:
-            cmd.append("--quiet")
+        cmd.append("--verbose" if _verbose else "--quiet")
         cmd.append(str(video_track))
         if audio_track is not None:
             cmd.append(str(audio_track))
         for sub in sorted(subtitle_tracks):
+            if lang := self.SUBTITLE_MUX_LANGS.get(extract_lang_code(sub)):
+                cmd += ["--language", f"0:{lang}"]
             cmd.append(str(sub))
 
         prn_info(f'Merging tracks into "{output_path.name}" with mkvmerge')
