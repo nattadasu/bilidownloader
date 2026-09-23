@@ -9,9 +9,9 @@ from re import search as rsearch
 
 from rich.table import Column, Table, box
 
+from bilidownloader.commons import ui as _ui
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.ui import (
-    _verbose,
     print_table,
     prn_cmd,
     prn_dbg,
@@ -204,7 +204,7 @@ class ChapterProcessor:
             "global:",
             "--chapters",
             "",
-            "--verbose" if _verbose else "--quiet",
+            "--verbose" if _ui._verbose else "--quiet",
         ]
         prn_cmd(mkvpropedit_cmd1)
         sp.run(
@@ -358,7 +358,7 @@ class ChapterProcessor:
             str(video_path),
             "--chapters",
             str(metadata_path),
-            "--verbose" if _verbose else "--quiet",
+            "--verbose" if _ui._verbose else "--quiet",
         ]
         prn_cmd(mkvpropedit_cmd2)
         sp.run(

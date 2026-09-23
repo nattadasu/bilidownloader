@@ -11,9 +11,9 @@ from typing import Any, ClassVar, cast
 import requests as reqs
 from PIL import Image
 
+from bilidownloader.commons import ui as _ui
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.ui import (
-    _verbose,
     prn_cmd,
     prn_dbg,
     prn_done,
@@ -354,7 +354,7 @@ class MetadataEditor:
                 "--set",
                 f"name={names[num]}",
             ]
-        args.append("--verbose" if _verbose else "--quiet")
+        args.append("--verbose" if _ui._verbose else "--quiet")
         return args
 
     @staticmethod
@@ -445,7 +445,7 @@ class MetadataEditor:
             output_path.unlink()
 
         cmd: list[str] = [mkvmerge, "-o", str(output_path)]
-        cmd.append("--verbose" if _verbose else "--quiet")
+        cmd.append("--verbose" if _ui._verbose else "--quiet")
         cmd.append(str(video_track))
         if audio_track is not None:
             cmd.append(str(audio_track))
@@ -496,7 +496,7 @@ class MetadataEditor:
                 str(video_path),
                 "--delete",
                 "title",
-                "--verbose" if _verbose else "--quiet",
+                "--verbose" if _ui._verbose else "--quiet",
             ]
             prn_cmd(delete_cmd)
             sp.run(delete_cmd, check=True)
@@ -510,7 +510,7 @@ class MetadataEditor:
                 *sub_args,
                 *font_args,
                 *attachment_args,
-                "--verbose" if _verbose else "--quiet",
+                "--verbose" if _ui._verbose else "--quiet",
             ]
             prn_cmd(edit_cmd)
             sp.run(edit_cmd, check=True)
@@ -520,7 +520,7 @@ class MetadataEditor:
             mkvpropedit,
             str(video_path),
             "--add-track-statistics-tags",
-            "--verbose" if _verbose else "--quiet",
+            "--verbose" if _ui._verbose else "--quiet",
         ]
         prn_cmd(stats_cmd)
         sp.run(
