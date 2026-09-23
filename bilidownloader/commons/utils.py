@@ -236,6 +236,8 @@ def langcode_to_str(langcode: str) -> str:
         return english
     elif langcode.lower() in ["may", "ms", "ms-my", "my"]:
         return "Malay (bahasa Melayu)"
+    elif langcode.lower() == "ar-001":
+        return "Arabic (MSA) (العربية (الفصحى))"
     return f"{english} ({native})"
 
 
