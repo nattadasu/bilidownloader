@@ -39,6 +39,9 @@ from bilidownloader.commons.utils import (
 ua = UserAgent()
 uagent = ua.chrome
 
+_SUBTITLE_EXTS = frozenset({".ass", ".srt", ".vtt"})
+"""Subtitle file extensions, skipped by the progress bar (tiny files)."""
+
 
 def _normalize_tag(code: str) -> str:
     """Normalize language code via langcodes to a comparable tag (lowercase)."""
@@ -211,7 +214,9 @@ class VideoDownloader:
         self.ensure_sub = _parse_ensure_subs(ensure_sub)
         self.proxy = proxy
         self.mark_downloaded = mark_downloaded
-        self._progress = YtDlpProgress(describe=self._get_download_description)
+        self._progress = YtDlpProgress(
+            describe=self._get_download_description, transient_exts=_SUBTITLE_EXTS
+        )
 
     @staticmethod
     def _get_download_description(
@@ -223,13 +228,13 @@ class VideoDownloader:
         from bilidownloader.commons.utils import langcode_to_str
 
         ext = Path(filename).suffix.lower()
-        if ext in (".ass", ".srt", ".vtt"):
+        if ext in _SUBTITLE_EXTS:
             lang_match = re.search(
                 r"\.([a-z]{2}(?:-[A-Z][a-z]+)?)\.(?:ass|srt|vtt)$", filename
             )
             if lang_match:
-                return f"{langcode_to_str(lang_match.group(1))} subtitles"
-            return "Subtitles"
+                return f"{langcode_to_str(lang_match.group(1))} sub"
+            return "Sub"
 
         if Path(filename).stem.endswith(".audio"):
             return "Audio"
