@@ -55,10 +55,7 @@ class ChapterProcessor:
         return None
 
     def _get_media_duration(self, video_path: Path) -> float | None:
-        """Get media duration in seconds without ffprobe.
-
-        Prefers mkvmerge JSON (nanoseconds), falls back to mediainfo JSON.
-        """
+        """Media duration in seconds (mkvmerge JSON, mediainfo fallback; no ffprobe)."""
         if mkvmerge := self.mkvmerge_path or find_command("mkvmerge"):
             data = self._probe_json([str(mkvmerge), "-J", str(video_path)])
             duration = (

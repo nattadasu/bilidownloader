@@ -1,9 +1,8 @@
 """
 Video downloader - handles yt-dlp download operations.
 
-Tracks are downloaded separately (video-only, audio-only, subtitles) with
-no ffmpeg involvement, then remuxed into a final MKV with mkvmerge.
-Progress is reported via rich with binary (1024-based) byte units.
+Tracks are downloaded separately (video with subtitles, then audio) and
+remuxed into a final MKV with mkvmerge. Progress via rich, binary units.
 """
 
 import shlex
@@ -40,7 +39,7 @@ ua = UserAgent()
 uagent = ua.chrome
 
 _SUBTITLE_EXTS = frozenset({".ass", ".srt", ".vtt"})
-"""Subtitle file extensions, skipped by the progress bar (tiny files)."""
+"""Subtitle extensions; their progress tasks are transient (see progress.py)."""
 
 
 def _normalize_tag(code: str) -> str:
@@ -134,8 +133,7 @@ class YtDlpLogger:
         # But preserves [BiliIntl] if it appears later (e.g. in filename)
         msg = rsub(r"^\[[^]]+\]\s", "", msg)
 
-        # yt-dlp no longer invokes ffmpeg/mkvmerge itself (we remux manually),
-        # but still surface external command lines as CMD when they appear.
+        # yt-dlp surfaces external command lines; show them as CMD.
         for prefix in ("ffmpeg command line: ", "mkvmerge command line: "):
             if msg.startswith(prefix):
                 cmd_line = msg.replace(prefix, "")
@@ -163,11 +161,7 @@ class YtDlpLogger:
 
 
 class VideoDownloader:
-    """Handles video download operations using yt-dlp.
-
-    Downloads video, audio, and subtitle tracks separately and remuxes them
-    with mkvmerge. ffmpeg is never invoked.
-    """
+    """Downloads video/audio/subtitle tracks separately and remuxes with mkvmerge."""
 
     def __init__(
         self,
@@ -195,8 +189,7 @@ class VideoDownloader:
         self.resolution = resolution
         self.is_avc = is_avc
         self.download_pv = download_pv
-        # Deprecated: kept for backward compatibility, never passed to yt-dlp.
-        # ffmpeg is no longer used for merging/embedding.
+        # Deprecated compat param; never passed to yt-dlp.
         self.ffmpeg_path = ffmpeg_path
         if ffmpeg_path is not None:
             prn_dbg("ffmpeg_path is deprecated and ignored; remuxing uses mkvmerge")
@@ -222,7 +215,7 @@ class VideoDownloader:
     def _get_download_description(
         filename: str, info_dict: dict[str, Any] | None = None
     ) -> str:
-        """Short label for a track, e.g. 'Video track (1080P(HD))'."""
+        """Short label for a track, e.g. 'Video (144P)'."""
         import re
 
         from bilidownloader.commons.utils import langcode_to_str
@@ -284,7 +277,7 @@ class VideoDownloader:
         return combined_selector, video_selector, audio_selector
 
     def _base_ydl_opts(self) -> dict[str, Any]:
-        """Common yt-dlp options shared by all track downloads (no ffmpeg)."""
+        """Common yt-dlp options shared by all track downloads."""
         opts: dict[str, Any] = {
             "cookiefile": str(self.cookie),
             "extract_flat": "discard_in_playlist",
@@ -296,7 +289,7 @@ class VideoDownloader:
             "updatetime": False,
             "referer": "https://www.bilibili.tv/",
             "logger": YtDlpLogger(),
-            # Never merge/embed with ffmpeg; bilidownloader remuxes with mkvmerge.
+            # No merging here; remuxing happens in download_episode.
             "keepvideo": True,
         }
         if self.proxy:
@@ -304,7 +297,7 @@ class VideoDownloader:
         return opts
 
     def _track_opts(self, outtmpl: str | None = None, **extra: Any) -> dict[str, Any]:
-        """Options for one track download pass (video, audio, or subtitles)."""
+        """Options for one track download pass (video or audio)."""
         opts = self._base_ydl_opts()
         if outtmpl is not None:
             opts["outtmpl"] = {"default": outtmpl}
@@ -500,9 +493,7 @@ class VideoDownloader:
                 )
                 return None, None, None
 
-        # Probe metadata with the combined selector so requested_formats,
-        # episode number, extractor, and subtitle list are resolved the same
-        # way as before (but nothing is downloaded or merged here).
+        # Probe metadata without downloading or merging.
         probe_opts = self._track_opts(
             format=combined_selector,
             simulate=True,
@@ -561,8 +552,7 @@ class VideoDownloader:
                     acodec = fmt.get("acodec", "unknown")
                     prn_info(f"  Audio: {acodec}")
 
-        # Deterministic base name (no yt-dlp placeholders) so split tracks
-        # can be found reliably after download.
+        # Deterministic base name, so split tracks are findable after download.
         extractor_name = (
             metadata.get("extractor_key") or metadata.get("extractor") or "BiliIntl"
         )
@@ -609,9 +599,7 @@ class VideoDownloader:
                 metadata["btitle"] = title  # type: ignore
                 return (audio_track, metadata, language)
 
-            # Video pass also fetches subtitles (same outtmpl, so they land as
-            # `<base>.video.<lang>.ass` and are renamed below). before_dl PPs
-            # run after subtitles are written, so processing is unchanged.
+            # Subtitles ride the video pass; before_dl PPs run after they land.
             video_opts = self._track_opts(
                 video_outtmpl,
                 format=video_selector,
@@ -624,7 +612,6 @@ class VideoDownloader:
                 ydl.download([episode_url])
             self._consolidate_video_pass_subtitles(base_stem)
 
-            # Audio-only pass (no subtitles here).
             with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
                 ydl.download([episode_url])
 
@@ -644,7 +631,7 @@ class VideoDownloader:
                 if sub not in (video_track, audio_track)
             ]
 
-            # Remux with mkvmerge (no ffmpeg): video + audio + subtitles
+            # Remux video + audio + subtitles with mkvmerge.
             from bilidownloader.downmux.metadata_editor import MetadataEditor
 
             MetadataEditor(mkvmerge_path=self.mkvmerge_path).remux_tracks(
@@ -654,7 +641,6 @@ class VideoDownloader:
                 output_path=final_path,
             )
 
-            # Remove intermediates now that the final MKV exists
             for intermediate in (video_track, audio_track, *subtitle_tracks):
                 try:
                     intermediate.unlink(missing_ok=True)

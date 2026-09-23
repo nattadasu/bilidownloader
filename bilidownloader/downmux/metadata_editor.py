@@ -31,9 +31,8 @@ from bilidownloader.subtitles.post_processors import extract_lang_code
 class MetadataEditor:
     """Handles MKV metadata editing operations"""
 
-    # Bilibili subtitle code -> IETF/BCP 47 tag written at mux time.
-    # mkvmerge keeps these verbatim in language_ietf (verified), so every
-    # track stays distinguishable downstream — including zh-Hans vs zh-Hant.
+    # Bilibili code -> IETF/BCP 47 tag written at mux time. mkvmerge keeps
+    # these verbatim in language_ietf, so zh-Hans and zh-Hant stay distinct.
     SUBTITLE_MUX_LANGS: ClassVar[dict[str, str]] = {
         "en": "en",
         "th": "th",
@@ -45,8 +44,7 @@ class MetadataEditor:
         "ar": "ar-001",
     }
 
-    # Legacy ISO 639-2 tags (e.g. from old ffmpeg-embedded rips, which carry
-    # no language_ietf) normalized to BCP 47 so old files still resolve.
+    # Legacy ISO 639-2 tags (old rips without language_ietf) mapped to BCP 47.
     LEGACY_SUBTITLE_LANGS: ClassVar[dict[str, str]] = {
         "eng": "en",
         "tha": "th",
@@ -60,12 +58,7 @@ class MetadataEditor:
 
     @staticmethod
     def subtitle_order_key(code: str) -> tuple[int, str]:
-        """Sort key for subtitle codes: English first, then alphabetically.
-
-        Mirrors sort_subtitle_tracks: English always leads, the rest order by
-        English display name (Arabic, Chinese Simplified, ... Vietnamese).
-        Unknown codes sort last.
-        """
+        """English first, then alphabetical by display name; unknown last."""
         tag = MetadataEditor.SUBTITLE_MUX_LANGS.get(code, code)
         if tag == "en":
             return (0, "")
@@ -273,9 +266,8 @@ class MetadataEditor:
     ) -> list[str]:
         """Flag the preferred subtitle track as default and name all tracks.
 
-        Matches tracks by language_ietf (what mkvmerge preserves verbatim),
-        falling back to the legacy language tag. Every tag maps 1:1 back to
-        a Bilibili code, so no positional guessing is needed.
+        Matches by language_ietf, falling back to legacy tags. Tags map 1:1
+        to Bilibili codes, so no positional guessing is needed.
         """
         language = language or SubtitleLanguage.en
         want = self.SUBTITLE_MUX_LANGS.get(language.value, "en")
@@ -439,11 +431,9 @@ class MetadataEditor:
     ) -> Path:
         """Mux separate video/audio/subtitle tracks into one MKV with mkvmerge.
 
-        This replaces the old ffmpeg-based merging (FFmpegMergerPP +
-        FFmpegEmbedSubtitle). Tracks are passed through without re-encoding.
-        Each subtitle file gets its `--language` from its filename so later
-        metadata passes can match tracks exactly. Order in the output is
-        video, audio, then subtitles sorted by filename.
+        Tracks pass through without re-encoding. Subtitles get `--language`
+        from their filenames for exact downstream matching. Output order:
+        video, audio, then subtitles (English first, alphabetical).
         """
         mkvmerge = str(self.mkvmerge_path) if self.mkvmerge_path else "mkvmerge"
         if not video_track.exists():

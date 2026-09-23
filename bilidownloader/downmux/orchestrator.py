@@ -93,9 +93,7 @@ class BiliProcess:
             proxy=download_options.proxy,
             mark_downloaded=download_options.mark_downloaded,
         )
-        # ffmpeg is no longer required: tracks are downloaded separately and
-        # remuxed with mkvmerge/mkvpropedit. binary_paths.ffmpeg_path is kept
-        # only for backward compatibility and is otherwise ignored.
+        # ffmpeg_path is kept for backward compatibility only; remuxing uses mkvmerge.
         if binary_paths.mkvpropedit_path is None:
             raise ValueError("mkvpropedit path is not set properly")
         if binary_paths.mkvmerge_path is None:

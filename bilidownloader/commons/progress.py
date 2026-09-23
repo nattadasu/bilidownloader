@@ -1,8 +1,4 @@
-"""Rich-based progress reporting with binary (1024-based) byte units.
-
-Replaces alive-progress throughout the codebase. Rendering is disabled
-when headless (see commons.ui.is_headless), so journals stay clean.
-"""
+"""Rich progress with binary (1024-based) byte units; silent when headless."""
 
 from collections.abc import Callable
 from pathlib import Path
@@ -68,12 +64,8 @@ def make_progress() -> Progress:
 
 
 class YtDlpProgress:
-    """yt-dlp progress_hooks reporter: one rich task per media track.
-
-    Files whose extension is in transient_exts (e.g. subtitles) keep their
-    tasks only for their own phase: the whole group is removed (unhooked) at
-    once when the video/audio download starts, instead of lingering.
-    """
+    """One rich task per media track; transient_exts tasks are purged as a
+    group when video/audio start instead of lingering."""
 
     def __init__(
         self,
@@ -112,7 +104,7 @@ class YtDlpProgress:
             desc = self._describe(filename, info_dict)
         except Exception:
             desc = Path(filename).name[:45]
-        # Muted violet (#875faf = xterm 97): plain "purple" is neon (129).
+        # Plain "purple" is neon (129); use muted violet instead.
         return f"[reverse #875faf] DOWN [/] {escape(desc)}"
 
     def _plain_label(self, filename: str, info_dict: dict | None) -> str:
@@ -151,8 +143,7 @@ class YtDlpProgress:
                 total=total or None,
             )
         elif status == "finished":
-            # Transient rows are kept (not popped) so the whole subtitle
-            # group can be purged at once when video/audio start.
+            # Transient rows are kept for the group purge at video/audio start.
             task_id = (
                 self._tasks.get(filename)
                 if self._is_transient(filename)

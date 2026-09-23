@@ -28,7 +28,6 @@ class SubtitleReporter(PostProcessor):
         if not subtitles:
             return [], info
 
-        # Sort languages for consistent display
         sorted_langs = sorted(subtitles.keys())
 
         if len(sorted_langs) == 0:
@@ -50,7 +49,6 @@ class SubtitleReporter(PostProcessor):
             lang_name = langcode_to_str(lang_code)
             sub_list = subtitles[lang_code]
 
-            # Get available formats
             formats: list[str] = []
             if isinstance(sub_list, list):
                 formats = [sub.get("ext", "unknown") for sub in sub_list]

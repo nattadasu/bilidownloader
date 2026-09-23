@@ -348,8 +348,7 @@ def download_fonts(font_family: str) -> None:
         )
         return
 
-    # Download the font with rich binary-bytes progress
-    # (rendering is a no-op when headless, so no separate code path needed)
+    # Download the font with progress disabled automatically when headless.
     try:
         from bilidownloader.commons.progress import format_binary_size, make_progress
 

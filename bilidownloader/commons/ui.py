@@ -15,22 +15,19 @@ _notification_disabled = os.getenv("DISPLAY") is None and os.name != "nt"
 
 
 def is_headless() -> bool:
-    """Return True when output should avoid ANSI colors/bars.
+    """True when output must avoid ANSI colors/bars: rich's own terminal check.
 
-    This is exactly rich's own terminal detection (non-TTY stdout as in
-    pipes/systemd-journal, NO_COLOR, TERM=dumb). Deliberately nothing more:
-    systemd env vars like INVOCATION_ID leak into desktop sessions, so they
-    must not force headless mode on real terminals.
+    Nothing more — systemd env vars like INVOCATION_ID leak into desktop
+    sessions, so they must not force headless mode on real terminals.
     """
     return not console.is_terminal
 
 
 def print_table(table: Table, width: int = 70, indent: str = "       ") -> None:
-    """Print a rich Table indented, without colors when headless.
+    """Indented rich Table with color only on real terminals.
 
-    The table is rendered to a buffer first for indentation. Since a buffer
-    is never a TTY, color must be forced explicitly in head mode — otherwise
-    rich strips it everywhere, not just in journals.
+    A buffer is never a TTY, so color is forced explicitly in head mode
+    (rich would otherwise strip it everywhere, not just in journals).
     """
     headless = is_headless()
     buf = StringIO()

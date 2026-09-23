@@ -17,7 +17,7 @@ from bilidownloader.cli.options import (
 from bilidownloader.commons.alias import SERIES_ALIASES
 from bilidownloader.commons.ui import prn_done, prn_error, prn_info
 
-# Constants for TSV format
+# TSV columns
 HEAD = "Timestamp\tSeries ID\tSeries Title\tEpisode Index\tEpisode ID"
 SEP = "\t"
 
