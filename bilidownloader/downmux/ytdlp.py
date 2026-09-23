@@ -6,6 +6,7 @@ remuxed into a final MKV with mkvmerge. Progress via rich, binary units.
 """
 
 import shlex
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 from pathlib import Path
 from re import IGNORECASE
@@ -394,6 +395,43 @@ class VideoDownloader:
             if p.suffix.lower() in (".ass", ".srt")
         ]
 
+    def _fetch_video_and_subs(
+        self,
+        episode_url: str,
+        video_outtmpl: str,
+        video_selector: str,
+        is_chinese: bool,
+    ) -> None:
+        """Video + subtitle pass (runs on a worker thread)."""
+        video_opts = self._track_opts(
+            video_outtmpl,
+            format=video_selector,
+            writesubtitles=True,
+            subtitleslangs=["all"],
+            subtitlesformat="srt" if self.srt else "ass/srt",
+        )
+        with YDL(video_opts) as ydl:  # type: ignore
+            self._attach_subtitle_processors(ydl, is_chinese=is_chinese)
+            ydl.download([episode_url])
+
+    def _fetch_audio(
+        self, episode_url: str, audio_outtmpl: str, audio_selector: str
+    ) -> None:
+        """Audio-only pass (runs on a worker thread).
+
+        Built non-verbose so the init-time version/params header is skipped;
+        verbosity is restored right after, so the log reads as a continuation
+        of the video pass (single request).
+        """
+        opts = self._track_opts(audio_outtmpl, format=audio_selector)
+        restore_verbose = bool(opts.get("verbose"))
+        if restore_verbose:
+            opts["verbose"] = False
+        with YDL(opts) as ydl:  # type: ignore
+            if restore_verbose:
+                ydl.params["verbose"] = True
+            ydl.download([episode_url])
+
     def _consolidate_video_pass_subtitles(self, base_stem: str) -> None:
         """Rename `<base>.video.<lang>.ass/srt` to `<base>.<lang>.ass/srt`.
 
@@ -599,21 +637,34 @@ class VideoDownloader:
                 metadata["btitle"] = title  # type: ignore
                 return (audio_track, metadata, language)
 
-            # Subtitles ride the video pass; before_dl PPs run after they land.
-            video_opts = self._track_opts(
-                video_outtmpl,
-                format=video_selector,
-                writesubtitles=True,
-                subtitleslangs=["all"],
-                subtitlesformat="srt" if self.srt else "ass/srt",
-            )
-            with YDL(video_opts) as ydl:  # type: ignore
-                self._attach_subtitle_processors(ydl, is_chinese=is_chinese)
-                ydl.download([episode_url])
+            # Video (+subtitles) and audio fetch concurrently on workers;
+            # each pass owns its YDL instance and filenames, the shared
+            # progress reporter is thread-safe.
+            with ThreadPoolExecutor(
+                max_workers=2, thread_name_prefix="bilitrack"
+            ) as executor:
+                pending = [
+                    executor.submit(
+                        self._fetch_video_and_subs,
+                        episode_url,
+                        video_outtmpl,
+                        video_selector,
+                        is_chinese,
+                    ),
+                    executor.submit(
+                        self._fetch_audio, episode_url, audio_outtmpl, audio_selector
+                    ),
+                ]
+                first_error: Exception | None = None
+                for future in pending:
+                    try:
+                        future.result()
+                    except Exception as err:
+                        if first_error is None:
+                            first_error = err
+                if first_error is not None:
+                    raise first_error
             self._consolidate_video_pass_subtitles(base_stem)
-
-            with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
-                ydl.download([episode_url])
 
             video_track = self._find_track(f"{base_stem}.video.")
             audio_track = self._find_track(f"{base_stem}.audio.")
