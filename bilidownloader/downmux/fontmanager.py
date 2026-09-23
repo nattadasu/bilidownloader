@@ -339,48 +339,42 @@ def download_fonts(font_family: str) -> None:
     # Ensure parent directory exists
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Import required libraries for downloading
     try:
         import requests
-        from alive_progress import alive_bar
     except ImportError:
         prn_error(
-            "Required libraries for downloading fonts are not installed. "
-            "Please install 'requests' and 'alive-progress'."
+            "Required library for downloading fonts is not installed. "
+            "Please install 'requests'."
         )
         return
 
-    # Download the font with progress bar
+    # Download the font with rich binary-bytes progress
+    # (rendering is a no-op when headless, so no separate code path needed)
     try:
+        from bilidownloader.commons.progress import format_binary_size, make_progress
+
         response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
+        raw_size = response.headers.get("content-length")
+        total = int(raw_size) if raw_size and raw_size.isdigit() else None
 
-        # Get content length but don't trust it completely for CDN responses
-        raw_size: str | None = response.headers.get("content-length", None)
-        declared_size: int | None = (
-            int(raw_size) if raw_size and raw_size.isdigit() else None
-        )
-
-        downloaded_bytes: int = 0
-        chunk_size: int = 8192  # Larger chunk size for better performance
-
-        with (
-            open(path, "wb") as file,
-            alive_bar(
-                declared_size, title=f"Downloading {font_family}", unit="B", scale="IEC"
-            ) as bar,
-        ):
-            for data in response.iter_content(chunk_size=chunk_size):
-                if not data:  # End of stream
-                    break
-                bytes_written: int = file.write(data)
-                downloaded_bytes += bytes_written
-
-                # Let alive-progress handle overruns if content-length is wrong
-                bar(bytes_written)
+        downloaded_bytes = 0
+        progress = make_progress()
+        progress.start()
+        try:
+            task_id = progress.add_task(f"Downloading {font_family}", total=total)
+            with open(path, "wb") as file:
+                for data in response.iter_content(chunk_size=8192):
+                    if not data:
+                        break
+                    downloaded_bytes += file.write(data)
+                    progress.update(task_id, completed=downloaded_bytes, total=None)
+            progress.update(task_id, completed=downloaded_bytes, total=downloaded_bytes)
+        finally:
+            progress.stop()
 
         prn_info(
-            f"Font '{font_family}' downloaded successfully to {path} ({downloaded_bytes:,} bytes)."
+            f"Font '{font_family}' downloaded successfully to {path} ({format_binary_size(downloaded_bytes)})."
         )
 
     except requests.RequestException as e:

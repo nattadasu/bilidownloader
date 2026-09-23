@@ -1,9 +1,12 @@
 """
-Video downloader - handles yt-dlp download operations
+Video downloader - handles yt-dlp download operations.
+
+Tracks are downloaded separately (video-only, audio-only, subtitles) with
+no ffmpeg involvement, then remuxed into a final MKV with mkvmerge.
+Progress is reported via rich with binary (1024-based) byte units.
 """
 
 import shlex
-import sys
 from html import unescape
 from pathlib import Path
 from re import IGNORECASE
@@ -12,10 +15,12 @@ from re import sub as rsub
 from typing import Any, Literal
 
 from fake_useragent import UserAgent
+from langcodes import Language
 from yt_dlp import YoutubeDL as YDL
 
 from bilidownloader.apis.api import BiliHtml
 from bilidownloader.commons.alias import SERIES_ALIASES
+from bilidownloader.commons.progress import YtDlpProgress
 from bilidownloader.commons.ui import (
     prn_cmd,
     prn_dbg,
@@ -37,8 +42,6 @@ uagent = ua.chrome
 def _normalize_tag(code: str) -> str:
     """Normalize language code via langcodes to a comparable tag (lowercase)."""
     try:
-        from langcodes import Language
-
         return Language.get(code.strip()).to_tag().lower()
     except Exception:
         return code.strip().lower()
@@ -83,47 +86,33 @@ def _has_required_subtitle(
     if not subtitles or not ensure_subs:
         return False
 
-    avail_keys = list(subtitles.keys())
-
-    # Pre-normalize available keys
-    avail_tags = {k: _normalize_tag(k) for k in avail_keys}
-    # Also map base language for fallback
-    try:
-        from langcodes import Language
-
-        avail_langs: dict[str, str | None] = {}
-        for k in avail_keys:
-            try:
-                avail_langs[k] = Language.get(k).language
-            except Exception:
-                avail_langs[k] = None
-    except ImportError:
-        avail_langs = {}
+    avail_tags = {k: _normalize_tag(k) for k in subtitles}
+    avail_langs: dict[str, str | None] = {}
+    for k in subtitles:
+        try:
+            avail_langs[k] = Language.get(k).language
+        except Exception:
+            avail_langs[k] = None
 
     for req in ensure_subs:
         req_tag = _normalize_tag(req)
-        has_script = "-" in req or "_" in req
-        # exact tag match
-        for avail_tag in avail_tags.values():
-            if req_tag == avail_tag:
+        if req_tag in avail_tags.values():
+            return True
+        # Fall back to base-language comparison when no script/region given
+        # (so 'en' matches 'en', 'eng' matches 'en', 'zh' matches 'zh-Hans').
+        if "-" in req or "_" in req:
+            continue
+        try:
+            req_base = (Language.get(req).language or "").lower()
+        except Exception:
+            req_base = ""
+        req_base = req_base or req_tag.split("-")[0].split("_")[0]
+        for avail_tag, avail_lang in zip(avail_tags.values(), avail_langs.values()):
+            if req_base and req_base in (
+                (avail_lang or "").lower(),
+                avail_tag.split("-")[0].split("_")[0],
+            ):
                 return True
-        # fallback base language match if req has no script
-        if not has_script:
-            try:
-                from langcodes import Language
-
-                req_lang = Language.get(req).language
-                if req_lang:
-                    for avail_lang in avail_langs.values():
-                        if avail_lang and req_lang.lower() == avail_lang.lower():
-                            return True
-            except Exception:
-                # fallback: compare prefix before '-'/'_'
-                req_base = req_tag.split("-")[0].split("_")[0]
-                for avail_tag in avail_tags.values():
-                    avail_base = avail_tag.split("-")[0].split("_")[0]
-                    if req_base == avail_base:
-                        return True
     return False
 
 
@@ -139,18 +128,18 @@ class YtDlpLogger:
         # But preserves [BiliIntl] if it appears later (e.g. in filename)
         msg = rsub(r"^\[[^]]+\]\s", "", msg)
 
-        # Check if this is an ffmpeg command line and format it as CMD
-        if msg.startswith("ffmpeg command line: "):
-            cmd_line = msg.replace("ffmpeg command line: ", "")
-            # Parse the command line into a list for prn_cmd
-            try:
-                cmd_parts = shlex.split(cmd_line)
-                prn_cmd(cmd_parts)
-            except ValueError:
-                # Fallback if parsing fails
-                prn_dbg(msg)
-        else:
-            prn_dbg(msg)
+        # yt-dlp no longer invokes ffmpeg/mkvmerge itself (we remux manually),
+        # but still surface external command lines as CMD when they appear.
+        for prefix in ("ffmpeg command line: ", "mkvmerge command line: "):
+            if msg.startswith(prefix):
+                cmd_line = msg.replace(prefix, "")
+                try:
+                    cmd_parts = shlex.split(cmd_line)
+                    prn_cmd(cmd_parts)
+                except ValueError:
+                    prn_dbg(msg)
+                return
+        prn_dbg(msg)
 
     def warning(self, msg):
         if "412" in msg and "Precondition Failed" in msg:
@@ -168,7 +157,11 @@ class YtDlpLogger:
 
 
 class VideoDownloader:
-    """Handles video download operations using yt-dlp"""
+    """Handles video download operations using yt-dlp.
+
+    Downloads video, audio, and subtitle tracks separately and remuxes them
+    with mkvmerge. ffmpeg is never invoked.
+    """
 
     def __init__(
         self,
@@ -196,7 +189,11 @@ class VideoDownloader:
         self.resolution = resolution
         self.is_avc = is_avc
         self.download_pv = download_pv
+        # Deprecated: kept for backward compatibility, never passed to yt-dlp.
+        # ffmpeg is no longer used for merging/embedding.
         self.ffmpeg_path = ffmpeg_path
+        if ffmpeg_path is not None:
+            prn_dbg("ffmpeg_path is deprecated and ignored; remuxing uses mkvmerge")
         self.mkvmerge_path = mkvmerge_path
         self.notification = notification
         self.srt = srt
@@ -211,154 +208,130 @@ class VideoDownloader:
         self.ensure_sub = _parse_ensure_subs(ensure_sub)
         self.proxy = proxy
         self.mark_downloaded = mark_downloaded
-        self._progress_bars = {}
+        self._progress = YtDlpProgress(describe=self._get_download_description)
 
     @staticmethod
     def _get_download_description(
         filename: str, info_dict: dict[str, Any] | None = None
     ) -> str:
-        """Generate a descriptive title for the download based on filename and metadata"""
+        """Short label for a track, e.g. 'Video track (1080P(HD))'."""
         import re
 
         from bilidownloader.commons.utils import langcode_to_str
 
-        path = Path(filename)
-        stem = path.stem
-        ext = path.suffix.lower()
-
-        # Check if it's a subtitle file
-        if ext in [".ass", ".srt", ".vtt"]:
-            # Extract language code from filename (e.g., "video.en.ass" -> "en")
+        ext = Path(filename).suffix.lower()
+        if ext in (".ass", ".srt", ".vtt"):
             lang_match = re.search(
                 r"\.([a-z]{2}(?:-[A-Z][a-z]+)?)\.(?:ass|srt|vtt)$", filename
             )
             if lang_match:
-                lang_code = lang_match.group(1)
-                lang_name = langcode_to_str(lang_code)
-                format_name = ext[1:].upper()  # .ass -> ASS
-                return f"{lang_name} {format_name} subtitle"
-            else:
-                return f"{ext[1:].upper()} subtitle"
+                code = lang_match.group(1)
+                return f"{langcode_to_str(code)} {ext[1:].upper()} subtitle"
+            return f"{ext[1:].upper()} subtitle"
 
-        # Check if we have info_dict with format info
-        if info_dict:
-            # Check for video/audio based on vcodec and acodec
-            vcodec = info_dict.get("vcodec", "none")
-            acodec = info_dict.get("acodec", "none")
+        if Path(filename).stem.endswith(".audio"):
+            return "Audio track"
 
-            if vcodec != "none" and acodec == "none":
-                # Video only
-                resolution = info_dict.get("resolution", "")
-                format_note = info_dict.get("format_note", "")
-                if format_note:
-                    return f"Video track ({format_note})"
-                elif resolution:
-                    return f"Video track ({resolution})"
-                else:
-                    return "Video track"
-            elif acodec != "none" and vcodec == "none":
-                # Audio only
-                return "Audio track"
-
-        # Fallback: check filename pattern for .fN.mp4
-        if ".f" in stem and ext in [".mp4", ".m4a", ".webm"]:
-            # Extract format number (e.g., "video.f2.mp4" -> "2")
-            fragment_match = re.search(r"\.f(\d+)$", stem)
-            if fragment_match:
-                format_id = fragment_match.group(1)
-                # BiliBili typically uses lower IDs for audio, higher for video
-                # Based on the format list: 0-2 are audio, 3+ are video
-                try:
-                    fid = int(format_id)
-                    if fid <= 2:
-                        return "Audio track"
-                    else:
-                        return "Video track"
-                except ValueError:
-                    pass
-
-        # Fallback to truncated filename
-        return stem[:35]
+        info = info_dict or {}
+        if note := info.get("format_note") or info.get("resolution", ""):
+            return f"Video track ({note})"
+        return "Video track"
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
-        """Progress hook for yt-dlp to display download status with alive-progress"""
-        if d["status"] == "downloading":
-            filename = d.get("filename", "")
-
-            try:
-                from alive_progress import alive_bar
-            except ImportError:
-                # Fallback without alive-progress
-                return
-
-            # Get or create progress bar for this file
-            if filename not in self._progress_bars:
-                total = d.get("total_bytes") or d.get("total_bytes_estimate")
-
-                if total and total > 0:
-                    # Pass info_dict if available in the download dict
-                    info_dict = d.get("info_dict")
-                    description = self._get_download_description(filename, info_dict)
-
-                    # Detect if running in a terminal (like rich does)
-                    is_terminal = sys.stdout.isatty()
-
-                    # Only use ANSI color codes if in a terminal
-                    if is_terminal:
-                        title = (
-                            f"\033[46m\033[30m INFO \033[0m Downloading {description}"
-                        )
-                    else:
-                        title = f" INFO  Downloading {description}"
-
-                    bar = alive_bar(
-                        total,
-                        title=title,
-                        unit="B",
-                        scale="IEC",
-                        receipt=True,
-                        ctrl_c=True,
-                    )
-                    bar_context = bar.__enter__()
-                    self._progress_bars[filename] = {
-                        "bar": bar,
-                        "context": bar_context,
-                        "last_downloaded": 0,
-                    }
-
-            # Update progress bar
-            if filename in self._progress_bars:
-                bar_info = self._progress_bars[filename]
-                downloaded = d.get("downloaded_bytes", 0)
-
-                if downloaded > bar_info["last_downloaded"]:
-                    increment = downloaded - bar_info["last_downloaded"]
-                    bar_info["context"](increment)
-                    bar_info["last_downloaded"] = downloaded
-
-        elif d["status"] == "finished":
-            filename = d.get("filename", "")
-
-            # Close progress bar for this file
-            if filename in self._progress_bars:
-                try:
-                    self._progress_bars[filename]["bar"].__exit__(None, None, None)
-                except Exception:
-                    pass
-                del self._progress_bars[filename]
-
-        elif d["status"] == "error":
-            filename = d.get("filename", "")
-
-            # Close progress bar on error
-            if filename in self._progress_bars:
-                try:
-                    self._progress_bars[filename]["bar"].__exit__(None, None, None)
-                except Exception:
-                    pass
-                del self._progress_bars[filename]
-
+        """Progress hook for yt-dlp, backed by rich with binary byte units."""
+        self._progress.hook(d)
+        if d["status"] == "error":
             prn_error("Download error occurred")
+
+    def _build_format_selectors(self) -> tuple[str, str, str]:
+        """Build (combined, video-only, audio-only) format selectors."""
+        codec = "avc1" if self.is_avc else "hev1"
+
+        # Map resolution to BiliBili's quality labels (format_note field)
+        # This handles non-16:9 aspect ratios correctly
+        quality_map = {
+            144: "144P",
+            240: "240P",
+            360: "360P",
+            480: "480P",
+            720: "720P",
+            1080: "1080P",
+            2160: "Enhanced bitrate",  # 4K content
+        }
+        quality_label = quality_map.get(self.resolution, f"{self.resolution}P")
+
+        # Note: Using *= for substring matching instead of ~= to avoid regex issues
+        if self.resolution == 1080:
+            video_selector = (
+                f"bv*[vcodec^={codec}][format_note*=HD]/"
+                f"bv*[vcodec^={codec}][height={self.resolution}]/"
+                f"bv*[vcodec^={codec}][format_note*={quality_label}]"
+            )
+        else:
+            video_selector = (
+                f"bv*[vcodec^={codec}][height={self.resolution}]/"
+                f"bv*[vcodec^={codec}][format_note*={quality_label}]"
+            )
+        audio_selector = "ba"
+        combined_selector = f"{video_selector}+{audio_selector}"
+        return combined_selector, video_selector, audio_selector
+
+    def _base_ydl_opts(self) -> dict[str, Any]:
+        """Common yt-dlp options shared by all track downloads (no ffmpeg)."""
+        opts: dict[str, Any] = {
+            "cookiefile": str(self.cookie),
+            "extract_flat": "discard_in_playlist",
+            "fragment_retries": 10,
+            "ignoreerrors": "only_download",
+            "noprogress": True,
+            "progress_hooks": [self._progress_hook],
+            "retries": 10,
+            "updatetime": False,
+            "referer": "https://www.bilibili.tv/",
+            "logger": YtDlpLogger(),
+            # Never merge/embed with ffmpeg; bilidownloader remuxes with mkvmerge.
+            "keepvideo": True,
+        }
+        if self.proxy:
+            opts["proxy"] = self.proxy
+        return opts
+
+    def _track_opts(self, outtmpl: str | None = None, **extra: Any) -> dict[str, Any]:
+        """Options for one track download pass (video, audio, or subtitles)."""
+        opts = self._base_ydl_opts()
+        if outtmpl is not None:
+            opts["outtmpl"] = {"default": outtmpl}
+        opts.update(
+            {
+                "quiet": not self.verbose,
+                "verbose": self.verbose,
+                **extra,
+            }
+        )
+        return opts
+
+    def _attach_subtitle_processors(self, ydl: YDL, is_chinese: bool) -> None:
+        """Attach subtitle reporter + processing PPs to a yt-dlp instance."""
+        if self.only_audio:
+            return
+        from bilidownloader.subtitles import post_processors as pp
+        from bilidownloader.subtitles.subtitle_reporter import SubtitleReporter
+
+        def add(proc: Any) -> None:
+            ydl.add_post_processor(proc, when="before_dl")
+
+        add(SubtitleReporter())
+        if self.srt:
+            add(pp.SRTModifier(no_mods=self.no_mods))
+            add(pp.SRTGapFiller(is_chinese=is_chinese))
+            return
+        if not self.dont_convert:
+            add(pp.SRTToASSConverter(is_chinese=is_chinese, no_mods=self.no_mods))
+        add(pp.ASSModifier(no_mods=self.no_mods))
+        add(pp.ASSGapFiller(is_chinese=is_chinese))
+        if not self.dont_rescale:
+            add(pp.SSARescaler())
+        add(pp.FontCollector())
 
     def get_video_info(
         self, episode_url: str, simulate: bool = True
@@ -371,9 +344,6 @@ class VideoDownloader:
             "fragment_retries": 10,
             "ignoreerrors": "only_download",
             "noprogress": True,
-            "postprocessors": [
-                {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
-            ],
             "retries": 10,
             "simulate": simulate,
             "verbose": self.verbose,
@@ -385,9 +355,6 @@ class VideoDownloader:
         }
         if self.proxy:
             ydl_opts["proxy"] = self.proxy
-        if self.ffmpeg_path:
-            ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
-            prn_dbg(f"Using ffmpeg at: {self.ffmpeg_path}")
         with YDL(ydl_opts) as ydl:  # type: ignore
             return ydl.extract_info(episode_url, download=False)
 
@@ -399,11 +366,43 @@ class VideoDownloader:
         except Exception:
             return []
 
+    def _files_with_prefix(self, prefix: str) -> list[Path]:
+        """Files in output_dir whose name starts with prefix (literal match).
+
+        Literal matching is required because base names contain brackets
+        (e.g. "[BiliIntl] ...") that glob would read as character classes.
+        """
+        return sorted(
+            p
+            for p in self.output_dir.iterdir()
+            if p.is_file() and p.name.startswith(prefix)
+        )
+
+    def _find_track(self, prefix: str) -> Path | None:
+        """Find a downloaded video/audio track by filename prefix."""
+        matches = self._files_with_prefix(prefix)
+        for match in matches:
+            if match.suffix not in (".part", ".tmp", ".ytdl"):
+                return match
+        return matches[0] if matches else None
+
+    def _find_subtitle_tracks(self, base_stem: str) -> list[Path]:
+        """Find downloaded subtitle files for a base name."""
+        return [
+            p
+            for p in self._files_with_prefix(base_stem + ".")
+            if p.suffix.lower() in (".ass", ".srt")
+        ]
+
     def download_episode(
         self,
         episode_url: str,
     ) -> tuple[Path, Any, Literal["ind", "jpn", "chi", "tha"] | None]:
-        """Download episode from Bilibili with yt-dlp"""
+        """Download episode tracks separately, then remux with mkvmerge.
+
+        Returns (final_path, metadata, audio_language). Intermediate
+        video/audio/subtitle files are removed after a successful remux.
+        """
         prn_info("Resolving some metadata information of the link, may take a while")
         html = BiliHtml(cookie_path=self.cookie, user_agent=uagent, proxy=self.proxy)
         resp = html.get(episode_url)
@@ -444,97 +443,10 @@ class VideoDownloader:
         elif any(x.lower() in str(title).lower() for x in th_dub):
             language = "tha"
 
-        codec = "avc1" if self.is_avc else "hev1"
         hcodec = "AVC" if self.is_avc else "HEVC"
-
-        # Map resolution to BiliBili's quality labels (format_note field)
-        # This handles non-16:9 aspect ratios correctly
-        quality_map = {
-            144: "144P",
-            240: "240P",
-            360: "360P",
-            480: "480P",
-            720: "720P",
-            1080: "1080P",
-            2160: "Enhanced bitrate",  # 4K content
-        }
-        quality_label = quality_map.get(self.resolution, f"{self.resolution}P")
-
-        # Build format selector with fallbacks:
-        # 1. Try exact height match (for standard 16:9 content)
-        # 2. For 1080P, prefer HD variant first, then standard
-        # 3. Fall back to format_note label (handles non-16:9 aspect ratios)
-        # Note: Using *= for substring matching instead of ~= to avoid regex issues
-        if self.resolution == 1080:
-            format_selector = (
-                f"bv*[vcodec^={codec}][format_note*=HD]+ba/"
-                f"bv*[vcodec^={codec}][height={self.resolution}]+ba/"
-                f"bv*[vcodec^={codec}][format_note*={quality_label}]+ba"
-            )
-        else:
-            format_selector = (
-                f"bv*[vcodec^={codec}][height={self.resolution}]+ba/"
-                f"bv*[vcodec^={codec}][format_note*={quality_label}]+ba"
-            )
-
-        ydl_opts = {
-            "cookiefile": str(self.cookie),
-            "extract_flat": "discard_in_playlist",
-            "force_print": {"after_move": ["filepath"]},
-            "format": format_selector,
-            "fragment_retries": 10,
-            "ignoreerrors": "only_download",
-            "merge_output_format": "mkv",
-            "final_ext": "mkv",
-            "noprogress": True,
-            "outtmpl": {
-                "default": str(
-                    self.output_dir
-                    / f"[%(extractor)s] {title} - E%(episode_number)s [%(resolution)s, {hcodec}].%(ext)s"
-                )
-            },
-            "postprocessors": [],
-            "progress_hooks": [self._progress_hook],
-            "retries": 10,
-            "subtitlesformat": "srt" if self.srt else "ass/srt",
-            "subtitleslangs": ["all"],
-            "updatetime": False,
-            "writesubtitles": True,
-            "referer": "https://www.bilibili.tv/",
-            "logger": YtDlpLogger(),
-        }
-        if self.proxy:
-            ydl_opts["proxy"] = self.proxy
-
-        # Build postprocessors list in the correct order
-        postprocessors = []
-        postprocessors.append(
-            {"already_have_subtitle": False, "key": "FFmpegEmbedSubtitle"}
+        combined_selector, video_selector, audio_selector = (
+            self._build_format_selectors()
         )
-        postprocessors.append(
-            {
-                "add_chapters": False,
-                "add_infojson": None,
-                "add_metadata": False,
-                "key": "FFmpegMetadata",
-            }
-        )
-        postprocessors.append(
-            {"key": "FFmpegConcat", "only_multi_video": True, "when": "playlist"}
-        )
-
-        ep_num = "0"
-
-        ydl_opts["postprocessors"] = postprocessors
-        if self.only_audio:
-            ydl_opts["format"] = "ba"
-            del ydl_opts["subtitlesformat"]
-            del ydl_opts["subtitleslangs"]
-            del ydl_opts["writesubtitles"]
-        if self.ffmpeg_path:
-            ydl_opts["ffmpeg_location"] = str(self.ffmpeg_path)
-        if self.mkvmerge_path:
-            ydl_opts["mkvmerge_path"] = str(self.mkvmerge_path)
 
         # Check for subtitles if skip_no_subtitle or ensure_sub is set
         if (self.skip_no_subtitle or self.ensure_sub) and not self.only_audio:
@@ -565,146 +477,161 @@ class VideoDownloader:
                 )
                 return None, None, None
 
-        with YDL(ydl_opts) as ydl:  # type: ignore
+        # Probe metadata with the combined selector so requested_formats,
+        # episode number, extractor, and subtitle list are resolved the same
+        # way as before (but nothing is downloaded or merged here).
+        probe_opts = self._track_opts(format=combined_selector, simulate=True)
+        with YDL(probe_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
             metadata = ydl.extract_info(episode_url, download=False)
-            try:
-                if metadata is None:
-                    raise NameError()
-                is_pv = metadata["title"].startswith("PV")  # type: ignore
-                if is_pv and not self.download_pv:
-                    raise NameError()
-            except AttributeError:
-                raise ReferenceError(
-                    f"{episode_url} does not have preferred resolution of {self.resolution}"
-                )
-            except (TypeError, NameError):
-                raise NameError(
-                    f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
-                )
-            if "entries" in metadata:
-                raise ReferenceError(
-                    f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
-                )
-            ep_num = f"E{metadata.get('episode_number', 0):02d}" if metadata else ""
-            if not metadata["title"].startswith("E"):  # type: ignore
-                ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num  # type: ignore
-            if self.notification:
-                push_notification(
-                    title=str(title),
-                    index=ep_num,
-                )
-            prn_info(
-                f'Downloading "{title}" {ep_num} ({self.resolution}p, {"AVC" if self.is_avc else "HEVC"})'
+        try:
+            if metadata is None:
+                raise NameError()
+            is_pv = metadata["title"].startswith("PV")  # type: ignore
+            if is_pv and not self.download_pv:
+                raise NameError()
+        except AttributeError:
+            raise ReferenceError(
+                f"{episode_url} does not have preferred resolution of {self.resolution}"
             )
-
-            # Show selected format information
-            if metadata and "requested_formats" in metadata:
-                formats = metadata["requested_formats"]
-                for fmt in formats:
-                    if fmt.get("vcodec") != "none":
-                        # Video stream
-                        vcodec = fmt.get("vcodec", "unknown")
-                        resolution = f"{fmt.get('width', '?')}x{fmt.get('height', '?')}"
-                        prn_info(
-                            f"  Video: {vcodec} @ {resolution} ({fmt.get('format_note', 'unknown quality')})"
-                        )
-                    if fmt.get("acodec") != "none":
-                        # Audio stream
-                        acodec = fmt.get("acodec", "unknown")
-                        prn_info(f"  Audio: {acodec}")
-
-            ydl.params["outtmpl"]["default"] = (  # type: ignore
-                f"[%(extractor)s] {title} - {ep_num} [%(resolution)s, {hcodec}].%(ext)s"
+        except (TypeError, NameError):
+            raise NameError(
+                f"{episode_url} is a PV. Explicitly enable the switch if you want to download it."
             )
-            final_path = ydl.prepare_filename(metadata)
-            ydl.params["quiet"] = not self.verbose
-            ydl.params["verbose"] = self.verbose
+        if "entries" in metadata:
+            raise ReferenceError(
+                f"{episode_url} is a Playlist URL, not episode. To avoid unwanted err, please use other command"
+            )
+        ep_num = f"E{metadata.get('episode_number', 0):02d}" if metadata else ""
+        if not metadata["title"].startswith("E"):  # type: ignore
+            ep_num = metadata["title"].split(" - ")[0] if metadata else ep_num  # type: ignore
+        if self.notification:
+            push_notification(
+                title=str(title),
+                index=ep_num,
+            )
+        prn_info(
+            f'Downloading "{title}" {ep_num} ({self.resolution}p, {"AVC" if self.is_avc else "HEVC"})'
+        )
 
-            prn_dbg(f"Starting download with yt-dlp (verbose={self.verbose})")
-            if self.ffmpeg_path:
-                prn_dbg(f"FFmpeg location: {self.ffmpeg_path}")
-            if self.mkvmerge_path:
-                prn_dbg(f"mkvmerge path: {self.mkvmerge_path}")
+        # Show selected format information
+        if metadata and "requested_formats" in metadata:
+            formats = metadata["requested_formats"]
+            for fmt in formats:
+                if fmt.get("vcodec") != "none":
+                    # Video stream
+                    vcodec = fmt.get("vcodec", "unknown")
+                    resolution = f"{fmt.get('width', '?')}x{fmt.get('height', '?')}"
+                    prn_info(
+                        f"  Video: {vcodec} @ {resolution} ({fmt.get('format_note', 'unknown quality')})"
+                    )
+                if fmt.get("acodec") != "none":
+                    # Audio stream
+                    acodec = fmt.get("acodec", "unknown")
+                    prn_info(f"  Audio: {acodec}")
 
-            # Add subtitle reporter to display found subtitles
-            if not self.only_audio:
-                from bilidownloader.subtitles.subtitle_reporter import SubtitleReporter
+        # Deterministic base name (no yt-dlp placeholders) so split tracks
+        # can be found reliably after download.
+        extractor_name = (
+            metadata.get("extractor_key") or metadata.get("extractor") or "BiliIntl"
+        )
+        video_fmt = next(
+            (
+                fmt
+                for fmt in metadata.get("requested_formats", [])
+                if fmt.get("vcodec") != "none" and fmt.get("width")
+            ),
+            {},
+        )
+        if video_fmt:
+            res_str = f"{video_fmt.get('width')}x{video_fmt.get('height', '?')}"
+        else:
+            res_str = str(metadata.get("resolution", f"{self.resolution}p"))
+        base_stem = f"[{extractor_name}] {title} - {ep_num} [{res_str}, {hcodec}]"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        final_path = self.output_dir / f"{base_stem}.mkv"
+        video_outtmpl = str(self.output_dir / f"{base_stem}.video.%(ext)s")
+        audio_outtmpl = str(self.output_dir / f"{base_stem}.audio.%(ext)s")
+        subs_outtmpl = str(self.output_dir / f"{base_stem}.%(ext)s")
 
-                ydl.add_post_processor(SubtitleReporter(), when="before_dl")
+        prn_dbg(f"Starting track downloads with yt-dlp (verbose={self.verbose})")
+        if self.mkvmerge_path:
+            prn_dbg(f"mkvmerge path: {self.mkvmerge_path}")
 
-            is_chinese = language == "chi"
+        if self.mark_downloaded:
+            prn_info("Mark-downloaded mode: Skipping actual download")
+            prn_dbg(f"Would download: {final_path}")
+            metadata["btitle"] = title  # type: ignore
+            return (Path(".") / final_path, metadata, language)
 
-            # Add SRT to ASS converter if needed
-            if not self.srt and not self.only_audio and not self.dont_convert:
-                from bilidownloader.subtitles.post_processors import SRTToASSConverter
+        is_chinese = language == "chi"
 
-                ydl.add_post_processor(
-                    SRTToASSConverter(is_chinese=is_chinese, no_mods=self.no_mods),
-                    when="before_dl",
-                )
+        try:
+            if self.only_audio:
+                with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
+                    ydl.download([episode_url])
+                audio_track = self._find_track(f"{base_stem}.audio.")
+                if audio_track is None:
+                    raise FileNotFoundError(
+                        f"Audio track not found for {base_stem} after download"
+                    )
+                # Audio-only: the downloaded track is the final file
+                metadata["btitle"] = title  # type: ignore
+                return (audio_track, metadata, language)
 
-            # Add ASS modifier for language processing and metadata updates
-            if not self.srt and not self.only_audio:
-                from bilidownloader.subtitles.post_processors import ASSModifier
-
-                ydl.add_post_processor(
-                    ASSModifier(no_mods=self.no_mods),
-                    when="before_dl",
-                )
-
-            # Add ASS gap filler for flicker gaps
-            if not self.srt and not self.only_audio:
-                from bilidownloader.subtitles.post_processors import ASSGapFiller
-
-                ydl.add_post_processor(
-                    ASSGapFiller(is_chinese=is_chinese),
-                    when="before_dl",
-                )
-
-            # Add ASS rescaler if conditions are met
-            if not self.srt and not self.only_audio and not self.dont_rescale:
-                from bilidownloader.subtitles.post_processors import SSARescaler
-
-                ydl.add_post_processor(
-                    SSARescaler(),
-                    when="before_dl",
-                )
-
-            # Add FontCollector to gather fonts for ASS/SSA subtitle attachments
-            if not self.srt and not self.only_audio:
-                from bilidownloader.subtitles.post_processors import FontCollector
-
-                ydl.add_post_processor(
-                    FontCollector(),
-                    when="before_dl",
-                )
-
-            # Add SRT modifier for language processing
-            if self.srt and not self.only_audio:
-                from bilidownloader.subtitles.post_processors import SRTModifier
-
-                ydl.add_post_processor(
-                    SRTModifier(no_mods=self.no_mods),
-                    when="before_dl",
-                )
-
-            # Add SRT gap filler for direct SRT subtitles
-            if self.srt and not self.only_audio:
-                from bilidownloader.subtitles.post_processors import SRTGapFiller
-
-                ydl.add_post_processor(
-                    SRTGapFiller(is_chinese=is_chinese),
-                    when="before_dl",
-                )
-
-            if self.mark_downloaded:
-                prn_info("Mark-downloaded mode: Skipping actual download")
-                prn_dbg(f"Would download: {final_path}")
-            else:
+            # Video-only, audio-only, then subtitles-only (skip_download).
+            # before_dl PPs run after subtitles are written, so subtitle
+            # processing works on the subs pass as in the old single-pass flow.
+            with YDL(self._track_opts(video_outtmpl, format=video_selector)) as ydl:  # type: ignore
+                ydl.download([episode_url])
+            with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
+                ydl.download([episode_url])
+            subs_opts = self._track_opts(
+                subs_outtmpl,
+                skip_download=True,
+                writesubtitles=True,
+                subtitleslangs=["all"],
+                subtitlesformat="srt" if self.srt else "ass/srt",
+            )
+            with YDL(subs_opts) as ydl:  # type: ignore
+                self._attach_subtitle_processors(ydl, is_chinese=is_chinese)
                 ydl.download([episode_url])
 
-        metadata["btitle"] = title  # type: ignore
+            video_track = self._find_track(f"{base_stem}.video.")
+            audio_track = self._find_track(f"{base_stem}.audio.")
+            if video_track is None:
+                raise FileNotFoundError(
+                    f"Video track not found for {base_stem} after download"
+                )
+            if audio_track is None:
+                raise FileNotFoundError(
+                    f"Audio track not found for {base_stem} after download"
+                )
+            subtitle_tracks = [
+                sub
+                for sub in self._find_subtitle_tracks(base_stem)
+                if sub not in (video_track, audio_track)
+            ]
 
-        return (Path(".") / final_path, metadata, language)
+            # Remux with mkvmerge (no ffmpeg): video + audio + subtitles
+            from bilidownloader.downmux.metadata_editor import MetadataEditor
+
+            MetadataEditor(mkvmerge_path=self.mkvmerge_path).remux_tracks(
+                video_track=video_track,
+                audio_track=audio_track,
+                subtitle_tracks=subtitle_tracks,
+                output_path=final_path,
+            )
+
+            # Remove intermediates now that the final MKV exists
+            for intermediate in (video_track, audio_track, *subtitle_tracks):
+                try:
+                    intermediate.unlink(missing_ok=True)
+                except OSError as err:
+                    prn_dbg(f"Failed to remove intermediate {intermediate.name}: {err}")
+        finally:
+            self._progress.close()
+
+        metadata["btitle"] = title  # type: ignore
+        return (final_path, metadata, language)

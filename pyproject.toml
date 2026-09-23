@@ -16,7 +16,6 @@ classifiers = [
 ]
 keywords = ["anime"]
 dependencies = [
-	"alive-progress",               # progress bar for history migration
 	"platformdirs",                 # for platform-dependent config path
 	"fake-useragent",               # for random user agent
 	"FindSystemFontsFilename",      # lightweight library to get system fonts paths
@@ -27,6 +26,7 @@ dependencies = [
 	"psutil",                       # for process information (shell detection)
 	"pydantic",                     # for data schema and dataclass
 	"requests >= 2.32.3",           # for http request, required to access Bilibili API and HTML
+	"rich >= 13",                   # progress bars (binary bytes) and terminal output
 	"semver",                       # for version comparison
 	"survey",                       # for interactive prompt in CLI
 	"thefuzz",                      # for fuzzy string matching in history search

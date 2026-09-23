@@ -63,8 +63,6 @@ class HistoryMigrator:
 
     def _convert_old_format_to_tsv(self, urls: list[str]) -> list[str]:
         """Convert old URL-only format to TSV format with metadata"""
-        from alive_progress import alive_bar
-
         new_data = [HEAD]
         pattern = re.compile(r"play/(\d+)/(\d+)")
         total_urls = len([u for u in urls if u.strip()])
@@ -91,55 +89,63 @@ class HistoryMigrator:
 
         failed_entries = []
 
-        with alive_bar(total_urls, title="Migrating", bar="smooth") as bar:
+        from bilidownloader.commons.progress import make_progress
+
+        progress = make_progress()
+        progress.start()
+        try:
+            migrate_task = progress.add_task("Migrating", total=total_urls)
             for url in urls:
                 url = url.strip()
                 if not url:
                     continue
 
                 regmatch = pattern.search(url)
-                if regmatch:
-                    series_id = regmatch.group(1)
-                    episode_id = regmatch.group(2)
-                    series_title = f"Series {series_id}"
-                    episode_idx = ""
-                    extraction_failed = False
+                if not regmatch:
+                    progress.update(migrate_task, advance=1)
+                    continue
+                series_id = regmatch.group(1)
+                episode_id = regmatch.group(2)
+                series_title = f"Series {series_id}"
+                episode_idx = ""
+                extraction_failed = False
 
-                    if use_ytdlp:
-                        try:
-                            info = extractor._get_video_info(url)
-                            if info and isinstance(info, dict):
-                                series_title = self._extract_series_title(
-                                    info, url, extractor
-                                )
-                                episode_num = info.get("episode_number", "")
-                                if episode_num:
-                                    episode_idx = str(episode_num)
-                            sleep(0.5)
-                        except Exception as e:
-                            extraction_failed = self._handle_extraction_error(
-                                e, url, series_title
+                if use_ytdlp:
+                    try:
+                        info = extractor._get_video_info(url)
+                        if info and isinstance(info, dict):
+                            series_title = self._extract_series_title(
+                                info, url, extractor
                             )
-                            sleep(0.5)
-
-                    if series_id in SERIES_ALIASES:
-                        series_title = SERIES_ALIASES[series_id]
-
-                    if extraction_failed:
-                        failed_entries.append(
-                            {
-                                "url": url,
-                                "series_id": series_id,
-                                "episode_id": episode_id,
-                                "series_title": series_title,
-                                "episode_idx": episode_idx,
-                            }
+                            if episode_num := info.get("episode_number", ""):
+                                episode_idx = str(episode_num)
+                        sleep(0.5)
+                    except Exception as e:
+                        extraction_failed = self._handle_extraction_error(
+                            e, url, series_title
                         )
+                        sleep(0.5)
 
-                    entry = f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
-                    new_data.append(entry)
+                if series_id in SERIES_ALIASES:
+                    series_title = SERIES_ALIASES[series_id]
 
-                bar()
+                if extraction_failed:
+                    failed_entries.append(
+                        {
+                            "url": url,
+                            "series_id": series_id,
+                            "episode_id": episode_id,
+                            "series_title": series_title,
+                            "episode_idx": episode_idx,
+                        }
+                    )
+
+                new_data.append(
+                    f"0{SEP}{series_id}{SEP}{series_title}{SEP}{episode_idx}{SEP}{episode_id}"
+                )
+                progress.update(migrate_task, advance=1)
+        finally:
+            progress.stop()
 
         prn_info("Migration complete!")
 

@@ -3,17 +3,17 @@ Chapter processing - handles chapter formatting and embedding
 """
 
 import subprocess as sp
-from io import StringIO
+from json import loads as jloads
 from pathlib import Path
 from re import search as rsearch
 from typing import Literal
 
-from rich.console import Console
 from rich.table import Column, Table, box
 
 from bilidownloader.commons.filesystem import find_command
 from bilidownloader.commons.ui import (
     _verbose,
+    print_table,
     prn_cmd,
     prn_dbg,
     prn_done,
@@ -34,10 +34,52 @@ class ChapterProcessor:
     def __init__(
         self,
         mkvpropedit_path: Path | None = None,
+        mkvmerge_path: Path | None = None,
         ffmpeg_path: Path | None = None,
     ):
         self.mkvpropedit_path = mkvpropedit_path
+        self.mkvmerge_path = mkvmerge_path
+        # Kept for backward compatibility; no longer used (was only for ffprobe)
         self.ffmpeg_path = ffmpeg_path
+
+    @staticmethod
+    def _probe_json(cmd: list[str]) -> dict | None:
+        """Run a JSON-reporting probe command, returning parsed output or None."""
+        prn_cmd(cmd)
+        try:
+            result = sp.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0 and result.stdout.strip():
+                return jloads(result.stdout)
+        except Exception as err:
+            prn_dbg(f"Duration probe failed ({cmd[0]}): {err}")
+        return None
+
+    def _get_media_duration(self, video_path: Path) -> float | None:
+        """Get media duration in seconds without ffprobe.
+
+        Prefers mkvmerge JSON (nanoseconds), falls back to mediainfo JSON.
+        """
+        if mkvmerge := self.mkvmerge_path or find_command("mkvmerge"):
+            data = self._probe_json([str(mkvmerge), "-J", str(video_path)])
+            duration = (
+                (data or {}).get("container", {}).get("properties", {}).get("duration")
+            )
+            if duration is not None and (total := float(duration) / 1_000_000_000) > 0:
+                return total
+
+        if mediainfo := find_command("mediainfo"):
+            data = self._probe_json([str(mediainfo), "--Output=JSON", str(video_path)])
+            tracks = (data or {}).get("media", {}).get("track", [])
+            general = next(
+                (t for t in tracks if str(t.get("@type", "")).lower() == "general"),
+                {},
+            )
+            if (
+                general.get("Duration") is not None
+                and (total := float(general["Duration"])) > 0
+            ):
+                return total
+        return None
 
     @staticmethod
     def _sms(seconds: float) -> int:
@@ -146,47 +188,11 @@ class ChapterProcessor:
         )
         metadata_path.write_text("")
 
-        # Get video duration using ffprobe
-        ffprobe = find_command("ffprobe")
-        if not ffprobe and self.ffmpeg_path:
-            ffprobe = self.ffmpeg_path.with_stem("ffprobe")
-        if not ffprobe or not ffprobe.exists():
-            prn_error(
-                "ffprobe is not found in the system, make sure it's available "
-                "in your ffmpeg directory/installation"
-            )
-            return video_path
-
-        ffprobe_cmd = [
-            str(ffprobe),
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
-            str(video_path),
-        ]
-        prn_cmd(ffprobe_cmd)
-        result = sp.run(
-            ffprobe_cmd,
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0 or not result.stdout.strip():
+        total_duration = self._get_media_duration(video_path)
+        if total_duration is None:
             prn_error(
                 f"Failed to get video duration from {video_path.name}. "
-                f"Skipping chapter embedding."
-            )
-            return video_path
-
-        try:
-            total_duration = float(result.stdout.strip())
-        except ValueError:
-            prn_error(
-                f"Invalid duration value from ffprobe: '{result.stdout.strip()}'. "
-                f"Skipping chapter embedding."
+                "Skipping chapter embedding."
             )
             return video_path
 
@@ -342,14 +348,7 @@ class ChapterProcessor:
             for title, start, end, dur, hdur in fdform:
                 table.add_row(title, start, end, str(int(dur)) + f"s ({hdur})")
 
-            # Render table to string and add 6 space left indent
-            table_str = StringIO()
-            temp_console = Console(
-                file=table_str, highlight=False, force_terminal=True, width=50
-            )
-            temp_console.print(table)
-            for line in table_str.getvalue().splitlines():
-                Console(highlight=False).print(f"       {line}")
+            print_table(table, width=50)
         except Exception:
             for title, start, end, _, hdur in fdform:
                 prn_info(f"  - {title}: {start} -[{hdur}]-> {end}")

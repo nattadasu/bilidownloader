@@ -2,17 +2,13 @@
 Subtitle reporter - displays found subtitles during download
 """
 
-from io import StringIO
 from typing import Any
 
-from rich.console import Console
 from rich.table import Table, box
 from yt_dlp.postprocessor import PostProcessor
 
-from bilidownloader.commons.ui import prn_info
+from bilidownloader.commons.ui import print_table, prn_info
 from bilidownloader.commons.utils import langcode_to_str
-
-console = Console(highlight=False)
 
 
 class SubtitleReporter(PostProcessor):
@@ -61,15 +57,7 @@ class SubtitleReporter(PostProcessor):
 
             table.add_row(lang_code, lang_name, formats_str)
 
-        # Display the table with console to disable auto-coloring
-        # Add 6 space left indent by rendering to string first
-        table_str = StringIO()
-        temp_console = Console(
-            file=table_str, highlight=False, force_terminal=True, width=70
-        )
-        temp_console.print(table)
-        for line in table_str.getvalue().splitlines():
-            console.print(f"       {line}")
+        print_table(table, width=70)
 
         self._reported = True
         return [], info

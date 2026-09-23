@@ -416,6 +416,55 @@ class MetadataEditor:
         """Delete title and description from the video file"""
         return ["--delete", "title", "--tags", "global:"]
 
+    def remux_tracks(
+        self,
+        video_track: Path,
+        audio_track: Path | None,
+        subtitle_tracks: list[Path],
+        output_path: Path,
+        default_sub_lang: str | None = None,
+    ) -> Path:
+        """Mux separate video/audio/subtitle tracks into one MKV with mkvmerge.
+
+        This replaces the old ffmpeg-based merging (FFmpegMergerPP +
+        FFmpegEmbedSubtitle). Tracks are passed through without re-encoding.
+        Subtitle languages/default flags are refined later via mkvpropedit,
+        so this step only establishes track order: video, audio, subtitles.
+        """
+        mkvmerge = str(self.mkvmerge_path) if self.mkvmerge_path else "mkvmerge"
+        if not video_track.exists():
+            raise FileNotFoundError(f"Video track not found: {video_track}")
+        if audio_track is not None and not audio_track.exists():
+            raise FileNotFoundError(f"Audio track not found: {audio_track}")
+        for sub in subtitle_tracks:
+            if not sub.exists():
+                raise FileNotFoundError(f"Subtitle track not found: {sub}")
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if output_path.exists():
+            output_path.unlink()
+
+        # Order matters: video first, then audio, then subtitles in sorted order
+        cmd: list[str] = [mkvmerge, "-o", str(output_path)]
+        if _verbose:
+            cmd.append("--verbose")
+        else:
+            cmd.append("--quiet")
+        cmd.append(str(video_track))
+        if audio_track is not None:
+            cmd.append(str(audio_track))
+        for sub in sorted(subtitle_tracks):
+            cmd.append(str(sub))
+
+        prn_info(f'Merging tracks into "{output_path.name}" with mkvmerge')
+        prn_cmd(cmd)
+        sp.run(cmd, check=True)
+        if not output_path.exists():
+            raise FileNotFoundError(f"mkvmerge failed to create {output_path}")
+        if default_sub_lang:
+            prn_dbg(f"Preferred default subtitle: {default_sub_lang}")
+        return output_path
+
     def execute_mkvpropedit(
         self,
         video_path: Path,

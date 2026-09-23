@@ -4,8 +4,8 @@ from bilidownloader.commons.constants import DEFAULT_COOKIES
 
 
 def raise_ffmpeg(path: Path | None):
-    if path is None:
-        raise FileNotFoundError("ffmpeg binary couldn't be found!")
+    """Deprecated: ffmpeg is no longer required (remuxing uses mkvmerge)."""
+    return
 
 
 def raise_mkvpropedit(path: Path | None):

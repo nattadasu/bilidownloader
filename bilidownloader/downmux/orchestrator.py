@@ -1,6 +1,7 @@
 import sys
 import traceback
 from pathlib import Path
+from re import Match
 from re import search as rsearch
 
 from bilidownloader.apis.api import BiliApi
@@ -92,15 +93,16 @@ class BiliProcess:
             proxy=download_options.proxy,
             mark_downloaded=download_options.mark_downloaded,
         )
-        if binary_paths.ffmpeg_path is None:
-            raise ValueError("ffmpeg path is not set properly")
+        # ffmpeg is no longer required: tracks are downloaded separately and
+        # remuxed with mkvmerge/mkvpropedit. binary_paths.ffmpeg_path is kept
+        # only for backward compatibility and is otherwise ignored.
         if binary_paths.mkvpropedit_path is None:
             raise ValueError("mkvpropedit path is not set properly")
         if binary_paths.mkvmerge_path is None:
             raise ValueError("mkvmerge path is not set properly")
         self.chapter_processor = ChapterProcessor(
             mkvpropedit_path=binary_paths.mkvpropedit_path,
-            ffmpeg_path=binary_paths.ffmpeg_path,
+            mkvmerge_path=binary_paths.mkvmerge_path,
         )
         self.metadata_editor = MetadataEditor(
             mkvpropedit_path=binary_paths.mkvpropedit_path,
@@ -125,6 +127,38 @@ class BiliProcess:
     def _get_video_info(self, episode_url: str):
         """Delegate to VideoDownloader"""
         return self.downloader.get_video_info(episode_url)
+
+    def _record_history(
+        self,
+        ep_url: Match[str] | None,
+        episode_url: str,
+        history: History,
+        data: dict,
+        forced: bool,
+    ) -> None:
+        """Write an episode to history (skipped when forced)."""
+        if forced:
+            prn_info("Forced download, skipping adding to history")
+            return
+        series_id = ep_url.group(1) if ep_url else None
+        episode_id = ep_url.group(2) if ep_url else None
+        series_title = data.get("btitle", data.get("series", f"Series {series_id}"))
+        if series_id and series_id in SERIES_ALIASES:
+            series_title = SERIES_ALIASES[series_id]
+        history.write_history(
+            episode_url,
+            series_id=series_id,
+            series_title=series_title,
+            episode_idx=str(data.get("episode_number", "") or ""),
+            episode_id=episode_id,
+        )
+
+    def _finish_download(self, clock: BenchClock, final: Path, data: dict) -> Path:
+        """Log timing, notify, and return the final file."""
+        clock.echo_format(f"Downloaded {final.name}")
+        if self.notification:
+            push_notification(data["btitle"], data.get("episode_number", ""), final)
+        return final
 
     def process_episode(self, episode_url: str, forced: bool = False) -> Path | None:
         """Process episode from Bilibili"""
@@ -191,6 +225,11 @@ class BiliProcess:
                     )
                     raise FileNotFoundError(f"Video file not found: {loc}")
 
+                # Audio-only: no MKV chapters/metadata to embed; just history
+                if self.only_audio:
+                    self._record_history(ep_url, episode_url, history, data, forced)
+                    return self._finish_download(clock, loc, data)
+
                 # Process chapters
                 chapters = self.downloader.get_episode_chapters(data)
                 final = self.chapter_processor.embed_chapters(chapters, loc, language)
@@ -220,39 +259,8 @@ class BiliProcess:
                 )
                 Path("thumbnail.png").unlink(True)
 
-                # Update history
-                if not forced:
-                    series_id = ep_url.group(1) if ep_url else None
-                    episode_id = ep_url.group(2) if ep_url else None
-                    series_title = data.get(
-                        "btitle", data.get("series", f"Series {series_id}")
-                    )
-
-                    if series_id and series_id in SERIES_ALIASES:
-                        series_title = SERIES_ALIASES[series_id]
-
-                    episode_idx = (
-                        str(data.get("episode_number", ""))
-                        if data.get("episode_number")
-                        else ""
-                    )
-
-                    history.write_history(
-                        episode_url,
-                        series_id=series_id,
-                        series_title=series_title,
-                        episode_idx=episode_idx,
-                        episode_id=episode_id,
-                    )
-                else:
-                    prn_info("Forced download, skipping adding to history")
-
-                clock.echo_format(f"Downloaded {final.name}")
-                if self.notification:
-                    push_notification(
-                        data["btitle"], data.get("episode_number", ""), final
-                    )
-                return final
+                self._record_history(ep_url, episode_url, history, data, forced)
+                return self._finish_download(clock, final, data)
 
             except (ReferenceError, NameError) as err:
                 prn_error(str(err))

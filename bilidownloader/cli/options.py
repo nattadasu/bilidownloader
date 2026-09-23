@@ -212,11 +212,11 @@ FFMPEG_OPT = Annotated[
     typer.Option(
         "--ffmpeg-path",
         "--ffmpeg",
-        help="Specify the path to the ffmpeg binary or its containing directory",
+        help="(Deprecated and ignored) Previously the path to the ffmpeg binary. Remuxing now uses mkvmerge/mkvpropedit only.",
         rich_help_panel="Binaries",
     ),
 ]
-"""Path to ffmpeg binary"""
+"""Path to ffmpeg binary (deprecated, ignored)"""
 MKVPROPEX_OPT = Annotated[
     Path | None,
     typer.Option(
