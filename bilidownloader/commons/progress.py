@@ -10,6 +10,7 @@ from rich.progress import (
     DownloadColumn,
     Progress,
     ProgressColumn,
+    SpinnerColumn,
     Task,
     Text,
     TextColumn,
@@ -48,10 +49,39 @@ class BinarySpeedColumn(ProgressColumn):
         )
 
 
-def make_progress() -> Progress:
-    """Progress with binary-byte columns; no-op rendering when headless."""
+DOWN_BADGE = "[reverse #875faf] DOWN [/]"
+"""Leading badge block for download rows (muted violet; plain "purple" is neon)."""
+
+
+def make_progress(badge: str | None = None) -> Progress:
+    """Progress with binary-byte columns; no-op rendering when headless.
+
+    When badge is given, it leads each row as its own column, e.g. download
+    rows read `[ DOWN ] ⠋ Video (144P) ━━━ …`.
+    """
+    columns: list[ProgressColumn] = []
+    if badge:
+        columns.append(TextColumn(badge))
+    columns.extend(
+        [
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            DownloadColumn(binary_units=True),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            BinarySpeedColumn(),
+            TimeRemainingColumn(),
+            TimeElapsedColumn(),
+        ]
+    )
     return Progress(
-        TextColumn("[progress.description]{task.description}"),
+        *columns,
+        console=console,
+        transient=True,
+        disable=is_headless(),
+    )
+
+        SpinnerColumn(),
         BarColumn(),
         DownloadColumn(binary_units=True),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
@@ -78,7 +108,7 @@ class YtDlpProgress:
         self._prn_info = prn_info
         self._describe = describe or (lambda name, _: Path(name).name[:45])
         self._transient_exts = transient_exts or frozenset()
-        self._progress = make_progress()
+        self._progress = make_progress(badge=DOWN_BADGE)
         self._tasks: dict[str, Any] = {}
         self._started = False
 
@@ -98,15 +128,14 @@ class YtDlpProgress:
                 self._progress.remove_task(task_id)
 
     def _label(self, filename: str, info_dict: dict | None) -> str:
-        """Badge-style task title, e.g. `[ DOWN ] Video (144P)` (soft violet block)."""
+        """Task title, markup-escaped so odd names can't break bar rendering."""
         from rich.markup import escape
 
         try:
             desc = self._describe(filename, info_dict)
         except Exception:
             desc = Path(filename).name[:45]
-        # Plain "purple" is neon (129); use muted violet instead.
-        return f"[reverse #875faf] DOWN [/] {escape(desc)}"
+        return escape(desc)
 
     def _plain_label(self, filename: str, info_dict: dict | None) -> str:
         """Unstyled task title for headless logs."""
