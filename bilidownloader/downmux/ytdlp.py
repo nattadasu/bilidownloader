@@ -228,17 +228,16 @@ class VideoDownloader:
                 r"\.([a-z]{2}(?:-[A-Z][a-z]+)?)\.(?:ass|srt|vtt)$", filename
             )
             if lang_match:
-                code = lang_match.group(1)
-                return f"{langcode_to_str(code)} {ext[1:].upper()} subtitle"
-            return f"{ext[1:].upper()} subtitle"
+                return f"{langcode_to_str(lang_match.group(1))} subtitles"
+            return "Subtitles"
 
         if Path(filename).stem.endswith(".audio"):
-            return "Audio track"
+            return "Audio"
 
         info = info_dict or {}
         if note := info.get("format_note") or info.get("resolution", ""):
-            return f"Video track ({note})"
-        return "Video track"
+            return f"Video ({note})"
+        return "Video"
 
     def _progress_hook(self, d: dict[str, Any]) -> None:
         """Progress hook for yt-dlp, backed by rich with binary byte units."""
