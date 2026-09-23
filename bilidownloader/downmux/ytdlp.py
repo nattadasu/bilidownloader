@@ -397,6 +397,22 @@ class VideoDownloader:
             if p.suffix.lower() in (".ass", ".srt")
         ]
 
+    def _consolidate_video_pass_subtitles(self, base_stem: str) -> None:
+        """Rename `<base>.video.<lang>.ass/srt` to `<base>.<lang>.ass/srt`.
+
+        Subtitles ride on the video pass, so yt-dlp names them after the
+        video track. Strip the `.video` infix so the remux lookup finds them.
+        """
+        infix = f"{base_stem}.video."
+        for sub in self._files_with_prefix(infix):
+            if sub.suffix.lower() not in (".ass", ".srt"):
+                continue
+            target = self.output_dir / f"{base_stem}.{sub.name[len(infix) :]}"
+            try:
+                sub.replace(target)
+            except OSError as err:
+                prn_dbg(f"Failed to rename {sub.name}: {err}")
+
     def download_episode(
         self,
         episode_url: str,
@@ -483,7 +499,14 @@ class VideoDownloader:
         # Probe metadata with the combined selector so requested_formats,
         # episode number, extractor, and subtitle list are resolved the same
         # way as before (but nothing is downloaded or merged here).
-        probe_opts = self._track_opts(format=combined_selector, simulate=True)
+        probe_opts = self._track_opts(
+            format=combined_selector,
+            simulate=True,
+            # Needed so the extractor populates `subtitles`: yt-dlp skips
+            # subtitle extraction entirely without writesubtitles/listsubtitles.
+            writesubtitles=True,
+            subtitleslangs=["all"],
+        )
         with YDL(probe_opts) as ydl:  # type: ignore
             ydl.params["quiet"] = True
             ydl.params["verbose"] = False
@@ -556,7 +579,6 @@ class VideoDownloader:
         final_path = self.output_dir / f"{base_stem}.mkv"
         video_outtmpl = str(self.output_dir / f"{base_stem}.video.%(ext)s")
         audio_outtmpl = str(self.output_dir / f"{base_stem}.audio.%(ext)s")
-        subs_outtmpl = str(self.output_dir / f"{base_stem}.%(ext)s")
 
         prn_dbg(f"Starting track downloads with yt-dlp (verbose={self.verbose})")
         if self.mkvmerge_path:
@@ -566,7 +588,7 @@ class VideoDownloader:
             prn_info("Mark-downloaded mode: Skipping actual download")
             prn_dbg(f"Would download: {final_path}")
             metadata["btitle"] = title  # type: ignore
-            return (Path(".") / final_path, metadata, language)
+            return (final_path, metadata, language)
 
         is_chinese = language == "chi"
 
@@ -583,22 +605,23 @@ class VideoDownloader:
                 metadata["btitle"] = title  # type: ignore
                 return (audio_track, metadata, language)
 
-            # Video-only, audio-only, then subtitles-only (skip_download).
-            # before_dl PPs run after subtitles are written, so subtitle
-            # processing works on the subs pass as in the old single-pass flow.
-            with YDL(self._track_opts(video_outtmpl, format=video_selector)) as ydl:  # type: ignore
-                ydl.download([episode_url])
-            with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
-                ydl.download([episode_url])
-            subs_opts = self._track_opts(
-                subs_outtmpl,
-                skip_download=True,
+            # Video pass also fetches subtitles (same outtmpl, so they land as
+            # `<base>.video.<lang>.ass` and are renamed below). before_dl PPs
+            # run after subtitles are written, so processing is unchanged.
+            video_opts = self._track_opts(
+                video_outtmpl,
+                format=video_selector,
                 writesubtitles=True,
                 subtitleslangs=["all"],
                 subtitlesformat="srt" if self.srt else "ass/srt",
             )
-            with YDL(subs_opts) as ydl:  # type: ignore
+            with YDL(video_opts) as ydl:  # type: ignore
                 self._attach_subtitle_processors(ydl, is_chinese=is_chinese)
+                ydl.download([episode_url])
+            self._consolidate_video_pass_subtitles(base_stem)
+
+            # Audio-only pass (no subtitles here).
+            with YDL(self._track_opts(audio_outtmpl, format=audio_selector)) as ydl:  # type: ignore
                 ydl.download([episode_url])
 
             video_track = self._find_track(f"{base_stem}.video.")
