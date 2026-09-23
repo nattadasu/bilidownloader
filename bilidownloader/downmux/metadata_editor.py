@@ -417,10 +417,6 @@ class MetadataEditor:
             str(thumbnail_path),
         ]
 
-    def delete_title_and_desc(self) -> list[str]:
-        """Delete title and description from the video file"""
-        return ["--delete", "title", "--tags", "global:"]
-
     def remux_tracks(
         self,
         video_track: Path,
@@ -498,7 +494,8 @@ class MetadataEditor:
             delete_cmd = [
                 mkvpropedit,
                 str(video_path),
-                *self.delete_title_and_desc(),
+                "--delete",
+                "title",
                 "--verbose" if _verbose else "--quiet",
             ]
             prn_cmd(delete_cmd)
