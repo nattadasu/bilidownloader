@@ -31,20 +31,48 @@ from bilidownloader.subtitles.post_processors import extract_lang_code
 class MetadataEditor:
     """Handles MKV metadata editing operations"""
 
-    # Bilibili subtitle code -> language tag written at mux time.
-    # Tags are the canonical forms mkvmerge keeps in the file (it normalizes
-    # e.g. zh-Hans/zh-Hant to chi and msa to may), so downstream matching is
-    # exact. Hans/Hant share the chi tag and are told apart by mux order.
+    # Bilibili subtitle code -> IETF/BCP 47 tag written at mux time.
+    # mkvmerge keeps these verbatim in language_ietf (verified), so every
+    # track stays distinguishable downstream — including zh-Hans vs zh-Hant.
     SUBTITLE_MUX_LANGS: ClassVar[dict[str, str]] = {
-        "en": "eng",
-        "th": "tha",
-        "vi": "vie",
-        "id": "ind",
-        "ms": "may",
-        "zh-Hans": "chi",
-        "zh-Hant": "chi",
-        "ar": "ara",
+        "en": "en",
+        "th": "th",
+        "vi": "vi",
+        "id": "id",
+        "ms": "ms",
+        "zh-Hans": "zh-Hans",
+        "zh-Hant": "zh-Hant",
+        "ar": "ar-001",
     }
+
+    # Legacy ISO 639-2 tags (e.g. from old ffmpeg-embedded rips, which carry
+    # no language_ietf) normalized to BCP 47 so old files still resolve.
+    LEGACY_SUBTITLE_LANGS: ClassVar[dict[str, str]] = {
+        "eng": "en",
+        "tha": "th",
+        "vie": "vi",
+        "ind": "id",
+        "may": "ms",
+        "msa": "ms",
+        "ara": "ar-001",
+        "chi": "chi",
+    }
+
+    @staticmethod
+    def subtitle_order_key(code: str) -> tuple[int, str]:
+        """Sort key for subtitle codes: English first, then alphabetically.
+
+        Mirrors sort_subtitle_tracks: English always leads, the rest order by
+        English display name (Arabic, Chinese Simplified, ... Vietnamese).
+        Unknown codes sort last.
+        """
+        tag = MetadataEditor.SUBTITLE_MUX_LANGS.get(code, code)
+        if tag == "en":
+            return (0, "")
+        try:
+            return (1, langcode_to_str(tag))
+        except Exception:
+            return (1, tag)
 
     def __init__(
         self,
@@ -245,17 +273,12 @@ class MetadataEditor:
     ) -> list[str]:
         """Flag the preferred subtitle track as default and name all tracks.
 
-        Matches tracks by the language tags written at mux time
-        (see SUBTITLE_MUX_LANGS), so no positional guessing is needed.
+        Matches tracks by language_ietf (what mkvmerge preserves verbatim),
+        falling back to the legacy language tag. Every tag maps 1:1 back to
+        a Bilibili code, so no positional guessing is needed.
         """
         language = language or SubtitleLanguage.en
-        want = self.SUBTITLE_MUX_LANGS.get(language.value, "eng")
-        # zh-Hans and zh-Hant share the chi tag in the file. They mux in
-        # sorted-filename order (Hans first), so disambiguate by occurrence
-        # — but only when the full pair is verifiably present.
-        want_chi_variant = (
-            language.value if language.value in ("zh-Hans", "zh-Hant") else None
-        )
+        want = self.SUBTITLE_MUX_LANGS.get(language.value, "en")
 
         def fail(msg: str) -> list[str]:
             prn_dbg(msg)
@@ -285,40 +308,29 @@ class MetadataEditor:
         if not tracks:
             return fail("No subtitle tracks found in the video file")
 
-        # Mux-time tag -> Bilibili code, to detect SRT-converted tracks.
         rev_langs = {tag: code for code, tag in self.SUBTITLE_MUX_LANGS.items()}
         available = (raw_data or {}).get("subtitles", {})
-        pair_intact = (
-            len(tracks) == len(available)
-            and "zh-Hans" in available
-            and "zh-Hant" in available
-            and sum(1 for t in tracks if t["properties"].get("language") == "chi") == 2
-        )
 
         default: tuple[str, str] | None = None
         others: list[tuple[str, str]] = []
         names: dict[str, str] = {}
-        chi_seen = 0
         for track in tracks:
             num = str(track["id"] + 1)
-            tag = track["properties"].get("language") or "und"
-            if tag == "chi" and pair_intact:
-                variant = "zh-Hans" if chi_seen == 0 else "zh-Hant"
-                chi_seen += 1
-            else:
-                variant = rev_langs.get(tag, tag)
-            sub_formats = available.get(variant, [])
+            props = track["properties"]
+            legacy = props.get("language") or "und"
+            tag = props.get("language_ietf") or self.LEGACY_SUBTITLE_LANGS.get(
+                legacy, legacy
+            )
+            code = rev_langs.get(tag, tag)
+            sub_formats = available.get(code, [])
             converted = (
-                track["properties"].get("codec_id") == "S_TEXT/ASS"
+                props.get("codec_id") == "S_TEXT/ASS"
                 and sub_formats
                 and not any(f.get("ext") == "ass" for f in sub_formats)
             )
-            base = langcode_to_str(variant if pair_intact and tag == "chi" else tag)
+            base = langcode_to_str(tag)
             names[num] = f"{base} [Converted from SRT]" if converted else base
-            is_wanted = tag == want and (
-                tag != "chi" or not pair_intact or variant == want_chi_variant
-            )
-            if is_wanted and default is None:
+            if tag == want and default is None:
                 default = (num, tag)
             else:
                 others.append((num, tag))
@@ -451,7 +463,11 @@ class MetadataEditor:
         cmd.append(str(video_track))
         if audio_track is not None:
             cmd.append(str(audio_track))
-        for sub in sorted(subtitle_tracks):
+        ordered = sorted(
+            subtitle_tracks,
+            key=lambda sub: self.subtitle_order_key(extract_lang_code(sub)),
+        )
+        for sub in ordered:
             if lang := self.SUBTITLE_MUX_LANGS.get(extract_lang_code(sub)):
                 cmd += ["--language", f"0:{lang}"]
             cmd.append(str(sub))
