@@ -278,6 +278,10 @@ class BiliProcess:
             except KeyboardInterrupt, SystemExit:
                 print()
                 prn_error("Interrupt signal received, stopping process")
+                try:
+                    self.downloader._progress.close()
+                except Exception:
+                    pass
                 sys.exit(1)
             except Exception:
                 prn_error("An exception has been thrown:")
@@ -299,15 +303,24 @@ class BiliProcess:
 
         final: list[Path | None] = []
         total = len(data["entries"])
-        for entry in data["entries"]:
-            prn_info(f"Processing {len(final) + 1}/{total}")
-            final.append(
-                self.process_episode(
-                    self.ep_url(data["id"], entry["id"]),
-                    forced=forced,
+        try:
+            for entry in data["entries"]:
+                prn_info(f"Processing {len(final) + 1}/{total}")
+                final.append(
+                    self.process_episode(
+                        self.ep_url(data["id"], entry["id"]),
+                        forced=forced,
+                    )
                 )
-            )
+                print()
+        except KeyboardInterrupt, SystemExit:
+            # Abort the whole queue; per-episode message already printed.
+            try:
+                self.downloader._progress.close()
+            except Exception:
+                pass
             print()
+            raise
 
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)
@@ -330,24 +343,32 @@ class BiliProcess:
             for sid, title in wl.list:
                 if sid != card.season_id:
                     continue
-                print()
-                display_title = SERIES_ALIASES.get(sid, title)
-                if "-" in card.index_show:
-                    prn_info(f"Downloading {display_title} as a playlist")
-                    final.extend(
-                        self.process_playlist(
-                            f"https://www.bilibili.tv/en/play/{card.season_id}",
+                try:
+                    print()
+                    display_title = SERIES_ALIASES.get(sid, title)
+                    if "-" in card.index_show:
+                        prn_info(f"Downloading {display_title} as a playlist")
+                        final.extend(
+                            self.process_playlist(
+                                f"https://www.bilibili.tv/en/play/{card.season_id}",
+                                forced=forced,
+                            )
+                        )
+                    else:
+                        prn_info(f"Downloading {display_title}, {card.index_show}")
+                        ep = self.process_episode(
+                            self.ep_url(card.season_id, card.episode_id),
                             forced=forced,
                         )
-                    )
-                else:
-                    prn_info(f"Downloading {display_title}, {card.index_show}")
-                    ep = self.process_episode(
-                        self.ep_url(card.season_id, card.episode_id),
-                        forced=forced,
-                    )
-                    if ep is not None:
-                        final.append(ep)
+                        if ep is not None:
+                            final.append(ep)
+                except KeyboardInterrupt, SystemExit:
+                    try:
+                        self.downloader._progress.close()
+                    except Exception:
+                        pass
+                    print()
+                    raise
 
         nnfinal = [f for f in final if f is not None]
         flen = len(nnfinal)

@@ -109,18 +109,27 @@ def run_with_progress(cmd: list[str], description: str) -> sp.CompletedProcess[s
             full_cmd, stdout=sp.PIPE, stderr=sp.STDOUT, text=True, bufsize=1
         )
         assert proc.stdout is not None
-        for raw in proc.stdout:
-            for part in raw.replace("\r", "\n").split("\n"):
-                line = part.strip()
-                if not line:
-                    continue
-                if matches := _PROGRESS_RE.findall(line):
-                    progress.update(task_id, completed=int(matches[-1]))
-                else:
-                    output.append(line)
-                    prn_dbg(line)
-        proc.stdout.close()
-        returncode = proc.wait()
+        try:
+            for raw in proc.stdout:
+                for part in raw.replace("\r", "\n").split("\n"):
+                    line = part.strip()
+                    if not line:
+                        continue
+                    if matches := _PROGRESS_RE.findall(line):
+                        progress.update(task_id, completed=int(matches[-1]))
+                    else:
+                        output.append(line)
+                        prn_dbg(line)
+        except KeyboardInterrupt, SystemExit:
+            # Kill the child so Ctrl+C exits promptly.
+            proc.kill()
+            raise
+        finally:
+            try:
+                proc.stdout.close()
+            except Exception:
+                pass
+            returncode = proc.wait()
         progress.update(task_id, completed=100)
     if returncode != 0:
         raise sp.CalledProcessError(returncode, full_cmd, output="\n".join(output))
@@ -233,9 +242,7 @@ class YtDlpProgress:
 
     def close(self) -> None:
         self._purge_transients()
-        # Drop finished video/audio rows left as stopped tasks in Progress.
-        # They are already popped from _tasks, so without this they re-render
-        # when the shared reporter is restarted for the next playlist entry.
+        # Drop stopped rows so they don't re-render on the next episode.
         for task in list(self._progress.tasks):
             self._progress.remove_task(task.id)
         self._tasks.clear()

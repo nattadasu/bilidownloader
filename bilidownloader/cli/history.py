@@ -276,7 +276,7 @@ def history_clear(
             else:  # Cancel
                 prn_info("Operation cancelled.")
                 return
-        except survey.widgets.Escape, KeyboardInterrupt:
+        except survey.widgets.Escape, KeyboardInterrupt, EOFError:
             prn_info("Operation cancelled.")
             return
 

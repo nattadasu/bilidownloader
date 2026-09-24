@@ -110,7 +110,7 @@ def download_today_releases(
             dl_opts=dl_opts,
             pp_opts=pp_opts,
         )
-    except survey.widgets.Escape:
+    except survey.widgets.Escape, KeyboardInterrupt, EOFError:
         exit(1)
 
 
@@ -149,5 +149,5 @@ def download_all_releases(
             dl_opts=dl_opts,
             pp_opts=pp_opts,
         )
-    except survey.widgets.Escape:
+    except survey.widgets.Escape, KeyboardInterrupt, EOFError:
         exit(1)

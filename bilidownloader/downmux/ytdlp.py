@@ -6,7 +6,8 @@ remuxed into a final MKV with mkvmerge. Progress via rich, binary units.
 """
 
 import shlex
-from concurrent.futures import ThreadPoolExecutor
+import threading
+from collections.abc import Callable
 from html import unescape
 from pathlib import Path
 from re import IGNORECASE
@@ -637,33 +638,48 @@ class VideoDownloader:
                 metadata["btitle"] = title  # type: ignore
                 return (audio_track, metadata, language)
 
-            # Video (+subtitles) and audio fetch concurrently on workers;
-            # each pass owns its YDL instance and filenames, the shared
-            # progress reporter is thread-safe.
-            with ThreadPoolExecutor(
-                max_workers=2, thread_name_prefix="bilitrack"
-            ) as executor:
-                pending = [
-                    executor.submit(
+            # Concurrent passes on daemon workers; pool workers would hang exit.
+            track_errors: list[BaseException] = []
+
+            def _run_fetch(fetch: Callable[..., None], *args: Any) -> None:
+                try:
+                    fetch(*args)
+                except BaseException as err:  # re-raised below
+                    track_errors.append(err)
+
+            workers = [
+                threading.Thread(
+                    target=_run_fetch,
+                    args=(
                         self._fetch_video_and_subs,
                         episode_url,
                         video_outtmpl,
                         video_selector,
                         is_chinese,
                     ),
-                    executor.submit(
-                        self._fetch_audio, episode_url, audio_outtmpl, audio_selector
+                    name="bilitrack-video",
+                    daemon=True,
+                ),
+                threading.Thread(
+                    target=_run_fetch,
+                    args=(
+                        self._fetch_audio,
+                        episode_url,
+                        audio_outtmpl,
+                        audio_selector,
                     ),
-                ]
-                first_error: Exception | None = None
-                for future in pending:
-                    try:
-                        future.result()
-                    except Exception as err:
-                        if first_error is None:
-                            first_error = err
-                if first_error is not None:
-                    raise first_error
+                    name="bilitrack-audio",
+                    daemon=True,
+                ),
+            ]
+            for worker in workers:
+                worker.start()
+            # Short joins so interrupts abort the wait (.part files allow resume).
+            while any(worker.is_alive() for worker in workers):
+                for worker in workers:
+                    worker.join(timeout=0.1)
+            if track_errors:
+                raise track_errors[0]
             self._consolidate_video_pass_subtitles(base_stem)
 
             video_track = self._find_track(f"{base_stem}.video.")

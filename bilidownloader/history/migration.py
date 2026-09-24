@@ -236,7 +236,7 @@ class HistoryMigrator:
             elif choice == "Manually provide series titles":
                 prn_info("\nManually updating series titles...")
                 self._manually_update_entries(failed_entries, new_data)
-        except survey.widgets.Escape, KeyboardInterrupt:
+        except survey.widgets.Escape, KeyboardInterrupt, EOFError:
             prn_info("Keeping entries as is.")
 
     def _retry_failed_entries(
@@ -312,7 +312,7 @@ class HistoryMigrator:
                         entry["episode_idx"],
                     )
                     prn_done(f"Updated to: {new_title.strip()}")
-            except survey.widgets.Escape, KeyboardInterrupt:
+            except survey.widgets.Escape, KeyboardInterrupt, EOFError:
                 prn_info("Skipping remaining entries...")
                 break
 

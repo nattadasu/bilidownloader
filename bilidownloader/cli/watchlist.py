@@ -159,7 +159,7 @@ def watchlist_add(
                 if index is not None:
                     break
                 prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
-            except survey.widgets.Escape, KeyboardInterrupt:
+            except survey.widgets.Escape, KeyboardInterrupt, EOFError:
                 exit(1)
     for i in index:
         sid = filt[i][0]
@@ -244,7 +244,7 @@ def watchlist_delete(
                 if index is not None:
                     break
                 prn_error("Selection is empty. Press Esc or Ctrl+C to exit")
-            except survey.widgets.Escape, KeyboardInterrupt:
+            except survey.widgets.Escape, KeyboardInterrupt, EOFError:
                 exit(1)
     ids = []
     for i in index:
