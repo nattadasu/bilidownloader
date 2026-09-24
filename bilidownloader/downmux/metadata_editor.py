@@ -13,6 +13,7 @@ from PIL import Image
 
 from bilidownloader.commons import ui as _ui
 from bilidownloader.commons.filesystem import find_command
+from bilidownloader.commons.progress import run_with_progress
 from bilidownloader.commons.ui import (
     prn_cmd,
     prn_dbg,
@@ -181,11 +182,10 @@ class MetadataEditor:
         temp_path = video_path.with_name(
             f"{video_path.stem}.sanity-remux{video_path.suffix}"
         )
-        cmd = [str(mkvmerge), "--quiet", "-o", str(temp_path), str(video_path)]
+        cmd = [str(mkvmerge), "-o", str(temp_path), str(video_path)]
         prn_info("Repairing MKV container so mediainfo can read all tracks")
-        prn_cmd(cmd)
         try:
-            sp.run(cmd, check=True)
+            run_with_progress(cmd, "Repairing")
             temp_path.replace(video_path)
         finally:
             if temp_path.exists():
@@ -445,7 +445,6 @@ class MetadataEditor:
             output_path.unlink()
 
         cmd: list[str] = [mkvmerge, "-o", str(output_path)]
-        cmd.append("--verbose" if _ui._verbose else "--quiet")
         cmd.append(str(video_track))
         if audio_track is not None:
             cmd.append(str(audio_track))
@@ -459,8 +458,7 @@ class MetadataEditor:
             cmd.append(str(sub))
 
         prn_info(f'Merging tracks into "{output_path.name}" with mkvmerge')
-        prn_cmd(cmd)
-        sp.run(cmd, check=True)
+        run_with_progress(cmd, "Muxing")
         if not output_path.exists():
             raise FileNotFoundError(f"mkvmerge failed to create {output_path}")
         if default_sub_lang:
@@ -491,41 +489,29 @@ class MetadataEditor:
 
         # Pass 1: Global metadata deletion
         if delete_metadata:
-            delete_cmd = [
-                mkvpropedit,
-                str(video_path),
-                "--delete",
-                "title",
-                "--verbose" if _ui._verbose else "--quiet",
-            ]
-            prn_cmd(delete_cmd)
-            sp.run(delete_cmd, check=True)
+            run_with_progress(
+                [mkvpropedit, str(video_path), "--delete", "title"],
+                "Clearing metadata",
+            )
 
         # Pass 2: Track edits and attachments
         if audio_args or sub_args or font_args or attachment_args:
-            edit_cmd = [
-                mkvpropedit,
-                str(video_path),
-                *audio_args,
-                *sub_args,
-                *font_args,
-                *attachment_args,
-                "--verbose" if _ui._verbose else "--quiet",
-            ]
-            prn_cmd(edit_cmd)
-            sp.run(edit_cmd, check=True)
+            run_with_progress(
+                [
+                    mkvpropedit,
+                    str(video_path),
+                    *audio_args,
+                    *sub_args,
+                    *font_args,
+                    *attachment_args,
+                ],
+                "Updating metadata",
+            )
 
         # Pass 3: Add track statistics tags separately to avoid logic colliding
-        stats_cmd = [
-            mkvpropedit,
-            str(video_path),
-            "--add-track-statistics-tags",
-            "--verbose" if _ui._verbose else "--quiet",
-        ]
-        prn_cmd(stats_cmd)
-        sp.run(
-            stats_cmd,
-            check=True,
+        run_with_progress(
+            [mkvpropedit, str(video_path), "--add-track-statistics-tags"],
+            "Writing statistics",
         )
         prn_done("Remuxing completed")
 

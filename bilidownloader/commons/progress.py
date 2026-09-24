@@ -1,5 +1,7 @@
 """Rich progress with binary (1024-based) byte units; silent when headless."""
 
+import re
+import subprocess as sp
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -18,9 +20,10 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 
-from bilidownloader.commons.ui import console, is_headless
+from bilidownloader.commons.ui import console, is_headless, prn_cmd, prn_dbg
 
 _BINARY_SUFFIXES = ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
+_PROGRESS_RE = re.compile(r"progress:.*?(\d+)\s*%", re.IGNORECASE)
 
 
 def format_binary_size(size: float | None) -> str:
@@ -81,17 +84,47 @@ def make_progress(badge: str | None = None) -> Progress:
         disable=is_headless(),
     )
 
+
+def run_with_progress(cmd: list[str], description: str) -> sp.CompletedProcess[str]:
+    """Run an mkvmerge/mkvpropedit command under a percentage bar.
+
+    The command always runs verbose so progress lines can be parsed; other
+    output goes to debug logs. Piped output is enough, no TTY needed.
+    """
+    full_cmd = [*cmd, "--verbose"]
+    prn_cmd(full_cmd)
+    progress = Progress(
         SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
         BarColumn(),
-        DownloadColumn(binary_units=True),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        BinarySpeedColumn(),
-        TimeRemainingColumn(),
-        TimeElapsedColumn(),
         console=console,
         transient=True,
         disable=is_headless(),
     )
+    output: list[str] = []
+    with progress:
+        task_id = progress.add_task(description, total=100)
+        proc = sp.Popen(
+            full_cmd, stdout=sp.PIPE, stderr=sp.STDOUT, text=True, bufsize=1
+        )
+        assert proc.stdout is not None
+        for raw in proc.stdout:
+            for part in raw.replace("\r", "\n").split("\n"):
+                line = part.strip()
+                if not line:
+                    continue
+                if matches := _PROGRESS_RE.findall(line):
+                    progress.update(task_id, completed=int(matches[-1]))
+                else:
+                    output.append(line)
+                    prn_dbg(line)
+        proc.stdout.close()
+        returncode = proc.wait()
+        progress.update(task_id, completed=100)
+    if returncode != 0:
+        raise sp.CalledProcessError(returncode, full_cmd, output="\n".join(output))
+    return sp.CompletedProcess(full_cmd, returncode, stdout="\n".join(output))
 
 
 class YtDlpProgress:

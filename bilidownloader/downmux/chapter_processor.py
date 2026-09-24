@@ -9,8 +9,8 @@ from re import search as rsearch
 
 from rich.table import Column, Table, box
 
-from bilidownloader.commons import ui as _ui
 from bilidownloader.commons.filesystem import find_command
+from bilidownloader.commons.progress import run_with_progress
 from bilidownloader.commons.ui import (
     print_table,
     prn_cmd,
@@ -195,21 +195,18 @@ class ChapterProcessor:
 
         # Remove existing chapters and metadata from the video
         prn_dbg(f"Removing existing metadata from {video_path.name}, if any")
-        mkvpropedit_cmd1 = [
-            mkvpropedit,
-            str(video_path),
-            "--delete",
-            "title",
-            "--tags",
-            "global:",
-            "--chapters",
-            "",
-            "--verbose" if _ui._verbose else "--quiet",
-        ]
-        prn_cmd(mkvpropedit_cmd1)
-        sp.run(
-            mkvpropedit_cmd1,
-            check=True,
+        run_with_progress(
+            [
+                mkvpropedit,
+                str(video_path),
+                "--delete",
+                "title",
+                "--tags",
+                "global:",
+                "--chapters",
+                "",
+            ],
+            "Clearing chapters",
         )
 
         # Format and modify chapter information
@@ -353,17 +350,9 @@ class ChapterProcessor:
 
         # Merge changes to the video
         prn_info("Embedding chapters into the video file")
-        mkvpropedit_cmd2 = [
-            mkvpropedit,
-            str(video_path),
-            "--chapters",
-            str(metadata_path),
-            "--verbose" if _ui._verbose else "--quiet",
-        ]
-        prn_cmd(mkvpropedit_cmd2)
-        sp.run(
-            mkvpropedit_cmd2,
-            check=True,
+        run_with_progress(
+            [mkvpropedit, str(video_path), "--chapters", str(metadata_path)],
+            "Writing chapters",
         )
         prn_done("Chapters have been added to the video file")
 
