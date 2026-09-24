@@ -233,4 +233,10 @@ class YtDlpProgress:
 
     def close(self) -> None:
         self._purge_transients()
+        # Drop finished video/audio rows left as stopped tasks in Progress.
+        # They are already popped from _tasks, so without this they re-render
+        # when the shared reporter is restarted for the next playlist entry.
+        for task in list(self._progress.tasks):
+            self._progress.remove_task(task.id)
+        self._tasks.clear()
         self.suspend()
